@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v7.0</title>
+<title>Sen Labels — Contract Generator v7.3</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -128,46 +128,46 @@ button{cursor:pointer;font-family:inherit}
 #preview-panel{flex:1;background:#ccc;overflow-y:auto;padding:20px;display:flex;flex-direction:column;align-items:center}
 #preview-panel h3{color:#555;font-size:12px;text-align:center;margin-bottom:12px;letter-spacing:.5px;text-transform:uppercase}
 #contract-paper{background:#fff;width:794px;max-width:100%;padding:14mm 16mm;box-shadow:0 2px 20px rgba(0,0,0,.15);font-family:'Times New Roman',Times,serif;font-size:11pt;line-height:1.4;color:#000}
-.cp-header-wrap{display:flex;align-items:center;background:linear-gradient(135deg,#1e4d7b 0%,#2c6fad 100%);border-radius:4px 4px 0 0;padding:4mm 6mm;margin-bottom:0;gap:5mm}
-.cp-logo{height:18mm;width:auto;flex-shrink:0;background:#fff;border-radius:3px;padding:1.5mm}
-.cp-company{font-size:14pt;font-weight:700;color:#fff;margin-bottom:1mm;letter-spacing:0.3px}
-.cp-addr{font-size:8.5pt;color:rgba(255,255,255,0.85);margin-bottom:0.4mm}
-.cp-divider{border:none;border-top:2px solid #2c5f8a;margin:0 0 4mm}
-.cp-header-grid{display:grid;grid-template-columns:1fr auto;gap:4mm;margin-bottom:4mm;padding:4mm 5mm;background:#f7f9fc;border:1px solid #dde4f0;border-radius:0 0 3px 3px;margin-top:0}
+.cp-header-wrap{display:flex;align-items:center;background:#fff;border-radius:4px 4px 0 0;padding:4mm 6mm;margin-bottom:0;gap:5mm;border-top:5px solid #1e3a5f;border-bottom:1px solid #dce6f0}
+.cp-logo{height:18mm;width:auto;flex-shrink:0;border-radius:3px;padding:0}
+.cp-company{font-size:14pt;font-weight:700;color:#1e3a5f;margin-bottom:1mm;letter-spacing:0.3px}
+.cp-addr{font-size:8.5pt;color:#555;margin-bottom:0.4mm}
+.cp-divider{border:none;border-top:1px solid #dce6f0;margin:0 0 4mm}
+.cp-header-grid{display:grid;grid-template-columns:1fr auto;gap:4mm;margin-bottom:4mm;padding:4mm 5mm;background:#f8fafc;border:1px solid #dce6f0;border-radius:0 0 3px 3px;margin-top:0}
 .cp-header-sub{background:#f7f9fc;border-left:1px solid #dde4f0;border-right:1px solid #dde4f0;padding:3mm 5mm 2mm}
 .cp-to-block{font-size:10pt}
-.cp-to-block .cp-label{font-weight:700;display:inline-block;min-width:55px;color:#1a3a5c}
+.cp-to-block .cp-label{font-weight:700;display:inline-block;min-width:55px;color:#1e3a5f}
 .cp-sc-block{text-align:right;font-size:10pt;white-space:nowrap}
-.cp-sc-block .cp-sc-no{font-weight:700;font-size:12pt;color:#1a3a5c;border-bottom:2px solid #2c5f8a;padding-bottom:1mm;margin-bottom:1mm;display:inline-block}
-.cp-machine-title{font-size:11.5pt;font-weight:700;margin:5mm 0 2mm;background:#e8f0f8;color:#1a3a5c;padding:1.5mm 4mm;border-radius:2px;letter-spacing:0.2px;border-left:4px solid #2c5f8a}
+.cp-sc-block .cp-sc-no{font-weight:700;font-size:12pt;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:1mm;margin-bottom:1mm;display:inline-block}
+.cp-machine-title{font-size:11.5pt;font-weight:700;margin:5mm 0 2mm;background:#f2f6fa;color:#1e3a5f;padding:2mm 4mm;border-radius:2px;letter-spacing:0.2px;border-left:3px solid #1e3a5f;border:1px solid #dce6f0;border-left:3px solid #1e3a5f}
 .cp-spec-table{width:100%;border-collapse:collapse;margin-bottom:3mm;border:1px solid #e0e8f0;border-radius:3px;overflow:hidden}
 .cp-spec-table td{padding:1.2mm 3mm;font-size:9.5pt;vertical-align:top;border-bottom:1px solid #edf2f8}
-.cp-spec-table tr:nth-child(even) td{background:#f0f5fa}
+.cp-spec-table tr:nth-child(even) td{background:#f8fafc}
 .cp-spec-table tr:last-child td{border-bottom:none}
 .cp-spec-table td:first-child{width:6mm;font-weight:700}
 .cp-spec-table td:nth-child(2){width:55mm;color:#444;font-weight:600}
 .cp-spec-table td:nth-child(3){width:6mm;text-align:center;color:#888}
 .cp-spec-table .val-cell{font-weight:400;color:#222}
-.cp-unit-price{font-size:13pt;font-weight:700;margin:3mm 0 4mm;color:#1a3a5c;background:#eef4fb;border-left:4px solid #2c5f8a;padding:2.5mm 5mm;border-radius:0 4px 4px 0;display:block}
+.cp-unit-price{font-size:12.5pt;font-weight:700;margin:3mm 0 4mm;color:#1e3a5f;background:#f2f6fa;border-left:3px solid #1e3a5f;padding:2.5mm 5mm;border-radius:0 3px 3px 0;display:block;border:1px solid #dce6f0;border-left:3px solid #1e3a5f}
 .cp-come-with{margin:3mm 0}
 .cp-come-with .cw-title{font-weight:700;font-size:10pt}
 .cp-pay-summary{width:100%;border-collapse:collapse;margin:4mm 0 2mm;font-size:10pt}
-.cp-pay-summary th{background:#e8f0f8;color:#1a3a5c;padding:2mm 3mm;text-align:left;font-size:9.5pt;border-bottom:2px solid #2c5f8a}
+.cp-pay-summary th{background:#f2f6fa;color:#1e3a5f;padding:2mm 3mm;text-align:left;font-size:9.5pt;border-bottom:2px solid #1e3a5f;font-weight:700}
 .cp-pay-summary td{padding:1.5mm 3mm;border-bottom:1px solid #dde}
-.cp-pay-summary .total-row td{font-weight:700;border-top:2px solid #2c5f8a;border-bottom:none}
+.cp-pay-summary .total-row td{font-weight:700;border-top:2px solid #1e3a5f;border-bottom:none;background:#f8fafc}
 .cp-terms-table{width:100%;border-collapse:collapse;margin:2mm 0;font-size:10pt;border:1px solid #e0e8f0}
 .cp-terms-table td{padding:2mm 3mm;vertical-align:top;border-bottom:1px solid #edf2f8}
 .cp-terms-table tr:last-child td{border-bottom:none}
-.cp-terms-table tr:nth-child(even) td{background:#f0f5fa}
-.cp-terms-table td:first-child{width:50mm;font-weight:700;color:#2c5f8a}
+.cp-terms-table tr:nth-child(even) td{background:#f8fafc}
+.cp-terms-table td:first-child{width:50mm;font-weight:700;color:#1e3a5f}
 .cp-bank{margin:4mm 0;font-size:10pt;background:#f8f9fc;border:1px solid #dde;padding:3mm;border-radius:1mm}
 .cp-bank .bank-title{font-weight:700;margin-bottom:1mm}
 .cp-bank table{width:100%;border-collapse:collapse}
 .cp-bank table td{padding:.5mm 2mm;vertical-align:top}
 .cp-bank table td:first-child{width:32mm;font-weight:700}
-.cp-sig{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:8mm;font-size:10pt;background:#f0f5fa;border:1px solid #cdd9e8;border-radius:3px;padding:5mm}
+.cp-sig{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:8mm;font-size:10pt;background:#f8fafc;border:1px solid #dce6f0;border-radius:3px;padding:5mm}
 .cp-sig .sig-block{padding-top:2mm}
-.cp-sig .sig-name{font-weight:700;margin-top:1mm;color:#1a3a5c}
+.cp-sig .sig-name{font-weight:700;margin-top:1mm;color:#1e3a5f}
 .cp-sig .sig-title{font-size:9pt;color:#555}
 .cp-img-gallery{display:flex;flex-wrap:wrap;gap:4mm;margin:4mm 0;justify-content:center}
 .cp-img-gallery img{max-width:120mm;max-height:80mm;border:1px solid #ccd;border-radius:1mm}
@@ -210,7 +210,7 @@ button{cursor:pointer;font-family:inherit}
   }
   @page{size:A4 portrait;margin:12mm 14mm}
   .cp-unit-price{font-size:13pt!important;font-weight:700!important;margin:3mm 0 4mm!important;line-height:1.5!important;color:#1a3a5c!important;background:#ddeeff!important;border-left:5px solid #1a3a5c!important;padding:2.5mm 5mm!important;border-radius:0 4px 4px 0!important;display:block!important}
-  .cp-machine-title{font-size:11.5pt!important;font-weight:700!important;page-break-after:avoid!important;background:#e8f0f8!important;color:#1a3a5c!important;padding:1.5mm 4mm!important;border-left:4px solid #2c5f8a!important;-webkit-print-color-adjust:exact!important}
+  .cp-machine-title{font-size:11.5pt!important;font-weight:700!important;page-break-after:avoid!important;background:#f2f6fa!important;color:#1e3a5f!important;padding:2mm 4mm!important;border-left:3px solid #1e3a5f!important;-webkit-print-color-adjust:exact!important}
   .cp-spec-table{font-size:9.5pt!important}
   .cp-pay-summary{font-size:9.5pt!important}
   table{page-break-inside:avoid}
@@ -274,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v7.0</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v7.3</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -311,22 +311,14 @@ function mobileTab(tab) {
   <!-- TAB: BASIC -->
   <div id="tab-basic" class="tab-content active">
     <div class="section-title">Contract Info</div>
-    <div class="field-row">
-      <div class="field-group" style="flex:0 0 90px">
-        <label>Admin</label>
-        <select id="f-admin" onchange="genContractNo()">
-          <option value="NR">NR</option>
-          <option value="GGL">GGL</option>
-        </select>
+    <input type="hidden" id="f-admin" value="NR">
+    <div class="field-group">
+      <label>Contract No.</label>
+      <div style="display:flex;gap:5px">
+        <input type="text" id="f-contract-no" placeholder="SEN/SC/NR/26-XXXX" style="flex:1" oninput="updatePreview()">
+        <button class="btn btn-outline btn-sm" onclick="fetchNextNo()" title="Get next number from Sheets">&#8635;</button>
       </div>
-      <div class="field-group">
-        <label>Contract No.</label>
-        <div style="display:flex;gap:5px">
-          <input type="text" id="f-contract-no" placeholder="SEN/SC/NR/26-XXXX" style="flex:1" oninput="updatePreview()">
-          <button class="btn btn-outline btn-sm" onclick="fetchNextNo()" title="Get next number from Sheets">&#8635;</button>
-        </div>
-        <div class="field-hint" id="next-no-hint">Click &#8635; to fetch next sequence</div>
-      </div>
+      <div class="field-hint" id="next-no-hint">Click &#8635; to fetch next sequence</div>
     </div>
     <div class="field-row">
       <div class="field-group">
@@ -340,6 +332,10 @@ function mobileTab(tab) {
           <option value="Quotation">Quotation</option>
         </select>
       </div>
+    </div>
+    <div class="field-group">
+      <label>Notes <span style="font-weight:400;font-size:11px;color:#888">(printed next to date on contract)</span></label>
+      <textarea id="f-notes" rows="2" placeholder="e.g. Valid for export only" oninput="state.notes=this.value;updatePreview()"></textarea>
     </div>
     <select id="f-status" style="display:none"><option value="Confirmed" selected>Confirmed</option></select>
     <div class="field-group">
@@ -600,10 +596,7 @@ function mobileTab(tab) {
       <div id="remark-items-list" style="margin-bottom:6px"></div>
       <button onclick="addRemarkItem()" style="width:100%;padding:5px 0;background:#e8f0fe;color:#1a3a5c;border:1px dashed #7a9ccc;border-radius:4px;font-size:12px;cursor:pointer;margin-top:2px">+ Add Remark</button>
     </div>
-    <div class="field-group">
-      <label>Internal Notes (not printed)</label>
-      <textarea id="f-notes" rows="2" placeholder="Internal memo only"></textarea>
-    </div>
+
     </div>
   </div>
 
@@ -2192,14 +2185,12 @@ function buildContractHTML() {
   <div class="cp-header-wrap">
     <img class="cp-logo" src="${LOGO_B64}" alt="Sen Labels">
     <div style="flex:1">
-      <div class="cp-company">Sen Labels Machinery Sdn Bhd &nbsp;&nbsp;&nbsp;<span style="font-size:10pt;font-weight:400;opacity:0.85">(809225H)</span></div>
+      <div class="cp-company">Sen Labels Machinery Sdn Bhd <span style="font-size:9.5pt;font-weight:400;color:#888">(809225H)</span></div>
       <div class="cp-addr">PTD 31073, HS(M) 2896, Off Jalan Haji Saat 14 3/4, Off Jalan Sungai Tiram, 81800 Ulu Tiram, Kota Tinggi, Johor, Malaysia</div>
-      <div class="cp-addr">Tel: 006 07 8710019 &nbsp;&#124;&nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp;&#124;&nbsp; H/P: +60-13-778-1288</div>
-      <div class="cp-addr">Email: anise.senlabels@gmail.com &nbsp;&#124;&nbsp; gina.senlabels@gmail.com</div>
+      <div class="cp-addr">Tel: 006 07 8710019 &nbsp;&#124;&nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp;&#124;&nbsp; H/P: +60 13-288 2863</div>
+      <div class="cp-addr">Email: senlabelsinternational@gmail.com &nbsp;&#124;&nbsp; anise.senlabels@gmail.com</div>
     </div>
-    <div style="text-align:right;color:rgba(255,255,255,0.7);font-size:7.5pt;align-self:flex-end;padding-bottom:1mm">
-      Sen Labels Machinery Sdn Bhd &copy; ${new Date().getFullYear()}
-    </div>
+
   </div>
   <hr class="cp-divider">
   <div class="cp-header-grid">
@@ -2214,6 +2205,7 @@ function buildContractHTML() {
       <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo)||'&nbsp;'}</div>
       <div>Date: ${dateStr}</div>
       ${revisedStr?`<div>${revisedStr}</div>`:''}
+      ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
   </div>
   <table style="width:100%;border-collapse:collapse;margin:4mm 0;font-size:10pt">
@@ -2236,7 +2228,7 @@ function buildContractHTML() {
   </table>
   ${remarksHtml}
   ${state.machines.filter(m=>m.machineType==='parts'&&m.machineRemarks).map(m=>`<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>`).join('')}
-  <div style="margin:4mm 0 2mm;font-size:11pt;font-weight:700;color:#1a3a5c;background:#e8f0f8;padding:1.5mm 4mm;border-radius:2px;display:inline-block;border-left:4px solid #2c5f8a">REMARK</div>
+  <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#f2f6fa;padding:1.5mm 4mm;border-radius:2px;display:inline-block;border:1px solid #dce6f0;border-left:3px solid #1e3a5f">REMARK</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}</table>
   ${(function(){const items=(state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');})()}
   <table class="cp-terms-table">
@@ -2254,7 +2246,7 @@ function buildContractHTML() {
         <img src="${SIG_B64}" style="height:22mm;width:auto;display:block;margin-bottom:1mm">
         <div style="border-top:1px solid #000;padding-top:1mm">
           <div class="sig-name">Goh Wai Sen (Mr.)</div>
-          <div class="sig-title">Marketing Manager (+60-13-778-1288)</div>
+          <div class="sig-title">Marketing Manager (+60 13-288 2863)</div>
         </div>
       </div>
     </div>
@@ -2353,14 +2345,12 @@ function buildContractHTML() {
   <div class="cp-header-wrap">
     <img class="cp-logo" src="${LOGO_B64}" alt="Sen Labels">
     <div style="flex:1">
-      <div class="cp-company">Sen Labels Machinery Sdn Bhd &nbsp;&nbsp;&nbsp;<span style="font-size:10pt;font-weight:400;opacity:0.85">(809225H)</span></div>
+      <div class="cp-company">Sen Labels Machinery Sdn Bhd <span style="font-size:9.5pt;font-weight:400;color:#888">(809225H)</span></div>
       <div class="cp-addr">PTD 31073, HS(M) 2896, Off Jalan Haji Saat 14 3/4, Off Jalan Sungai Tiram, 81800 Ulu Tiram, Kota Tinggi, Johor, Malaysia</div>
-      <div class="cp-addr">Tel: 006 07 8710019 &nbsp;&#124;&nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp;&#124;&nbsp; H/P: +60-13-778-1288</div>
-      <div class="cp-addr">Email: anise.senlabels@gmail.com &nbsp;&#124;&nbsp; gina.senlabels@gmail.com</div>
+      <div class="cp-addr">Tel: 006 07 8710019 &nbsp;&#124;&nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp;&#124;&nbsp; H/P: +60 13-288 2863</div>
+      <div class="cp-addr">Email: senlabelsinternational@gmail.com &nbsp;&#124;&nbsp; anise.senlabels@gmail.com</div>
     </div>
-    <div style="text-align:right;color:rgba(255,255,255,0.7);font-size:7.5pt;align-self:flex-end;padding-bottom:1mm">
-      Sen Labels Machinery Sdn Bhd &copy; ${new Date().getFullYear()}
-    </div>
+
   </div>
   <hr class="cp-divider">
 
@@ -2376,6 +2366,7 @@ function buildContractHTML() {
       <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo)||'&nbsp;'}</div>
       <div>Date: ${dateStr}</div>
       ${revisedStr?`<div>${revisedStr}</div>`:''}
+      ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
   </div>
 
@@ -2399,7 +2390,7 @@ function buildContractHTML() {
     </tbody>
   </table>
 
-  <div style="margin:4mm 0 2mm;font-size:11pt;font-weight:700;color:#1a3a5c;background:#e8f0f8;padding:1.5mm 4mm;border-radius:2px;display:inline-block;border-left:4px solid #2c5f8a">REMARK</div>
+  <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#f2f6fa;padding:1.5mm 4mm;border-radius:2px;display:inline-block;border:1px solid #dce6f0;border-left:3px solid #1e3a5f">REMARK</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${typeof instRows!=='undefined'?instRows:''}</table>
   ${(function(){const items=(state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');})()}
 
@@ -2420,7 +2411,7 @@ function buildContractHTML() {
         <img src="${SIG_B64}" style="height:22mm;width:auto;display:block;margin-bottom:1mm">
         <div style="border-top:1px solid #000;padding-top:1mm">
           <div class="sig-name">Goh Wai Sen (Mr.)</div>
-          <div class="sig-title">Marketing Manager (+60-13-778-1288)</div>
+          <div class="sig-title">Marketing Manager (+60 13-288 2863)</div>
         </div>
       </div>
     </div>
@@ -3631,8 +3622,8 @@ function exportToExcel() {
   // ── Company header (dark blue) ────────────────────────────────────────────
   fullRow('Sen Labels Machinery Sdn Bhd (809225H)', ST.coHdr);
   fullRow('PTD 31073, HS(M) 2896, Off Jalan Haji Saat 14 3/4, Off Jalan Sungai Tiram, 81800 Ulu Tiram, Kota Tinggi, Johor, Malaysia', ST.coInfo);
-  fullRow('Tel: 006 07 8710019  Fax: 006 07 8635019, 006 07 8611793  H/P: +60-13-778-1288', ST.coInfo);
-  fullRow('Email: anise.senlabels@gmail.com; gina.senlabels@gmail.com   Web: senmachinery.com', ST.coInfo);
+  fullRow('Tel: 006 07 8710019  Fax: 006 07 8635019, 006 07 8611793  H/P: +60 13-288 2863', ST.coInfo);
+  fullRow('Email: senlabelsinternational@gmail.com; anise.senlabels@gmail.com', ST.coInfo);
   blank();
 
   // ── Contract info ──────────────────────────────────────────────────────────
@@ -3771,13 +3762,13 @@ function exportToExcel() {
     { const ri = rows.length; r([c('Sen Labels Machinery Sdn. Bhd.'), c(''), c(''), c(''), c('')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:4}}); }
     blank(); blank();
     { const ri = rows.length; r([c('Goh Wai Sen (Mr.)',ST.label), c(''), c(''), c(''), c('')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:4}}); }
-    { const ri = rows.length; r([c('Marketing Manager (+60-13-778-1288)'), c(''), c(''), c(''), c('')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:4}}); }
+    { const ri = rows.length; r([c('Marketing Manager (+60 13-288 2863)'), c(''), c(''), c(''), c('')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:4}}); }
   } else {
     r([c('SELLER',ST.label), c(''), c(''), c(''), c('BUYER',ST.label)]);
     { const ri = rows.length; r([c('Sen Labels Machinery Sdn. Bhd.'), c(''), c(''), c(''), c('CONFIRM & RECEIVED BY :')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:3}}); }
     blank(); blank();
     { const ri = rows.length; r([c('Goh Wai Sen (Mr.)',ST.label), c(''), c(''), c(''), c('Company Chop & Authorised Signature')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:3}}); }
-    { const ri = rows.length; r([c('Marketing Manager (+60-13-778-1288)'), c(''), c(''), c(''), c('Date: _______________________')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:3}}); }
+    { const ri = rows.length; r([c('Marketing Manager (+60 13-288 2863)'), c(''), c(''), c(''), c('Date: _______________________')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:3}}); }
   }
 
   // Build workbook
@@ -4095,7 +4086,7 @@ function exportToWord() {
         <img src="${SIG_B64}" height="75" style="display:block;margin-bottom:2pt">
         <div style="border-top:1pt solid #000;padding-top:3pt">
           <p style="${B}font-weight:bold;margin:0">Goh Wai Sen (Mr.)</p>
-          <p style="${B}margin:0">Marketing Manager (+60-13-778-1288)</p>
+          <p style="${B}margin:0">Marketing Manager (+60 13-288 2863)</p>
         </div>
       </div>
     </td>
@@ -4112,7 +4103,7 @@ function exportToWord() {
         <img src="${SIG_B64}" height="75" style="display:block;margin-bottom:2pt">
         <div style="border-top:1pt solid #000;padding-top:3pt">
           <p style="${B}font-weight:bold;margin:0">Goh Wai Sen (Mr.)</p>
-          <p style="${B}margin:0">Marketing Manager (+60-13-778-1288)</p>
+          <p style="${B}margin:0">Marketing Manager (+60 13-288 2863)</p>
         </div>
       </div>
     </td>
