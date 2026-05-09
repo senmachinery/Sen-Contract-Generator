@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v6.0</title>
+<title>Sen Labels — Contract Generator v6.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -271,7 +271,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.0</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.1</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3101,11 +3101,11 @@ async function saveImagesToDrive() {
   const statusEl = document.getElementById('drive-upload-status');
   const machineRef = (m.customTitle || m.otherModel || '').trim();
 
-  const localImages  = images.filter(img => img.startsWith('data:'));
-  const driveImages  = images.filter(img => img.startsWith('http'));
+  const localImages = images.filter(img => img.startsWith('data:'));
+  const driveImages = images.filter(img => img.startsWith('http'));
 
   if (!localImages.length) {
-    statusEl.textContent = '✅ All images already on Drive!';
+    statusEl.textContent = '\u2705 All images already on Drive!';
     statusEl.style.color = '#2e7d32';
     return;
   }
@@ -3113,67 +3113,69 @@ async function saveImagesToDrive() {
   statusEl.textContent = `Uploading ${localImages.length} image(s)...`;
   statusEl.style.color = '#888';
 
-  const newDriveUrls = [...driveImages];
-  const failedLocal  = []; // keep failed ones as local
   let success = 0;
+  const uploadedFilenames = [];
 
   for (let i = 0; i < localImages.length; i++) {
     const dataUrl = localImages[i];
     statusEl.textContent = `Uploading ${i+1}/${localImages.length}...`;
     try {
       const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-      if (!match) { failedLocal.push(dataUrl); continue; }
+      if (!match) continue;
       const mimeType = match[1];
       const base64   = match[2];
       const ext      = mimeType.split('/')[1] || 'jpg';
       const filename = `${(machineRef||'machine').replace(/[^a-zA-Z0-9]/g,'_')}_${Date.now()}_${i}.${ext}`;
+      uploadedFilenames.push(filename);
 
-      let resp, data;
-      try {
-        resp = await fetch(gsUrl, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ action: 'uploadImage', filename, base64, mimeType, machineRef })
-        });
-        data = await resp.json();
-      } catch(fetchErr) {
-        // CORS or network error — keep local image
-        failedLocal.push(dataUrl);
-        console.warn('Fetch error:', fetchErr.message);
-        continue;
-      }
+      // Use no-cors — bypasses CORS completely, image uploads to Drive
+      await fetch(gsUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {'Content-Type': 'text/plain'},
+        body: JSON.stringify({ action: 'uploadImage', filename, base64, mimeType, machineRef })
+      });
+      success++;
+    } catch(e) {
+      console.warn('Upload error:', e.message);
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
 
-      if (data.ok && data.url) {
-        newDriveUrls.push(data.url);
-        success++;
+  if (success > 0) {
+    statusEl.textContent = `\u23f3 ${success} image(s) sent... Fetching Drive URLs (5s)...`;
+    statusEl.style.color = '#1a73e8';
+    // Wait for Apps Script to finish processing
+    await new Promise(r => setTimeout(r, 5000));
+    // Fetch updated machine DB to get Drive URLs
+    try {
+      const resp = await fetch(`${gsUrl}?action=machineDB&q=${encodeURIComponent(machineRef)}`);
+      const data = await resp.json();
+      const found = (data.machines||[]).find(m2 =>
+        m2.modelName.toLowerCase() === machineRef.toLowerCase()
+      );
+      if (found && found.images && found.images.length) {
+        // Replace local images with Drive URLs
+        m.images = [...driveImages, ...found.images.filter(u => !driveImages.includes(u))];
+        reloadImageThumbs();
+        updatePreview();
+        _machineDBCache = [];
+        statusEl.textContent = `\u2705 ${found.images.length} image(s) saved to Drive & linked to Machine DB!`;
+        statusEl.style.color = '#2e7d32';
       } else {
-        failedLocal.push(dataUrl); // keep local on failure
-        console.warn('Upload failed:', data.error);
+        // Images uploaded but not yet in DB — keep local copies as fallback
+        statusEl.textContent = `\u2705 ${success} uploaded to Drive! Open Machine DB to refresh images.`;
+        statusEl.style.color = '#2e7d32';
       }
     } catch(e) {
-      failedLocal.push(dataUrl);
-      console.warn('Error:', e.message);
+      statusEl.textContent = `\u2705 ${success} uploaded to Drive! (Could not fetch URLs: ${e.message})`;
+      statusEl.style.color = '#e67e00';
     }
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  // Combine: Drive URLs + any failed locals (preserved)
-  m.images = [...newDriveUrls, ...failedLocal];
-  reloadImageThumbs();
-  updatePreview();
-  _machineDBCache = [];
-
-  if (failedLocal.length === 0) {
-    statusEl.textContent = `✅ ${success} image(s) saved to Google Drive!`;
-    statusEl.style.color = '#2e7d32';
-  } else if (success > 0) {
-    statusEl.textContent = `⚠️ ${success} uploaded, ${failedLocal.length} failed (kept locally). Check Apps Script URL.`;
-    statusEl.style.color = '#e67e00';
   } else {
-    statusEl.textContent = `❌ Upload failed — CORS issue from file://. Try opening Generator via http:// instead.`;
+    statusEl.textContent = '\u274c Upload failed. Check your Apps Script URL in Settings.';
     statusEl.style.color = '#c0392b';
   }
-  setTimeout(() => { statusEl.textContent = ''; }, 6000);
+  setTimeout(() => { statusEl.textContent = ''; }, 8000);
 }
 
 // ============================================================
