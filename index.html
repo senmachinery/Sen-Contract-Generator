@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v6.6</title>
+<title>Sen Labels — Contract Generator v6.8</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -79,6 +79,9 @@ button{cursor:pointer;font-family:inherit}
 .img-thumb{position:relative;width:72px;height:72px}
 .img-thumb img{width:100%;height:100%;object-fit:cover;border-radius:4px;border:1px solid #ccd}
 .img-thumb .rm-img{position:absolute;top:-6px;right:-6px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;line-height:18px;text-align:center;padding:0;cursor:pointer}
+.img-pick-item{border:2px solid #dde4f0;border-radius:6px;overflow:hidden;cursor:pointer;transition:.15s}
+.img-pick-item:hover{border-color:#1a73e8;transform:scale(1.03)}
+.img-pick-item .img-pick-name{font-size:10px;color:#555;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f8f9ff}
 .hist-item{padding:8px 10px;border:1px solid #dde;border-radius:4px;margin-bottom:6px;cursor:pointer;transition:.15s}
 .hist-item:hover{background:#f0f4ff;border-color:#9ab}
 .hist-item .hi-no{font-weight:700;font-size:12px;color:#1a3a5c}
@@ -271,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.6</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.8</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -579,7 +582,8 @@ function mobileTab(tab) {
     <input type="file" id="img-input" accept="image/*" multiple style="display:none" onchange="handleImgSelect(event)">
     <div class="img-thumbs" id="img-thumbs"></div>
     <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <button onclick="saveImagesToDrive()" style="background:#1a73e8;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">&#9729;&#65039; Save Images to Drive</button>
+      <button onclick="saveImagesToDrive()" style="background:#1a73e8;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#9729;&#65039; Save to Drive</button>
+      <button onclick="openImagePicker()" style="background:#34a853;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#128247; Pick from Drive</button>
       <span id="drive-upload-status" style="font-size:11px;color:#888"></span>
     </div>
     <div class="section-title" style="margin-top:16px">Machine Remark <span style="font-weight:400;font-size:11px;color:#888">(per machine, printed below unit price)</span></div>
@@ -639,6 +643,23 @@ function mobileTab(tab) {
       <button class="btn btn-outline" onclick="closePasteModal()">Cancel</button>
     </div>
     <div id="paste-json-result" style="margin-top:10px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- IMAGE PICKER MODAL -->
+<div class="modal-overlay" id="imagepicker-modal">
+  <div class="modal" style="max-width:700px;width:95vw">
+    <button class="close-btn" onclick="closeImagePicker()">&#215;</button>
+    <h2>&#128247; Pick Image from Drive</h2>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="imagepicker-search" placeholder="Search by filename..." style="flex:1;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px" oninput="searchImagePicker()">
+      <button class="btn btn-outline btn-sm" onclick="searchImagePicker()">&#128269; Search</button>
+    </div>
+    <div id="imagepicker-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
+    <div id="imagepicker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding:4px">
+      <div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Click Search to load images</div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#888">&#128161; Upload images to Google Drive &rarr; <strong>SenLabels_MachineImages</strong> folder first</div>
   </div>
 </div>
 
@@ -1103,6 +1124,7 @@ function loadMachineIntoForm() {
   document.getElementById('f-sell-price').value   = m.sellPrice || '';
   document.getElementById('f-discount-pct').value = m.discountPct || '';
   document.getElementById('f-discount-amt').value = m.discountAmt || '';
+  if (document.getElementById('f-parts-desc')) document.getElementById('f-parts-desc').value = m.desc || '';
   // Show extra specs section
   const wrap = document.getElementById('extra-specs-wrap');
   if (wrap) wrap.style.display = (m.machineType && m.machineType !== 'parts') ? 'block' : 'none';
@@ -1294,6 +1316,10 @@ function renderMachineParams(type, condition) {
         <label>Description / Group Reference</label>
         <input type="text" id="f-custom-title" placeholder="e.g. SEN SPM INTERMITTENT">
       </div>
+      <div class="field-group">
+        <label>Sub-description <span style="font-weight:400;font-size:11px;color:#888">(optional, shown below group reference)</span></label>
+        <textarea id="f-parts-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. For ManiA-330 Machine"></textarea>
+      </div>
       <div class="section-title" style="margin-top:10px">Items</div>
       <div style="display:grid;grid-template-columns:1fr 55px 50px 85px 70px 22px;gap:3px;padding:4px 2px;font-size:10px;font-weight:700;color:#555;text-transform:uppercase">
         <span>Description</span><span>Qty</span><span>Unit</span><span>Unit Price</span><span style="text-align:right">Total</span><span></span>
@@ -1322,6 +1348,11 @@ function renderMachineParams(type, condition) {
     const titleInput = panel.querySelector('#f-custom-title');
     titleInput.value = M().customTitle || '';
     titleInput.addEventListener('input', () => { M().customTitle = titleInput.value; updatePreview(); });
+    const descTA = panel.querySelector('#f-parts-desc');
+    if (descTA) {
+      descTA.value = M().desc || '';
+      descTA.addEventListener('input', () => { M().desc = descTA.value; updatePreview(); });
+    }
 
     const discPctInput = panel.querySelector('#f-discount-pct');
     discPctInput.value = M().discountPct || '';
@@ -1402,7 +1433,7 @@ function readMachineParams() {
   M().refurbYear   = g('f-refurb-year');
   M().coo          = g('f-coo');
   M().customTitle     = g('f-custom-title');
-  M().desc            = g('f-desc');
+  M().desc            = g('f-parts-desc') || g('f-desc');
   M().otherModel      = g('f-other-model');
   M().machineRemarks  = g('f-machine-remarks');
   if (g('f-qty')) M().qty = g('f-qty');
@@ -1926,7 +1957,7 @@ function reloadImageThumbs() {
     div.className = 'img-thumb'; div.id = 'img-'+idx;
     const isDrive = src.startsWith('http');
     div.innerHTML = `<img src="${src}" onerror="this.src='data:image/svg+xml,<svg/>'">`
-      + `<button class="rm-img" onclick="removeImage(${idx})" title="Remove">&#215;</button>`
+      + `<button class="rm-img" onclick="removeImg(${idx})" title="Remove">&#215;</button>`
       + (isDrive ? `<span style="position:absolute;bottom:2px;left:2px;font-size:9px;background:rgba(26,115,232,0.85);color:#fff;border-radius:2px;padding:0 2px">☁️</span>` : '');
     thumbs.appendChild(div);
   });
@@ -2113,6 +2144,9 @@ function buildContractHTML() {
       // Parts machine: render as item rows, numbering continues from machine index
       const groupRef = m.customTitle || '';
       if (groupRef) itemRows += `<tr><td colspan="5" style="font-weight:700;padding:1.5mm 2mm;background:#f4f6fb;font-size:10pt">${mi+1})&nbsp;&nbsp;${esc(groupRef)}</td></tr>`;
+      if (m.desc) itemRows += `<tr><td colspan="5" style="padding:0.5mm 2mm 1.5mm 6mm;font-size:9.5pt;color:#555;font-style:italic">${esc(m.desc)}</td></tr>`;
+      const partsImgs = (m.images||[]).filter(Boolean);
+      if (partsImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm"><div class="cp-img-gallery">${partsImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
       itemNo = 0; // reset letter counter for each parts machine
       let partsSubtotal = 0;
       (m.partItems||[]).forEach(item => {
@@ -3176,6 +3210,74 @@ async function saveImagesToDrive() {
     statusEl.style.color = '#c0392b';
   }
   setTimeout(() => { statusEl.textContent = ''; }, 8000);
+}
+
+// ============================================================
+// IMAGE PICKER FROM DRIVE
+// ============================================================
+let _imagePickerCache = [];
+
+function openImagePicker() {
+  if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
+  document.getElementById('imagepicker-modal').classList.add('show');
+  document.getElementById('imagepicker-search').value = '';
+  searchImagePicker();
+}
+function closeImagePicker() {
+  document.getElementById('imagepicker-modal').classList.remove('show');
+}
+
+async function searchImagePicker() {
+  const statusEl = document.getElementById('imagepicker-status');
+  const gridEl   = document.getElementById('imagepicker-grid');
+  const q = (document.getElementById('imagepicker-search').value || '').trim();
+  statusEl.textContent = 'Loading images from Drive...';
+  gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Loading...</div>';
+  try {
+    const resp = await fetch(`${gsUrl}?action=listImages&q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to load images');
+    const images = data.images || [];
+    _imagePickerCache = images;
+    statusEl.textContent = `${images.length} image(s) found`;
+    if (!images.length) {
+      gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
+      return;
+    }
+    gridEl.innerHTML = '';
+    images.forEach((img, i) => {
+      const div = document.createElement('div');
+      div.className = 'img-pick-item';
+      div.title = img.name;
+      const imgEl = document.createElement('img');
+      imgEl.src = img.url;
+      imgEl.loading = 'lazy';
+      imgEl.style.cssText = 'width:100%;height:110px;object-fit:cover;display:block';
+      imgEl.onerror = () => { imgEl.style.background='#eee'; imgEl.alt='Image'; };
+      const nameEl = document.createElement('div');
+      nameEl.className = 'img-pick-name';
+      nameEl.textContent = img.name;
+      div.appendChild(imgEl);
+      div.appendChild(nameEl);
+      div.addEventListener('click', () => selectImageFromPicker(i));
+      gridEl.appendChild(div);
+    });
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    gridEl.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#c0392b">${e.message}</div>`;
+  }
+}
+
+function selectImageFromPicker(idx) {
+  const img = _imagePickerCache[idx];
+  if (!img) return;
+  if (!M().images) M().images = [];
+  if (!M().images.includes(img.url)) {
+    M().images.push(img.url);
+    reloadImageThumbs();
+    updatePreview();
+  }
+  closeImagePicker();
 }
 
 // ============================================================
