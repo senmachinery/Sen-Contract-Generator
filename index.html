@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v7.3</title>
+<title>Sen Labels — Contract Generator v7.4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -274,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v7.3</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v7.4</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -852,25 +852,39 @@ document.addEventListener('DOMContentLoaded', () => {
 // MULTI-MACHINE MANAGEMENT
 // ============================================================
 function renderMachineTabs() {
-  let html = '';
-  state.machines.forEach((m, i) => {
-    const active = i === state.activeMachineIdx ? ' active' : '';
-    const delBtn = state.machines.length > 1
-      ? `<button class="m-tab-del" onclick="removeMachine(${i});event.stopPropagation()" title="Remove">&#215;</button>` : '';
-    html += `<button class="m-tab${active}" draggable="true" data-idx="${i}"
-      onclick="switchMachine(${i})"
-      ondragstart="machineTabDragStart(event,${i})"
-      ondragover="machineTabDragOver(event,${i})"
-      ondragleave="machineTabDragLeave(event)"
-      ondrop="machineTabDrop(event,${i})"
-      ondragend="machineTabDragEnd(event)"
-      title="Drag to reorder">${i+1}${delBtn}</button>`;
+  [document.getElementById('machine-selector-bar'), document.getElementById('extras-selector-bar')].forEach(bar => {
+    if (!bar) return;
+    bar.innerHTML = '';
+    state.machines.forEach((m, i) => {
+      const active = i === state.activeMachineIdx ? ' active' : '';
+      const btn = document.createElement('button');
+      btn.className = 'm-tab' + active;
+      btn.setAttribute('draggable', 'true');
+      btn.dataset.idx = i;
+      btn.title = 'Drag to reorder';
+      btn.textContent = (i + 1);
+      if (state.machines.length > 1) {
+        const del = document.createElement('button');
+        del.className = 'm-tab-del';
+        del.innerHTML = '&#215;';
+        del.title = 'Remove';
+        del.addEventListener('click', e => { e.stopPropagation(); removeMachine(i); });
+        btn.appendChild(del);
+      }
+      btn.addEventListener('click', () => switchMachine(i));
+      btn.addEventListener('dragstart', e => machineTabDragStart(e, i));
+      btn.addEventListener('dragover',  e => machineTabDragOver(e, i));
+      btn.addEventListener('dragleave', e => machineTabDragLeave(e));
+      btn.addEventListener('drop',      e => machineTabDrop(e, i));
+      btn.addEventListener('dragend',   e => machineTabDragEnd(e));
+      bar.appendChild(btn);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'm-tab-add';
+    addBtn.textContent = '+ Add';
+    addBtn.addEventListener('click', () => addMachine());
+    bar.appendChild(addBtn);
   });
-  html += `<button class="m-tab-add" onclick="addMachine()">+ Add</button>`;
-  const bar1 = document.getElementById('machine-selector-bar');
-  if (bar1) bar1.innerHTML = html;
-  const bar2 = document.getElementById('extras-selector-bar');
-  if (bar2) bar2.innerHTML = html;
 }
 
 let _dragFromIdx = null;
