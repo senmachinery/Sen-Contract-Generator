@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v6.8</title>
+<title>Sen Labels — Contract Generator v6.9</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -274,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.8</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.9</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2638,7 +2638,7 @@ async function saveToSheets(silent=false) {
   saveCurrentMachineToState();
   if (!gsUrl) { if (!silent) alert('No Google Sheets URL configured. Go to Settings.'); return; }
   try {
-    const totalAmt = state.machines.reduce((s,m) => s+(m.sellPrice||0), 0);
+    const totalAmt = state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0);
     const machineTitle = state.machines.map(m => m.customTitle||m.otherModel||m.machineType||'Machine').join(', ');
     const record = {
       contractNo: state.contractNo, date: state.date, company: state.company,
