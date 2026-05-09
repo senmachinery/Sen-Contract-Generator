@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v6.9</title>
+<title>Sen Labels — Contract Generator v7.0</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -274,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.9</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v7.0</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2614,9 +2614,24 @@ function formatDate(iso) {
 // ============================================================
 // GOOGLE SHEETS
 // ============================================================
+function buildExportFilename(ext) {
+  saveCurrentMachineToState();
+  const contractNo = state.contractNo || 'Contract';
+  const customer   = (state.company || '').replace(/\s+SDN\s+BHD\.?/i,'').replace(/\s+PTY\s+LTD\.?/i,'').replace(/\s+/g,' ').trim();
+  const machineTitle = state.machines.map(m => {
+    if (m.machineType === 'parts') return m.customTitle || 'Parts';
+    return m.customTitle || m.otherModel || shortTitle(m) || 'Machine';
+  }).join(', ');
+  const noShort = contractNo.replace('SEN/SC/NR/','SC-NR-').replace('SEN/Q/NR/','Q-NR-').replace(/\//g,'-');
+  const name = [noShort, customer, machineTitle].filter(Boolean).join(' - ').replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
+  return name + '.' + ext;
+}
+
 function doPrint() {
   saveToSheets(true);
-  // Force browser to print at 100% scale — inject a temporary style
+  // Set document title so PDF filename matches contract
+  const origTitle = document.title;
+  document.title = buildExportFilename('pdf').replace(/\.pdf$/,'');
   const style = document.createElement('style');
   style.id = '_print_scale_fix';
   style.textContent = `
@@ -2627,8 +2642,8 @@ function doPrint() {
   `;
   document.head.appendChild(style);
   window.print();
-  // Clean up after print dialog closes
   setTimeout(() => {
+    document.title = origTitle;
     const el = document.getElementById('_print_scale_fix');
     if (el) el.remove();
   }, 2000);
@@ -2776,8 +2791,7 @@ async function saveStateJSON() {
     if (m.machineType === 'parts') return 'Parts';
     return (m.customTitle || m.otherModel || shortTitle(m) || 'Machine');
   }).join(', ');
-  const noShort = contractNo.replace('SEN/SC/NR/','SC-NR-').replace('SEN/Q/NR/','Q-NR-').replace(/\//g,'-');
-  const filename = [noShort, customer, machineNames].filter(Boolean).join(' - ').replace(/[\/\\:*?"<>|]/g,'-') + '.json';
+  const filename = buildExportFilename('json');
   const json = JSON.stringify(state, null, 2);
   const blob = new Blob([json], {type: 'application/json'});
 
@@ -3772,7 +3786,7 @@ function exportToExcel() {
   ws['!merges'] = merges;
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Contract');
-  const fname = (state.contractNo||'Contract').replace(/\//g,'_') + '.xlsx';
+  const fname = buildExportFilename('xlsx');
   XLSX.writeFile(wb, fname);
 }
 
@@ -4141,7 +4155,7 @@ ${body}
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = (state.contractNo||'Contract').replace(/\//g,'_') + '.doc';
+  a.download = buildExportFilename('doc');
   a.click();
   setTimeout(()=>URL.revokeObjectURL(url), 2000);
 }
