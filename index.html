@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v6.3</title>
+<title>Sen Labels — Contract Generator v6.4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -79,6 +79,9 @@ button{cursor:pointer;font-family:inherit}
 .img-thumb{position:relative;width:72px;height:72px}
 .img-thumb img{width:100%;height:100%;object-fit:cover;border-radius:4px;border:1px solid #ccd}
 .img-thumb .rm-img{position:absolute;top:-6px;right:-6px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;line-height:18px;text-align:center;padding:0;cursor:pointer}
+.img-pick-item{border:2px solid #dde4f0;border-radius:6px;overflow:hidden;cursor:pointer;transition:.15s}
+.img-pick-item:hover{border-color:#1a73e8;transform:scale(1.03)}
+.img-pick-item .img-pick-name{font-size:10px;color:#555;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f8f9ff}
 .hist-item{padding:8px 10px;border:1px solid #dde;border-radius:4px;margin-bottom:6px;cursor:pointer;transition:.15s}
 .hist-item:hover{background:#f0f4ff;border-color:#9ab}
 .hist-item .hi-no{font-weight:700;font-size:12px;color:#1a3a5c}
@@ -107,10 +110,6 @@ button{cursor:pointer;font-family:inherit}
 .mdb-item-name{font-weight:700;font-size:12px;color:#1a3a5c;margin-bottom:3px}
 .mdb-item-meta{font-size:11px;color:#888;display:flex;gap:12px;flex-wrap:wrap}
 .mdb-item-price{font-weight:700;color:#e67e00}
-.img-pick-item{border:2px solid #dde4f0;border-radius:6px;overflow:hidden;cursor:pointer;transition:.15s;position:relative}
-.img-pick-item:hover{border-color:#1a73e8;transform:scale(1.03)}
-.img-pick-item img{width:100%;height:110px;object-fit:cover;display:block}
-.img-pick-item .img-pick-name{font-size:10px;color:#555;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f8f9ff}
 .cdb-item{padding:10px 14px;border-bottom:1px solid #edf2f8;cursor:pointer;transition:.15s}
 .cdb-item:hover{background:#f8f0ff}
 .cdb-item:last-child{border-bottom:none}
@@ -275,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.3</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v6.4</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -582,7 +581,7 @@ function mobileTab(tab) {
     </div>
     <input type="file" id="img-input" accept="image/*" multiple style="display:none" onchange="handleImgSelect(event)">
     <div class="img-thumbs" id="img-thumbs"></div>
-    <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <button onclick="saveImagesToDrive()" style="background:#1a73e8;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#9729;&#65039; Save to Drive</button>
       <button onclick="openImagePicker()" style="background:#34a853;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#128247; Pick from Drive</button>
       <span id="drive-upload-status" style="font-size:11px;color:#888"></span>
@@ -647,6 +646,23 @@ function mobileTab(tab) {
   </div>
 </div>
 
+<!-- IMAGE PICKER MODAL -->
+<div class="modal-overlay" id="imagepicker-modal">
+  <div class="modal" style="max-width:700px;width:95vw">
+    <button class="close-btn" onclick="closeImagePicker()">&#215;</button>
+    <h2>&#128247; Pick Image from Drive</h2>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="imagepicker-search" placeholder="Search by filename..." style="flex:1;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px" oninput="searchImagePicker()">
+      <button class="btn btn-outline btn-sm" onclick="searchImagePicker()">&#128269; Search</button>
+    </div>
+    <div id="imagepicker-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
+    <div id="imagepicker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding:4px">
+      <div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Click Search to load images</div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#888">&#128161; Upload images to Google Drive &rarr; <strong>SenLabels_MachineImages</strong> folder first</div>
+  </div>
+</div>
+
 <!-- CUSTOMER DB MODAL -->
 <div class="modal-overlay" id="customerdb-modal">
   <div class="modal" style="max-width:620px;width:95vw">
@@ -659,25 +675,6 @@ function mobileTab(tab) {
     <div id="customerdb-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
     <div id="customerdb-list" style="max-height:420px;overflow-y:auto;border:1px solid #dde4f0;border-radius:4px">
       <div style="padding:20px;text-align:center;color:#999">Loading...</div>
-    </div>
-  </div>
-</div>
-
-<!-- IMAGE PICKER MODAL -->
-<div class="modal-overlay" id="imagepicker-modal">
-  <div class="modal" style="max-width:700px;width:95vw">
-    <button class="close-btn" onclick="closeImagePicker()">&#215;</button>
-    <h2>&#128247; Pick Image from Drive</h2>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <input type="text" id="imagepicker-search" placeholder="Search by filename..." style="flex:1;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px" oninput="searchImagePicker()">
-      <button class="btn btn-outline btn-sm" onclick="searchImagePicker()">&#128269; Search</button>
-    </div>
-    <div id="imagepicker-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
-    <div id="imagepicker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding:4px">
-      <div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Loading...</div>
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:#888">
-      💡 Upload images to Google Drive → <strong>SenLabels_MachineImages</strong> folder to see them here
     </div>
   </div>
 </div>
@@ -1950,7 +1947,7 @@ function reloadImageThumbs() {
     div.className = 'img-thumb'; div.id = 'img-'+idx;
     const isDrive = src.startsWith('http');
     div.innerHTML = `<img src="${src}" onerror="this.src='data:image/svg+xml,<svg/>'">`
-      + `<button class="rm-img" onclick="removeImage(${idx})" title="Remove">&#215;</button>`
+      + `<button class="rm-img" onclick="removeImg(${idx})" title="Remove">&#215;</button>`
       + (isDrive ? `<span style="position:absolute;bottom:2px;left:2px;font-size:9px;background:rgba(26,115,232,0.85);color:#fff;border-radius:2px;padding:0 2px">☁️</span>` : '');
     thumbs.appendChild(div);
   });
@@ -3203,6 +3200,74 @@ async function saveImagesToDrive() {
 }
 
 // ============================================================
+// IMAGE PICKER FROM DRIVE
+// ============================================================
+let _imagePickerCache = [];
+
+function openImagePicker() {
+  if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
+  document.getElementById('imagepicker-modal').classList.add('show');
+  document.getElementById('imagepicker-search').value = '';
+  searchImagePicker();
+}
+function closeImagePicker() {
+  document.getElementById('imagepicker-modal').classList.remove('show');
+}
+
+async function searchImagePicker() {
+  const statusEl = document.getElementById('imagepicker-status');
+  const gridEl   = document.getElementById('imagepicker-grid');
+  const q = (document.getElementById('imagepicker-search').value || '').trim();
+  statusEl.textContent = 'Loading images from Drive...';
+  gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Loading...</div>';
+  try {
+    const resp = await fetch(`${gsUrl}?action=listImages&q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to load images');
+    const images = data.images || [];
+    _imagePickerCache = images;
+    statusEl.textContent = `${images.length} image(s) found`;
+    if (!images.length) {
+      gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
+      return;
+    }
+    gridEl.innerHTML = '';
+    images.forEach((img, i) => {
+      const div = document.createElement('div');
+      div.className = 'img-pick-item';
+      div.title = img.name;
+      const imgEl = document.createElement('img');
+      imgEl.src = img.url;
+      imgEl.loading = 'lazy';
+      imgEl.style.cssText = 'width:100%;height:110px;object-fit:cover;display:block';
+      imgEl.onerror = () => { imgEl.style.background='#eee'; imgEl.alt='Image'; };
+      const nameEl = document.createElement('div');
+      nameEl.className = 'img-pick-name';
+      nameEl.textContent = img.name;
+      div.appendChild(imgEl);
+      div.appendChild(nameEl);
+      div.addEventListener('click', () => selectImageFromPicker(i));
+      gridEl.appendChild(div);
+    });
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    gridEl.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#c0392b">${e.message}</div>`;
+  }
+}
+
+function selectImageFromPicker(idx) {
+  const img = _imagePickerCache[idx];
+  if (!img) return;
+  if (!M().images) M().images = [];
+  if (!M().images.includes(img.url)) {
+    M().images.push(img.url);
+    reloadImageThumbs();
+    updatePreview();
+  }
+  closeImagePicker();
+}
+
+// ============================================================
 // CUSTOMER DATABASE
 // ============================================================
 let _customerDBCache = [];
@@ -3297,61 +3362,6 @@ async function saveCurrentCustomerToDB() {
     statusEl.textContent = '❌ ' + e.message;
     statusEl.style.color = '#c0392b';
   }
-}
-
-// ============================================================
-// IMAGE PICKER FROM DRIVE
-// ============================================================
-let _imagePickerCache = [];
-
-function openImagePicker() {
-  if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
-  document.getElementById('imagepicker-modal').classList.add('show');
-  searchImagePicker();
-}
-function closeImagePicker() {
-  document.getElementById('imagepicker-modal').classList.remove('show');
-}
-
-async function searchImagePicker() {
-  const statusEl = document.getElementById('imagepicker-status');
-  const gridEl   = document.getElementById('imagepicker-grid');
-  const q = (document.getElementById('imagepicker-search').value || '').trim();
-  statusEl.textContent = 'Loading images from Drive...';
-  gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Loading...</div>';
-  try {
-    const resp = await fetch(`${gsUrl}?action=listImages&q=${encodeURIComponent(q)}`);
-    const data = await resp.json();
-    if (!data.ok) { throw new Error(data.error || 'Failed'); }
-    const images = data.images || [];
-    _imagePickerCache = images;
-    statusEl.textContent = `${images.length} image(s) in Drive folder`;
-    if (!images.length) {
-      gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
-      return;
-    }
-    gridEl.innerHTML = images.map((img, i) => `
-      <div class="img-pick-item" onclick="selectImageFromPicker(${i})" title="${escHtml(img.name)}">
-        <img src="${img.thumb}" onerror="this.src='${img.url}'" loading="lazy">
-        <div class="img-pick-name">${escHtml(img.name)}</div>
-      </div>`).join('');
-  } catch(e) {
-    statusEl.textContent = 'Error: ' + e.message;
-    gridEl.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#c0392b">${e.message}</div>`;
-  }
-}
-
-function selectImageFromPicker(idx) {
-  const img = _imagePickerCache[idx];
-  if (!img) return;
-  if (!M().images) M().images = [];
-  // Avoid duplicates
-  if (!M().images.includes(img.url)) {
-    M().images.push(img.url);
-    reloadImageThumbs();
-    updatePreview();
-  }
-  closeImagePicker();
 }
 
 // ============================================================
