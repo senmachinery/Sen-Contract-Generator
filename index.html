@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v8.2</title>
+<title>Sen Labels — Contract Generator v8.3</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -241,6 +241,16 @@ button{cursor:pointer;font-family:inherit}
 .all-total-box{background:#e8f0fe;border:1px solid #c5cae9;border-radius:6px;padding:10px 12px;margin-top:12px;font-size:12px}
 .all-total-box .at-row{display:flex;justify-content:space-between;padding:2px 0}
 .all-total-box .at-total{font-weight:700;font-size:14px;color:#1a3a5c;border-top:2px solid #9fa8da;margin-top:6px;padding-top:6px}
+
+#pw-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a5f 0%,#2c6fad 100%);z-index:99999;display:flex;align-items:center;justify-content:center}
+#pw-box{background:#fff;border-radius:8px;padding:40px;width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
+#pw-logo{font-size:22pt;font-weight:700;color:#1e3a5f;margin-bottom:4px}
+#pw-sub{font-size:10pt;color:#888;margin-bottom:24px}
+#pw-input{width:100%;box-sizing:border-box;padding:10px 14px;border:2px solid #dce6f0;border-radius:6px;font-size:14pt;text-align:center;letter-spacing:3px;margin-bottom:12px;outline:none}
+#pw-input:focus{border-color:#1e3a5f}
+#pw-btn{width:100%;padding:10px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;font-size:13pt;font-weight:600;cursor:pointer}
+#pw-btn:hover{background:#2c6fad}
+#pw-error{color:#c0392b;font-size:11pt;margin-top:8px;min-height:18px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
@@ -270,11 +280,41 @@ function mobileTab(tab) {
 </script>
 </head>
 <body>
+<div id="pw-overlay">
+  <div id="pw-box">
+    <div id="pw-logo">Sen Labels</div>
+    <div id="pw-sub">Contract Generator — Staff Only</div>
+    <input type="password" id="pw-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPW()">
+    <button id="pw-btn" onclick="checkPW()">Enter</button>
+    <div id="pw-error"></div>
+  </div>
+</div>
+<script>
+(function(){
+  if (sessionStorage.getItem('sen_auth') === '1') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const ov = document.getElementById('pw-overlay');
+      if (ov) ov.style.display = 'none';
+    });
+  }
+  window.checkPW = function() {
+    const val = document.getElementById('pw-input').value;
+    if (val === 'Senlabels123123') {
+      sessionStorage.setItem('sen_auth', '1');
+      document.getElementById('pw-overlay').style.display = 'none';
+    } else {
+      document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-input').focus();
+    }
+  };
+})();
+</script>
 <div id="app">
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.2</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.3</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
