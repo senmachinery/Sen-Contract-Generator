@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v8.1</title>
+<title>Sen Labels — Contract Generator v8.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -274,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.1</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.2</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2179,7 +2179,7 @@ function buildContractHTML() {
       // Parts machine: render as item rows, numbering continues from machine index
       const groupRef = m.customTitle || '';
       if (groupRef) itemRows += `<tr><td colspan="5" style="font-weight:700;padding:1.5mm 2mm;background:#f4f6fb;font-size:10pt">${mi+1})&nbsp;&nbsp;${esc(groupRef)}</td></tr>`;
-      if (m.desc) itemRows += `<tr><td colspan="5" style="padding:0.5mm 2mm 1.5mm 6mm;font-size:9.5pt;color:#555;font-style:italic">${esc(m.desc)}</td></tr>`;
+      if (m.desc) itemRows += `<tr><td colspan="5" style="padding:0.5mm 2mm 1.5mm 6mm;font-size:9.5pt;color:#222">${esc(m.desc)}</td></tr>`;
       const partsImgs = (m.images||[]).filter(Boolean);
       if (partsImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm"><div class="cp-img-gallery">${partsImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
       itemNo = 0; // reset letter counter for each parts machine
