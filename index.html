@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v8.0</title>
+<title>Sen Labels — Contract Generator v8.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -274,7 +274,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.0</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.1</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -443,7 +443,7 @@ function mobileTab(tab) {
     <input type="hidden" id="f-cust-type" value="direct">
     <input type="hidden" id="f-margin" value="43">
     <div class="section-title">Selling Price</div>
-    <div class="field-row" style="margin-bottom:0">
+    <div id="unit-price-row" class="field-row" style="margin-bottom:0">
       <div class="field-group">
         <label>Unit Price (<span class="currency-label-inline">USD</span>)</label>
         <input type="number" id="f-unit-price" placeholder="Price per unit" oninput="calcUnitTotal()">
@@ -454,7 +454,7 @@ function mobileTab(tab) {
       </div>
     </div>
     <div class="field-group">
-      <label>Total Selling Price (<span id="currency-label">USD</span>) <span style="font-weight:400;font-size:10px;color:#888">— auto = Unit Price × Qty, or override below</span></label>
+      <label id="sell-price-label">Total Selling Price (<span id="currency-label">USD</span>) <span style="font-weight:400;font-size:10px;color:#888">— auto = Unit Price × Qty, or override below</span></label>
       <input type="number" id="f-sell-price" placeholder="Enter selling price" oninput="savePriceFields();calcPrice();updatePreview()">
     </div>
     <div class="field-group">
@@ -1134,11 +1134,22 @@ function loadMachineIntoForm() {
   document.getElementById('f-cost-tradein').value = m.costTradein || '';
   setVal('f-cust-type', m.custType || 'direct');
   document.getElementById('f-margin').value       = m.margin    || 43;
-  document.getElementById('f-unit-price').value   = m.unitPrice || '';
-  document.getElementById('f-unit-qty').value     = m.unitQty   || 1;
-  document.getElementById('f-sell-price').value   = m.sellPrice || '';
-  document.getElementById('f-discount-pct').value = m.discountPct || '';
-  document.getElementById('f-discount-amt').value = m.discountAmt || '';
+  if (m.machineType === 'parts') {
+    // Parts: price comes from partItems, show read-only total in sell price
+    const partsTotal = (m.partItems||[]).reduce((s,i)=>(s+(i.qty||0)*(i.unitPrice||0)),0);
+    const discAmt = (m.discountPct||0) > 0 ? partsTotal*(m.discountPct/100) : (m.discountAmt||0);
+    document.getElementById('f-unit-price').value   = '';
+    document.getElementById('f-unit-qty').value     = 1;
+    document.getElementById('f-sell-price').value   = (partsTotal - discAmt) || '';
+    document.getElementById('f-discount-pct').value = m.discountPct || '';
+    document.getElementById('f-discount-amt').value = m.discountAmt || '';
+  } else {
+    document.getElementById('f-unit-price').value   = m.unitPrice || '';
+    document.getElementById('f-unit-qty').value     = m.unitQty   || 1;
+    document.getElementById('f-sell-price').value   = m.sellPrice || '';
+    document.getElementById('f-discount-pct').value = m.discountPct || '';
+    document.getElementById('f-discount-amt').value = m.discountAmt || '';
+  }
   if (document.getElementById('f-parts-desc')) document.getElementById('f-parts-desc').value = m.desc || '';
   // Show extra specs section
   const wrap = document.getElementById('extra-specs-wrap');
@@ -1594,6 +1605,14 @@ function calcUnitTotal() {
 }
 
 function calcPrice() {
+  // Show/hide unit price row for parts machines
+  const isParts = M().machineType === 'parts';
+  const upRow = document.getElementById('unit-price-row');
+  if (upRow) upRow.style.display = isParts ? 'none' : '';
+  const spLabel = document.getElementById('sell-price-label');
+  if (spLabel) spLabel.innerHTML = isParts
+    ? 'Net Total (auto from items)'
+    : 'Total Selling Price (<span id="currency-label">' + (state.currency||'USD') + '</span>) <span style="font-weight:400;font-size:10px;color:#888">— auto = Unit Price × Qty, or override below</span>';
   savePriceFields();
   const m = M();
   const curr = state.currency;
