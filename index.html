@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v8.6</title>
+<title>Sen Labels — Contract Generator v9.0</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -15,7 +15,7 @@ button{cursor:pointer;font-family:inherit}
 #topbar .logo-sub{font-size:11px;opacity:.7;margin-top:1px}
 .topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
 #main{display:flex;flex:1;overflow:hidden}
-#form-panel{width:430px;min-width:340px;background:#fff;border-right:1px solid #dde;overflow-y:auto;display:flex;flex-direction:column;flex-shrink:0}
+#form-panel{width:480px;min-width:360px;background:#fff;border-right:1px solid #dde;overflow-y:auto;display:flex;flex-direction:column;flex-shrink:0}
 .tab-bar{display:flex;background:#f5f6f8;border-bottom:1px solid #dde;flex-shrink:0}
 .tab-btn{flex:1;padding:9px 4px;font-size:11px;font-weight:600;background:none;border:none;border-bottom:3px solid transparent;color:#666;transition:.15s;text-align:center;white-space:nowrap}
 .tab-btn.active{border-bottom-color:#1a3a5c;color:#1a3a5c;background:#fff}
@@ -61,7 +61,7 @@ button{cursor:pointer;font-family:inherit}
 .cw-item .cw-del{background:none;border:none;color:#c0392b;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0}
 #add-cw-btn{width:100%;padding:6px;background:#f0f4ff;border:1px dashed #9ab;border-radius:4px;color:#1a3a5c;font-size:12px;margin-top:4px}
 #add-cw-btn:hover{background:#e0e8ff}
-.spec-row{display:grid;grid-template-columns:20px 1fr 10px 1fr 24px 22px;align-items:center;gap:4px;padding:4px 2px;border-bottom:1px solid #eef}
+.spec-row{display:grid;grid-template-columns:20px 1fr 22px 22px 10px 1fr 22px 22px 22px;align-items:center;gap:3px;padding:4px 2px;border-bottom:1px solid #eef}
 .spec-row.spec-drag-over{border-top:2px solid #1a3a5c;background:#f0f4ff}
 .drag-handle{cursor:grab;color:#aab;font-size:18px;padding:0 3px;user-select:none;flex-shrink:0}
 .drag-handle:active{cursor:grabbing}
@@ -145,7 +145,7 @@ button{cursor:pointer;font-family:inherit}
 .cp-spec-table tr:nth-child(even) td{background:#f8fafc}
 .cp-spec-table tr:last-child td{border-bottom:none}
 .cp-spec-table td:first-child{width:6mm;font-weight:700}
-.cp-spec-table td:nth-child(2){width:55mm;color:#444;font-weight:600}
+.cp-spec-table td:nth-child(2){width:55mm;color:#444;font-weight:400}
 .cp-spec-table td:nth-child(3){width:6mm;text-align:center;color:#888}
 .cp-spec-table .val-cell{font-weight:400;color:#222}
 .cp-unit-price{font-size:12.5pt;font-weight:700;margin:3mm 0 4mm;color:#7a4500;background:#fff8ee;border-left:4px solid #e07800;padding:2.5mm 5mm;border-radius:0 3px 3px 0;display:block;border:1px solid #f5d9a8}
@@ -314,7 +314,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.6</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.0</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2148,11 +2148,17 @@ function renderSpecRowsUI(arr) {
     row.className = 'spec-row';
     row.draggable = true;
     row.dataset.idx = idx;
+    const isBoldLabel  = item.boldLabel  || false;
+    const isUnderLabel = item.underLabel || false;
+    const isUnderValue = item.underValue || false;
     row.innerHTML = `<span class="drag-handle" title="Drag to reorder">⠿</span>`
       + `<input class="spec-label-input" type="text" value="${esc2((item.label||'').replace(/^[~#]+/,''))}" placeholder="Label" oninput="specRowChanged()">`
+      + `<button class="spec-bold-btn${isBoldLabel?' active':''}" onclick="toggleSpecLabelBold(${idx})" title="Bold label">${isBoldLabel?'<b>B</b>':'B'}</button>`
+      + `<button class="spec-bold-btn${isUnderLabel?' active':''}" onclick="toggleSpecLabelUnder(${idx})" title="Underline label" style="font-size:10px">${isUnderLabel?'<u>U</u>':'U'}</button>`
       + `<span class="spec-colon">:</span>`
       + `<input class="spec-value-input" type="text" value="${esc2(item.value||'')}" placeholder="Value" oninput="specRowChanged()">`
-      + `<button class="spec-bold-btn${isBold?' active':''}" onclick="toggleSpecBold(${idx})" title="Toggle bold value">${isBold?'<b>B</b>':'B'}</button>`
+      + `<button class="spec-bold-btn${isBold?' active':''}" onclick="toggleSpecBold(${idx})" title="Bold value">${isBold?'<b>B</b>':'B'}</button>`
+      + `<button class="spec-bold-btn${isUnderValue?' active':''}" onclick="toggleSpecValueUnder(${idx})" title="Underline value" style="font-size:10px">${isUnderValue?'<u>U</u>':'U'}</button>`
       + `<button class="rm-spec-btn" onclick="removeSpecRow(${idx})" title="Remove">&#215;</button>`;
     row.addEventListener('dragstart', e => { specDragSrc = idx; e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',idx); });
     row.addEventListener('dragover',  e => { e.preventDefault(); row.classList.add('spec-drag-over'); });
@@ -2181,6 +2187,25 @@ function toggleSpecBold(idx) {
   updatePreview();
 }
 
+function toggleSpecLabelBold(idx) {
+  syncSpecRowsFromDOM();
+  const specs = M().extraSpecs;
+  if (specs[idx]) specs[idx].boldLabel = !specs[idx].boldLabel;
+  renderSpecRowsUI(specs); updatePreview();
+}
+function toggleSpecLabelUnder(idx) {
+  syncSpecRowsFromDOM();
+  const specs = M().extraSpecs;
+  if (specs[idx]) specs[idx].underLabel = !specs[idx].underLabel;
+  renderSpecRowsUI(specs); updatePreview();
+}
+function toggleSpecValueUnder(idx) {
+  syncSpecRowsFromDOM();
+  const specs = M().extraSpecs;
+  if (specs[idx]) specs[idx].underValue = !specs[idx].underValue;
+  renderSpecRowsUI(specs); updatePreview();
+}
+
 function syncSpecRowsFromDOM() {
   const rows = document.querySelectorAll('#spec-rows-list .spec-row');
   if (!rows.length) { M().extraSpecs = []; return; }
@@ -2188,10 +2213,14 @@ function syncSpecRowsFromDOM() {
     const rawLabel = r.querySelector('.spec-label-input').value;
     const val      = r.querySelector('.spec-value-input').value;
     const boldBtn  = r.querySelector('.spec-bold-btn');
-    const bold     = boldBtn ? boldBtn.classList.contains('active') : false;
+    const btns       = r.querySelectorAll('.spec-bold-btn');
+    const boldLabel  = btns[0] ? btns[0].classList.contains('active') : false;
+    const underLabel = btns[1] ? btns[1].classList.contains('active') : false;
+    const bold       = btns[2] ? btns[2].classList.contains('active') : false;
+    const underValue = btns[3] ? btns[3].classList.contains('active') : false;
     let label = rawLabel;
     if (!label.startsWith('#') && !label.startsWith('~')) label = '~' + label;
-    return { label, value: val, bold };
+    return { label, value: val, bold, boldLabel, underLabel, underValue };
   });
 }
 
@@ -2694,12 +2723,23 @@ function buildSpecRows(m) {
       const isHeader = rawLbl.startsWith('#');
       // Auto-bold: if label is "Model" or manually set bold
       const isBold = spec.bold || dispLbl.trim().toLowerCase() === 'model';
+      const isBoldLabel = spec.boldLabel || dispLbl.trim().toLowerCase() === 'model';
       if (isHeader) rows.push(`<tr><td></td><td colspan="3" style="font-weight:700;padding-top:2mm">${esc(dispLbl.replace(/^#/,''))}</td></tr>`);
-      else if (dispLbl && spec.value) {
-        const valHtml = isBold ? `<strong>${esc(spec.value)}</strong>` : esc(spec.value);
-        rows.push(`<tr><td></td><td>${esc(dispLbl)}</td><td>:</td><td class="val-cell">${valHtml}</td></tr>`);
+      else if (dispLbl) {
+        const isUnderLabel = spec.underLabel || false;
+        const isUnderValue = spec.underValue || false;
+        let lblHtml = esc(dispLbl);
+        if (isBoldLabel)  lblHtml = `<strong>${lblHtml}</strong>`;
+        if (isUnderLabel) lblHtml = `<u>${lblHtml}</u>`;
+        if (spec.value) {
+          let valHtml = esc(spec.value);
+          if (isBold)       valHtml = `<strong>${valHtml}</strong>`;
+          if (isUnderValue) valHtml = `<u>${valHtml}</u>`;
+          rows.push(`<tr><td></td><td>${lblHtml}</td><td>:</td><td class="val-cell">${valHtml}</td></tr>`);
+        } else {
+          rows.push(`<tr><td></td><td colspan="3">${lblHtml}</td></tr>`);
+        }
       }
-      else if (dispLbl) rows.push(`<tr><td></td><td colspan="3">${esc(dispLbl)}</td></tr>`);
     });
     rows.push(row('Power Required', m.power));
     rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
