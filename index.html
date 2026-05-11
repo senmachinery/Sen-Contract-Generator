@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v9.1</title>
+<title>Sen Labels — Contract Generator v9.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -14,13 +14,13 @@ button{cursor:pointer;font-family:inherit}
 #topbar h1{font-size:16px;font-weight:700;letter-spacing:.5px}
 #topbar .logo-sub{font-size:11px;opacity:.7;margin-top:1px}
 .topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
-#main{display:flex;flex:1;overflow:hidden}
-#form-panel{width:480px;min-width:360px;background:#fff;border-right:1px solid #dde;overflow-y:auto;display:flex;flex-direction:column;flex-shrink:0}
+#main{display:flex;flex:1;overflow:hidden;-webkit-overflow-scrolling:touch}
+#form-panel{width:480px;min-width:360px;background:#fff;border-right:1px solid #dde;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;flex-shrink:0}
 .tab-bar{display:flex;background:#f5f6f8;border-bottom:1px solid #dde;flex-shrink:0}
 .tab-btn{flex:1;padding:9px 4px;font-size:11px;font-weight:600;background:none;border:none;border-bottom:3px solid transparent;color:#666;transition:.15s;text-align:center;white-space:nowrap}
 .tab-btn.active{border-bottom-color:#1a3a5c;color:#1a3a5c;background:#fff}
 .tab-btn:hover:not(.active){background:#eef}
-.tab-content{display:none;padding:14px;flex:1}
+.tab-content{display:none;padding:14px;flex:1;-webkit-overflow-scrolling:touch}
 .tab-content.active{display:block}
 #tab-machine.active{display:flex;flex-direction:column;padding:0}
 .machine-body{padding:14px}
@@ -218,7 +218,7 @@ button{cursor:pointer;font-family:inherit}
 }
 @media(max-width:900px){
   #main{flex-direction:column}
-  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;flex-shrink:0}
+  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;flex-shrink:0;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:55vh}
   #preview-panel{padding:10px;flex-shrink:0}
   #contract-paper{width:100%!important;padding:10px!important;font-size:9pt}
   #mobile-preview-toggle{display:flex!important}
@@ -294,14 +294,14 @@ function mobileTab(tab) {
   if (sessionStorage.getItem('sen_auth') === '1') {
     document.addEventListener('DOMContentLoaded', () => {
       const ov = document.getElementById('pw-overlay');
-      if (ov) ov.remove();
+      if (ov) ov.style.display = 'none';
     });
   }
   window.checkPW = function() {
     const val = document.getElementById('pw-input').value;
     if (val === 'Senlabels123123') {
       sessionStorage.setItem('sen_auth', '1');
-      const _ov=document.getElementById('pw-overlay'); if(_ov)_ov.remove();
+      document.getElementById('pw-overlay').style.display = 'none';
     } else {
       document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
       document.getElementById('pw-input').value = '';
@@ -314,7 +314,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.1</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.2</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2863,26 +2863,6 @@ function doPrint() {
   }, 2000);
 }
 
-function normalizeState(s) {
-  if (!s) return;
-  if (!Array.isArray(s.machines)) s.machines = [];
-  s.machines.forEach(m => {
-    if (!m) return;
-    if (Array.isArray(m.extraSpecs)) {
-      m.extraSpecs = m.extraSpecs.map(sp => ({
-        label: sp.label||'', value: sp.value||'',
-        bold: sp.bold||false, boldLabel: sp.boldLabel||false,
-        underLabel: sp.underLabel||false, underValue: sp.underValue||false,
-      }));
-    } else { m.extraSpecs = []; }
-    if (!Array.isArray(m.cwItems))   m.cwItems   = [];
-    if (!Array.isArray(m.optItems))  m.optItems  = [];
-    if (!Array.isArray(m.partItems)) m.partItems = [];
-    if (!Array.isArray(m.images))    m.images    = [];
-  });
-  if (!Array.isArray(s.remarkItems))     s.remarkItems     = [];
-  if (!Array.isArray(s.installmentRows)) s.installmentRows = [];
-}
 async function stripImagesForSave(stateObj) {
   const s = JSON.parse(JSON.stringify(stateObj));
   for (const m of (s.machines || [])) {
@@ -3103,7 +3083,6 @@ function loadStateJSON(input) {
       const loaded = JSON.parse(e.target.result);
       // Restore state
       state = loaded;
-      normalizeState(state);
       // Ensure machines array is valid
       if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
       if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
@@ -3193,7 +3172,6 @@ function loadFromPastedJSON() {
   try {
     const loaded = JSON.parse(raw);
     state = loaded;
-    normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
@@ -3324,7 +3302,6 @@ async function loadFromLibrary(contractNo) {
     if (!confirm(`Load contract ${contractNo}?\nThis will overwrite the current form.`)) return;
     // Load state same as Paste JSON
     state = data.state;
-    normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
