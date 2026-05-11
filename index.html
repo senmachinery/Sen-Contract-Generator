@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v8.3</title>
+<title>Sen Labels — Contract Generator v8.5</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -314,7 +314,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.3</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.5</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -907,9 +907,8 @@ function renderMachineTabs() {
       const active = i === state.activeMachineIdx ? ' active' : '';
       const btn = document.createElement('button');
       btn.className = 'm-tab' + active;
-      btn.setAttribute('draggable', 'true');
       btn.dataset.idx = i;
-      btn.title = 'Drag to reorder';
+      btn.title = 'Hold to reorder';
       btn.textContent = (i + 1);
       if (state.machines.length > 1) {
         const del = document.createElement('button');
@@ -920,11 +919,9 @@ function renderMachineTabs() {
         btn.appendChild(del);
       }
       btn.addEventListener('click', () => switchMachine(i));
-      btn.addEventListener('dragstart', e => machineTabDragStart(e, i));
-      btn.addEventListener('dragover',  e => machineTabDragOver(e, i));
-      btn.addEventListener('dragleave', e => machineTabDragLeave(e));
-      btn.addEventListener('drop',      e => machineTabDrop(e, i));
-      btn.addEventListener('dragend',   e => machineTabDragEnd(e));
+      // Touch + mouse drag
+      btn.addEventListener('mousedown', e => { if (e.target.classList.contains('m-tab-del')) return; startMachineTabDrag(e, btn, i, false); });
+      btn.addEventListener('touchstart', e => { if (e.target.classList.contains('m-tab-del')) return; startMachineTabDrag(e, btn, i, true); }, { passive: false });
       bar.appendChild(btn);
     });
     const addBtn = document.createElement('button');
@@ -937,39 +934,18 @@ function renderMachineTabs() {
 
 let _dragFromIdx = null;
 
-function machineTabDragStart(e, idx) {
-  _dragFromIdx = idx;
-  e.dataTransfer.effectAllowed = 'move';
-  e.target.style.opacity = '0.5';
-}
-
-function machineTabDragOver(e, idx) {
-  if (_dragFromIdx === null || _dragFromIdx === idx) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('.m-tab').forEach(el => el.classList.remove('drag-over'));
-  e.currentTarget.classList.add('drag-over');
-}
-
-function machineTabDragLeave(e) {
-  e.currentTarget.classList.remove('drag-over');
-}
-
-function machineTabDrop(e, toIdx) {
-  e.preventDefault();
-  if (_dragFromIdx === null || _dragFromIdx === toIdx) return;
+function doMachineTabMove(fromIdx, toIdx) {
+  if (fromIdx === null || fromIdx === toIdx) return;
   saveCurrentMachineToState();
-  const moved = state.machines.splice(_dragFromIdx, 1)[0];
+  const moved = state.machines.splice(fromIdx, 1)[0];
   state.machines.splice(toIdx, 0, moved);
-  // Update active index to follow the moved machine
-  if (state.activeMachineIdx === _dragFromIdx) {
+  if (state.activeMachineIdx === fromIdx) {
     state.activeMachineIdx = toIdx;
-  } else if (_dragFromIdx < state.activeMachineIdx && toIdx >= state.activeMachineIdx) {
+  } else if (fromIdx < state.activeMachineIdx && toIdx >= state.activeMachineIdx) {
     state.activeMachineIdx--;
-  } else if (_dragFromIdx > state.activeMachineIdx && toIdx <= state.activeMachineIdx) {
+  } else if (fromIdx > state.activeMachineIdx && toIdx <= state.activeMachineIdx) {
     state.activeMachineIdx++;
   }
-  _dragFromIdx = null;
   renderMachineTabs();
   loadMachineIntoForm();
   updateMachineLabels();
@@ -977,10 +953,55 @@ function machineTabDrop(e, toIdx) {
   updatePreview();
 }
 
-function machineTabDragEnd(e) {
-  _dragFromIdx = null;
-  e.target.style.opacity = '';
-  document.querySelectorAll('.m-tab').forEach(el => el.classList.remove('drag-over'));
+function startMachineTabDrag(e, btn, idx, isTouch) {
+  e.preventDefault();
+  const bar = btn.parentNode;
+  btn.style.opacity = '0.5';
+  btn.style.transform = 'scale(1.05)';
+
+  const moveEv = isTouch ? 'touchmove' : 'mousemove';
+  const upEv   = isTouch ? 'touchend'  : 'mouseup';
+
+  function getClientX(e2) { return isTouch ? e2.touches[0].clientX : e2.clientX; }
+
+  function onMove(e2) {
+    e2.preventDefault();
+    const cx = getClientX(e2);
+    const tabs = [...bar.querySelectorAll('.m-tab')];
+    tabs.forEach(t => t.classList.remove('drag-over'));
+    for (const t of tabs) {
+      if (t === btn) continue;
+      const r = t.getBoundingClientRect();
+      if (cx >= r.left && cx <= r.right) {
+        t.classList.add('drag-over');
+        break;
+      }
+    }
+  }
+
+  function onUp(e2) {
+    btn.style.opacity = '';
+    btn.style.transform = '';
+    document.removeEventListener(moveEv, onMove);
+    document.removeEventListener(upEv, onUp);
+
+    const cx = isTouch ? e2.changedTouches[0].clientX : e2.clientX;
+    const tabs = [...bar.querySelectorAll('.m-tab')];
+    tabs.forEach(t => t.classList.remove('drag-over'));
+    let toIdx = idx;
+    for (const t of tabs) {
+      if (t === btn) continue;
+      const r = t.getBoundingClientRect();
+      if (cx >= r.left && cx <= r.right) {
+        toIdx = parseInt(t.dataset.idx);
+        break;
+      }
+    }
+    if (toIdx !== idx) doMachineTabMove(idx, toIdx);
+  }
+
+  document.addEventListener(moveEv, onMove, { passive: false });
+  document.addEventListener(upEv, onUp);
 }
 
 function shortTitle(m) {
@@ -1737,6 +1758,81 @@ function onCurrencyChange() {
 // ============================================================
 // PARTS ITEMS
 // ============================================================
+// ── PARTS ITEM DRAG (mouse + touch for iPad) ─────────────────────────────────
+let _partDragIdx = null;
+let _partDragEl  = null;
+let _partPlaceholder = null;
+
+function addPartDragListeners(handle, row, idx) {
+  // Mouse drag
+  handle.addEventListener('mousedown', e => startPartDrag(e, row, idx, false));
+  // Touch drag (iPad)
+  handle.addEventListener('touchstart', e => startPartDrag(e, row, idx, true), { passive: false });
+}
+
+function startPartDrag(e, row, idx, isTouch) {
+  e.preventDefault();
+  _partDragIdx = idx;
+  _partDragEl  = row;
+  row.style.opacity = '0.5';
+  row.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+
+  // Create placeholder
+  _partPlaceholder = document.createElement('div');
+  _partPlaceholder.style.cssText = 'height:' + row.offsetHeight + 'px;background:#dce8f5;border:2px dashed #1e3a5f;border-radius:6px;margin-bottom:6px;';
+  row.parentNode.insertBefore(_partPlaceholder, row.nextSibling);
+
+  const moveEv = isTouch ? 'touchmove' : 'mousemove';
+  const upEv   = isTouch ? 'touchend'  : 'mouseup';
+
+  function onMove(e2) {
+    const clientY = isTouch ? e2.touches[0].clientY : e2.clientY;
+    const wrap = document.getElementById('part-items-wrap');
+    if (!wrap) return;
+    const rows = [...wrap.querySelectorAll('.part-item-row')].filter(r => r !== _partDragEl);
+    let inserted = false;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      const mid  = rect.top + rect.height / 2;
+      if (clientY < mid) {
+        wrap.insertBefore(_partPlaceholder, r);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) wrap.appendChild(_partPlaceholder);
+  }
+
+  function onUp() {
+    row.style.opacity = '';
+    row.style.boxShadow = '';
+    document.removeEventListener(moveEv, onMove);
+    document.removeEventListener(upEv, onUp);
+
+    // Find new index from placeholder position
+    if (_partPlaceholder && _partPlaceholder.parentNode) {
+      const wrap = document.getElementById('part-items-wrap');
+      const allRows = [...wrap.querySelectorAll('.part-item-row')];
+      let newIdx = allRows.indexOf(_partDragEl);
+      const phIdx = [...wrap.children].indexOf(_partPlaceholder);
+      const elIdx = [...wrap.children].indexOf(_partDragEl);
+      newIdx = phIdx < elIdx ? phIdx : phIdx - 1;
+      newIdx = Math.max(0, Math.min(newIdx, M().partItems.length - 1));
+      _partPlaceholder.remove();
+      _partPlaceholder = null;
+      if (newIdx !== _partDragIdx) {
+        const moved = M().partItems.splice(_partDragIdx, 1)[0];
+        M().partItems.splice(newIdx, 0, moved);
+        renderPartItems(); updatePartTotal(); updatePreview();
+      }
+    }
+    _partDragIdx = null; _partDragEl = null;
+  }
+
+  document.addEventListener(moveEv, onMove, { passive: false });
+  document.addEventListener(upEv, onUp);
+}
+
 function renderPartItems() {
   const m = M();
   if (!Array.isArray(m.partItems)) m.partItems = [];
@@ -1812,21 +1908,9 @@ function renderPartItems() {
     row.appendChild(topBar);
     row.appendChild(fieldsRow);
 
-    // Drag to reorder
-    row.setAttribute('draggable', 'true');
-    row.addEventListener('dragstart', e => { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', idx); row.style.opacity='0.5'; });
-    row.addEventListener('dragend',   e => { row.style.opacity=''; });
-    row.addEventListener('dragover',  e => { e.preventDefault(); row.style.borderColor='#1a3a5c'; });
-    row.addEventListener('dragleave', e => { row.style.borderColor='#dde'; });
-    row.addEventListener('drop',      e => {
-      e.preventDefault(); row.style.borderColor='#dde';
-      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-      const toIdx = idx;
-      if (fromIdx === toIdx) return;
-      const moved = M().partItems.splice(fromIdx, 1)[0];
-      M().partItems.splice(toIdx, 0, moved);
-      renderPartItems(); updatePartTotal(); updatePreview();
-    });
+    // Drag handle (desktop + iPad touch)
+    handle.style.cssText += 'touch-action:none;cursor:grab;';
+    addPartDragListeners(handle, row, idx);
 
     wrap.appendChild(row);
   });
