@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v9.0</title>
+<title>Sen Labels — Contract Generator v9.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -294,14 +294,14 @@ function mobileTab(tab) {
   if (sessionStorage.getItem('sen_auth') === '1') {
     document.addEventListener('DOMContentLoaded', () => {
       const ov = document.getElementById('pw-overlay');
-      if (ov) ov.style.display = 'none';
+      if (ov) ov.remove();
     });
   }
   window.checkPW = function() {
     const val = document.getElementById('pw-input').value;
     if (val === 'Senlabels123123') {
       sessionStorage.setItem('sen_auth', '1');
-      document.getElementById('pw-overlay').style.display = 'none';
+      const _ov=document.getElementById('pw-overlay'); if(_ov)_ov.remove();
     } else {
       document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
       document.getElementById('pw-input').value = '';
@@ -314,7 +314,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.0</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.1</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2863,6 +2863,26 @@ function doPrint() {
   }, 2000);
 }
 
+function normalizeState(s) {
+  if (!s) return;
+  if (!Array.isArray(s.machines)) s.machines = [];
+  s.machines.forEach(m => {
+    if (!m) return;
+    if (Array.isArray(m.extraSpecs)) {
+      m.extraSpecs = m.extraSpecs.map(sp => ({
+        label: sp.label||'', value: sp.value||'',
+        bold: sp.bold||false, boldLabel: sp.boldLabel||false,
+        underLabel: sp.underLabel||false, underValue: sp.underValue||false,
+      }));
+    } else { m.extraSpecs = []; }
+    if (!Array.isArray(m.cwItems))   m.cwItems   = [];
+    if (!Array.isArray(m.optItems))  m.optItems  = [];
+    if (!Array.isArray(m.partItems)) m.partItems = [];
+    if (!Array.isArray(m.images))    m.images    = [];
+  });
+  if (!Array.isArray(s.remarkItems))     s.remarkItems     = [];
+  if (!Array.isArray(s.installmentRows)) s.installmentRows = [];
+}
 async function stripImagesForSave(stateObj) {
   const s = JSON.parse(JSON.stringify(stateObj));
   for (const m of (s.machines || [])) {
@@ -3083,6 +3103,7 @@ function loadStateJSON(input) {
       const loaded = JSON.parse(e.target.result);
       // Restore state
       state = loaded;
+      normalizeState(state);
       // Ensure machines array is valid
       if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
       if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
@@ -3172,6 +3193,7 @@ function loadFromPastedJSON() {
   try {
     const loaded = JSON.parse(raw);
     state = loaded;
+    normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
@@ -3302,6 +3324,7 @@ async function loadFromLibrary(contractNo) {
     if (!confirm(`Load contract ${contractNo}?\nThis will overwrite the current form.`)) return;
     // Load state same as Paste JSON
     state = data.state;
+    normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
