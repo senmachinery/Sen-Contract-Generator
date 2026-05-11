@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v8.5</title>
+<title>Sen Labels — Contract Generator v8.6</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -314,7 +314,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.5</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v8.6</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -919,9 +919,25 @@ function renderMachineTabs() {
         btn.appendChild(del);
       }
       btn.addEventListener('click', () => switchMachine(i));
-      // Touch + mouse drag
+      // Mouse drag (desktop)
       btn.addEventListener('mousedown', e => { if (e.target.classList.contains('m-tab-del')) return; startMachineTabDrag(e, btn, i, false); });
-      btn.addEventListener('touchstart', e => { if (e.target.classList.contains('m-tab-del')) return; startMachineTabDrag(e, btn, i, true); }, { passive: false });
+      // Touch: long press = drag, short tap = switch (iPad)
+      btn.addEventListener('touchstart', e => {
+        if (e.target.classList.contains('m-tab-del')) return;
+        const timer = setTimeout(() => {
+          btn._longPress = true;
+          startMachineTabDrag(e, btn, i, true);
+        }, 300); // 300ms long press threshold
+        btn._tapTimer = timer;
+        btn._longPress = false;
+      }, { passive: true });
+      btn.addEventListener('touchend', e => {
+        clearTimeout(btn._tapTimer);
+        if (!btn._longPress) switchMachine(i); // short tap = switch
+      }, { passive: true });
+      btn.addEventListener('touchmove', e => {
+        clearTimeout(btn._tapTimer); // moved = cancel tap
+      }, { passive: true });
       bar.appendChild(btn);
     });
     const addBtn = document.createElement('button');
