@@ -14,13 +14,13 @@ button{cursor:pointer;font-family:inherit}
 #topbar h1{font-size:16px;font-weight:700;letter-spacing:.5px}
 #topbar .logo-sub{font-size:11px;opacity:.7;margin-top:1px}
 .topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
-#main{display:flex;flex:1;overflow:hidden;-webkit-overflow-scrolling:touch}
-#form-panel{width:480px;min-width:360px;background:#fff;border-right:1px solid #dde;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;flex-shrink:0}
+#main{display:flex;flex:1;overflow:hidden}
+#form-panel{width:480px;min-width:360px;background:#fff;border-right:1px solid #dde;overflow-y:auto;display:flex;flex-direction:column;flex-shrink:0}
 .tab-bar{display:flex;background:#f5f6f8;border-bottom:1px solid #dde;flex-shrink:0}
 .tab-btn{flex:1;padding:9px 4px;font-size:11px;font-weight:600;background:none;border:none;border-bottom:3px solid transparent;color:#666;transition:.15s;text-align:center;white-space:nowrap}
 .tab-btn.active{border-bottom-color:#1a3a5c;color:#1a3a5c;background:#fff}
 .tab-btn:hover:not(.active){background:#eef}
-.tab-content{display:none;padding:14px;flex:1;-webkit-overflow-scrolling:touch}
+.tab-content{display:none;padding:14px;flex:1}
 .tab-content.active{display:block}
 #tab-machine.active{display:flex;flex-direction:column;padding:0}
 .machine-body{padding:14px}
@@ -218,7 +218,7 @@ button{cursor:pointer;font-family:inherit}
 }
 @media(max-width:900px){
   #main{flex-direction:column}
-  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;flex-shrink:0;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:55vh}
+  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;flex-shrink:0}
   #preview-panel{padding:10px;flex-shrink:0}
   #contract-paper{width:100%!important;padding:10px!important;font-size:9pt}
   #mobile-preview-toggle{display:flex!important}
@@ -3619,13 +3619,15 @@ async function saveCurrentCustomerToDB() {
     statusEl.style.color = '#c0392b';
     return;
   }
+  // Sanitize fields - replace newlines with space to prevent Sheets row corruption
+  const sanitize = s => (s||'').replace(/[\r\n]+/g, ' ').trim();
   const customer = {
-    company, 
-    addr:  document.getElementById('f-addr')?.value  || '',
-    tel:   document.getElementById('f-tel')?.value   || '',
-    email: document.getElementById('f-email')?.value || '',
-    attn:  document.getElementById('f-attn')?.value  || '',
-    port:  document.getElementById('f-port')?.value  || ''
+    company: sanitize(company),
+    addr:  sanitize(document.getElementById('f-addr')?.value  || ''),
+    tel:   sanitize(document.getElementById('f-tel')?.value   || ''),
+    email: sanitize(document.getElementById('f-email')?.value || ''),
+    attn:  sanitize(document.getElementById('f-attn')?.value  || ''),
+    port:  sanitize(document.getElementById('f-port')?.value  || '')
   };
   statusEl.textContent = 'Saving...';
   statusEl.style.color = '#888';
