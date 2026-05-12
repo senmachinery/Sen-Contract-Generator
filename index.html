@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v9.2</title>
+<title>Sen Labels — Contract Generator v9.3</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -208,13 +208,22 @@ button{cursor:pointer;font-family:inherit}
     font-size:10pt!important;
     line-height:1.5!important;
   }
-  @page{size:A4 portrait;margin:12mm 14mm}
+  @page{size:A4 portrait;margin:10mm 12mm}
   .cp-unit-price{font-size:13pt!important;font-weight:700!important;margin:3mm 0 4mm!important;line-height:1.5!important;color:#7a4500!important;background:#fff8ee!important;border-left:4px solid #e07800!important;padding:2.5mm 5mm!important;border-radius:0 4px 4px 0!important;display:block!important;-webkit-print-color-adjust:exact!important}
   .cp-machine-title{font-size:11.5pt!important;font-weight:700!important;page-break-after:avoid!important;background:#dce8f5!important;color:#1e3a5f!important;padding:2mm 4mm!important;border-left:3px solid #1e3a5f!important;-webkit-print-color-adjust:exact!important}
   .cp-spec-table{font-size:9.5pt!important}
   .cp-pay-summary{font-size:9.5pt!important}
-  table{page-break-inside:avoid}
+  .cp-spec-table{page-break-inside:avoid}
+  .cp-pay-summary{page-break-inside:avoid}
   .cp-sig{page-break-inside:avoid}
+  .cp-bank{page-break-inside:avoid}
+  .cp-terms-table{page-break-inside:avoid}
+  .cp-header-wrap{padding:2mm 4mm!important}
+  .cp-header-grid{padding:2mm 3mm!important;margin-bottom:2mm!important}
+  .cp-logo{height:14mm!important}
+  .cp-company{font-size:12pt!important}
+  .cp-addr{font-size:8pt!important}
+  .cp-machine-title{margin:3mm 0 1.5mm!important}
 }
 @media(max-width:900px){
   #main{flex-direction:column}
@@ -314,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.2</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.3</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2419,8 +2428,8 @@ function buildContractHTML() {
       ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
   </div>
+  ${machineBlocks}
   <table style="width:100%;border-collapse:collapse;margin:4mm 0;font-size:10pt">
-    ${machineBlocks ? `</table>${machineBlocks}<table style="width:100%;border-collapse:collapse;margin:4mm 0;font-size:10pt">` : ''}
     <thead><tr style="background:#dce8f5;color:#1e3a5f;border-bottom:2px solid #1e3a5f">
       <th style="padding:2mm 2mm;text-align:left;width:5%">&nbsp;</th>
       <th style="padding:2mm 2mm;text-align:left">DESCRIPTION</th>
@@ -3619,15 +3628,13 @@ async function saveCurrentCustomerToDB() {
     statusEl.style.color = '#c0392b';
     return;
   }
-  // Sanitize fields - replace newlines with space to prevent Sheets row corruption
-  const sanitize = s => (s||'').replace(/[\r\n]+/g, ' ').trim();
   const customer = {
-    company: sanitize(company),
-    addr:  sanitize(document.getElementById('f-addr')?.value  || ''),
-    tel:   sanitize(document.getElementById('f-tel')?.value   || ''),
-    email: sanitize(document.getElementById('f-email')?.value || ''),
-    attn:  sanitize(document.getElementById('f-attn')?.value  || ''),
-    port:  sanitize(document.getElementById('f-port')?.value  || '')
+    company, 
+    addr:  document.getElementById('f-addr')?.value  || '',
+    tel:   document.getElementById('f-tel')?.value   || '',
+    email: document.getElementById('f-email')?.value || '',
+    attn:  document.getElementById('f-attn')?.value  || '',
+    port:  document.getElementById('f-port')?.value  || ''
   };
   statusEl.textContent = 'Saving...';
   statusEl.style.color = '#888';
