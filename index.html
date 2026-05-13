@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v9.4</title>
+<title>Sen Labels — Contract Generator v9.9</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.4</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.9</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -411,6 +411,12 @@ function mobileTab(tab) {
         <label>Tel</label>
         <input type="text" id="f-tel" oninput="updatePreview()">
       </div>
+      <div class="field-group">
+        <label>Fax <span style="font-weight:400;font-size:11px;color:#888">(optional)</span></label>
+        <input type="text" id="f-fax" placeholder="+60 7-xxx xxxx" oninput="state.fax=this.value;updatePreview()">
+      </div>
+    </div>
+    <div class="field-row">
       <div class="field-group">
         <label>Email</label>
         <input type="text" id="f-email" oninput="updatePreview()">
@@ -848,6 +854,7 @@ function newMachine() {
     images:[],
     qty:'1 Unit',
     partItems:[],
+    partGroups:[],
     discountPct:0, discountAmt:0,
     costMachine:0, costAddons:0, costStd:60000, costTradein:0,
     custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
@@ -1119,6 +1126,7 @@ function saveCurrentMachineToState() {
   state.company    = g('f-company');
   state.addr       = g('f-addr');
   state.tel        = g('f-tel');
+  state.fax        = g('f-fax') || '';
   state.email      = g('f-email');
   state.attn       = g('f-attn');
   state.port       = g('f-port');
@@ -1423,23 +1431,22 @@ function renderMachineParams(type, condition) {
     html += field('Custom Title (optional)','f-custom-title','text',null,'e.g. New Sen SMP-320 Letterpress Label Printing Machine');
     html += `<div class="field-group"><label>Sub-Title / Note (under title, optional)</label><textarea id="f-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. Fully overhauled, tested and ready for delivery" oninput="M().desc=this.value;updatePreview()"></textarea></div>`;
   } else if (isParts) {
+    // Migrate old partItems to partGroups if needed
+    const m = M();
+    if (!Array.isArray(m.partGroups) || m.partGroups.length === 0) {
+      m.partGroups = [{
+        title: m.customTitle || '',
+        desc:  m.desc || '',
+        images: m.images || [],
+        items: m.partItems || []
+      }];
+    }
+
     panel.innerHTML = `
-      <div class="field-group">
-        <label>Description / Group Reference</label>
-        <input type="text" id="f-custom-title" placeholder="e.g. SEN SPM INTERMITTENT">
-      </div>
-      <div class="field-group">
-        <label>Sub-description <span style="font-weight:400;font-size:11px;color:#888">(optional, shown below group reference)</span></label>
-        <textarea id="f-parts-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. For ManiA-330 Machine"></textarea>
-      </div>
-      <div class="section-title" style="margin-top:10px">Items</div>
-      <div style="display:grid;grid-template-columns:1fr 55px 50px 85px 70px 22px;gap:3px;padding:4px 2px;font-size:10px;font-weight:700;color:#555;text-transform:uppercase">
-        <span>Description</span><span>Qty</span><span>Unit</span><span>Unit Price</span><span style="text-align:right">Total</span><span></span>
-      </div>
-      <div id="part-items-wrap"></div>
-      <button id="btn-add-part-item" style="width:100%;padding:6px;background:#f0f4ff;border:1px dashed #9ab;border-radius:4px;color:#1a3a5c;font-size:12px;margin-top:4px;cursor:pointer">+ Add Item</button>
+      <div id="part-groups-wrap"></div>
+      <button id="btn-add-group" style="width:100%;padding:8px;background:#e8f4e8;border:2px dashed #5a9a5a;border-radius:6px;color:#2d6a2d;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer">+ Add New Group (New 1) 2) 3)...)</button>
       <div style="margin-top:10px;padding:8px;background:#fff8f0;border:1px solid #f0d0a0;border-radius:4px">
-        <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount <span style="font-weight:400;color:#888">(fill one only)</span></div>
+        <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount <span style="font-weight:400;color:#888">(applies to total, fill one only)</span></div>
         <div style="display:flex;gap:8px;align-items:center">
           <div class="field-group" style="flex:1;margin:0"><label>Discount %</label>
             <input type="number" id="f-discount-pct" min="0" max="100" step="0.1" placeholder="e.g. 10" style="width:100%;padding:6px 8px;border:1px solid #ccd;border-radius:4px;font-size:13px">
@@ -1456,16 +1463,10 @@ function renderMachineParams(type, condition) {
         <textarea id="f-machine-remarks" rows="3" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. Price above not including installation and transportation charges."></textarea>
       </div>`;
 
-    // Wire up all events via addEventListener (not onclick - more reliable on iOS)
-    const titleInput = panel.querySelector('#f-custom-title');
-    titleInput.value = M().customTitle || '';
-    titleInput.addEventListener('input', () => { M().customTitle = titleInput.value; updatePreview(); });
-    const descTA = panel.querySelector('#f-parts-desc');
-    if (descTA) {
-      descTA.value = M().desc || '';
-      descTA.addEventListener('input', () => { M().desc = descTA.value; updatePreview(); });
-    }
-
+    panel.querySelector('#btn-add-group').addEventListener('click', () => {
+      M().partGroups.push({ title:'', desc:'', images:[], items:[] });
+      renderPartGroups(); updatePreview();
+    });
     const discPctInput = panel.querySelector('#f-discount-pct');
     discPctInput.value = M().discountPct || '';
     discPctInput.addEventListener('input', () => {
@@ -1474,7 +1475,6 @@ function renderMachineParams(type, condition) {
       panel.querySelector('#f-discount-amt').value = '';
       updatePartTotal(); updatePreview();
     });
-
     const discAmtInput = panel.querySelector('#f-discount-amt');
     discAmtInput.value = M().discountAmt || '';
     discAmtInput.addEventListener('input', () => {
@@ -1483,14 +1483,11 @@ function renderMachineParams(type, condition) {
       panel.querySelector('#f-discount-pct').value = '';
       updatePartTotal(); updatePreview();
     });
-
     const remarkTA = panel.querySelector('#f-machine-remarks');
     remarkTA.value = M().machineRemarks || '';
     remarkTA.addEventListener('input', () => { M().machineRemarks = remarkTA.value; updatePreview(); });
 
-    panel.querySelector('#btn-add-part-item').addEventListener('click', addPartItem);
-
-    renderPartItems();
+    renderPartGroups();
     return;
   }
 
@@ -1544,7 +1541,7 @@ function readMachineParams() {
   M().mfgYear      = g('f-mfg-year');
   M().refurbYear   = g('f-refurb-year');
   M().coo          = g('f-coo');
-  M().customTitle     = g('f-custom-title');
+  M().customTitle     = g('f-custom-title') || (Array.isArray(M().partGroups) && M().partGroups[0]?.title) || '';
   M().desc            = g('f-parts-desc') || g('f-desc');
   M().otherModel      = g('f-other-model');
   M().machineRemarks  = g('f-machine-remarks');
@@ -1660,7 +1657,12 @@ function renderInstallmentRows() {
 // ============================================================
 function calcPriceForMachine(m) {
   if (m.machineType === 'parts') {
-    const total = (m.partItems||[]).reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0), 0);
+    let total = 0;
+    if (Array.isArray(m.partGroups) && m.partGroups.length > 0) {
+      m.partGroups.forEach(g => { (g.items||[]).forEach(i => { total += (i.qty||0)*(i.unitPrice||0); }); });
+    } else {
+      total = (m.partItems||[]).reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0), 0);
+    }
     const discAmt = (m.discountPct||0) > 0 ? total * (m.discountPct/100) : (m.discountAmt||0);
     const sp = m.sellPrice || (total - discAmt);
     const dep = sp * ((state.depositPct||30)/100);
@@ -1858,6 +1860,208 @@ function startPartDrag(e, row, idx, isTouch) {
   document.addEventListener(upEv, onUp);
 }
 
+function renderPartGroups() {
+  const m = M();
+  if (!Array.isArray(m.partGroups) || m.partGroups.length === 0) {
+    m.partGroups = [{ title: m.customTitle||'', desc: m.desc||'', images: m.images||[], items: m.partItems||[] }];
+  }
+  const wrap = document.getElementById('part-groups-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  m.partGroups.forEach((group, gi) => {
+    const groupDiv = document.createElement('div');
+    groupDiv.style.cssText = 'border:2px solid #dce8f5;border-radius:6px;padding:10px;margin-bottom:10px;background:#f8fafc';
+
+    // Group header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:8px';
+    const grpNum = document.createElement('span');
+    grpNum.style.cssText = 'font-weight:700;color:#1e3a5f;font-size:13px;flex-shrink:0';
+    grpNum.textContent = (gi+1) + ')';
+    const titleIn = document.createElement('input');
+    titleIn.type = 'text'; titleIn.placeholder = 'Group title (e.g. For: UV Light UV Dryer)';
+    titleIn.value = group.title || '';
+    titleIn.style.cssText = 'flex:1;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;font-weight:600';
+    titleIn.addEventListener('input', () => { m.partGroups[gi].title = titleIn.value; updatePreview(); });
+    const delGrpBtn = document.createElement('button');
+    delGrpBtn.textContent = '✕';
+    delGrpBtn.title = 'Remove this group';
+    delGrpBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:3px;padding:3px 7px;font-size:12px;cursor:pointer;flex-shrink:0';
+    delGrpBtn.addEventListener('click', () => {
+      if (m.partGroups.length === 1) return; // keep at least one
+      m.partGroups.splice(gi, 1);
+      renderPartGroups(); updatePartTotal(); updatePreview();
+    });
+    hdr.appendChild(grpNum); hdr.appendChild(titleIn);
+    if (m.partGroups.length > 1) hdr.appendChild(delGrpBtn);
+    groupDiv.appendChild(hdr);
+
+    // Sub-description
+    const descTA = document.createElement('textarea');
+    descTA.rows = 2; descTA.placeholder = 'Sub-description (optional)';
+    descTA.value = group.desc || '';
+    descTA.style.cssText = 'width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical;margin-bottom:6px';
+    descTA.addEventListener('input', () => { m.partGroups[gi].desc = descTA.value; updatePreview(); });
+    groupDiv.appendChild(descTA);
+
+    // Image upload area for this group
+    const imgSection = document.createElement('div');
+    imgSection.style.cssText = 'margin-bottom:8px';
+    const imgLabel = document.createElement('div');
+    imgLabel.style.cssText = 'font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:4px';
+    imgLabel.textContent = 'Images';
+    imgSection.appendChild(imgLabel);
+    // Image thumbs
+    const thumbsWrap = document.createElement('div');
+    thumbsWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px';
+    thumbsWrap.id = 'grp-thumbs-' + gi;
+    (group.images||[]).forEach((src, ii) => {
+      if (!src) return;
+      const t = document.createElement('div');
+      t.className = 'img-thumb';
+      const img = document.createElement('img'); img.src = src;
+      const rm = document.createElement('button'); rm.className = 'rm-img'; rm.innerHTML = '&#215;';
+      rm.addEventListener('click', () => { m.partGroups[gi].images.splice(ii,1); renderPartGroups(); updatePreview(); });
+      t.appendChild(img); t.appendChild(rm); thumbsWrap.appendChild(t);
+    });
+    imgSection.appendChild(thumbsWrap);
+    // Upload + drive buttons
+    const imgBtns = document.createElement('div');
+    imgBtns.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+    const uploadBtn = document.createElement('button');
+    uploadBtn.textContent = '📎 Upload Image';
+    uploadBtn.style.cssText = 'padding:4px 10px;background:#e8f0fe;color:#1a3a5c;border:1px solid #9ab;border-radius:4px;font-size:12px;cursor:pointer';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.multiple = true; fileInput.style.display = 'none';
+    fileInput.addEventListener('change', e => {
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          if (!m.partGroups[gi].images) m.partGroups[gi].images = [];
+          m.partGroups[gi].images.push(ev.target.result);
+          renderPartGroups(); updatePreview();
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    const driveBtn = document.createElement('button');
+    driveBtn.textContent = '📷 Pick from Drive';
+    driveBtn.style.cssText = 'padding:4px 10px;background:#e8f5e9;color:#2d6a2d;border:1px solid #8bc;border-radius:4px;font-size:12px;cursor:pointer';
+    driveBtn.addEventListener('click', () => { _activeGroupIdx = gi; openImagePicker(); });
+    imgBtns.appendChild(fileInput); imgBtns.appendChild(uploadBtn); imgBtns.appendChild(driveBtn);
+    imgSection.appendChild(imgBtns);
+    groupDiv.appendChild(imgSection);
+
+    // Items header
+    const itemsHdr = document.createElement('div');
+    itemsHdr.style.cssText = 'display:grid;grid-template-columns:1fr 55px 50px 85px 70px 22px;gap:3px;padding:3px 2px;font-size:10px;font-weight:700;color:#555;text-transform:uppercase';
+    itemsHdr.innerHTML = '<span>Description</span><span>Qty</span><span>Unit</span><span>Unit Price</span><span style="text-align:right">Total</span><span></span>';
+    groupDiv.appendChild(itemsHdr);
+
+    // Items list
+    const itemsWrap = document.createElement('div');
+    itemsWrap.id = 'grp-items-' + gi;
+    if (!Array.isArray(group.items)) group.items = [];
+    group.items.forEach((item, ii) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'background:#fff;border:1px solid #dde;border-radius:3px;padding:5px;margin-bottom:4px';
+      const fieldsRow = document.createElement('div');
+      fieldsRow.style.cssText = 'display:grid;grid-template-columns:1fr 55px 50px 85px 70px 22px;gap:3px;align-items:center';
+      const mk = (type, val, ph) => {
+        const el = document.createElement('input');
+        el.type = type; el.placeholder = ph;
+        if (val !== undefined) el.value = val;
+        el.style.cssText = 'padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:12px;width:100%;box-sizing:border-box';
+        return el;
+      };
+      const descIn = mk('text', item.desc||'', 'Description');
+      const qtyIn  = mk('number', item.qty||'', 'Qty');
+      const unitIn = mk('text', item.unit||'Pcs', 'Unit');
+      const priceIn= mk('number', item.unitPrice||'', '0.00');
+      const totalSp= document.createElement('span');
+      totalSp.style.cssText = 'font-size:11px;font-weight:700;color:#1a3a5c;white-space:nowrap;text-align:right';
+      totalSp.textContent = '= ' + formatMoney((item.qty||0)*(item.unitPrice||0), state.currency);
+      const delBtn = document.createElement('button');
+      delBtn.innerHTML = '&#215;'; delBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:3px;width:20px;height:20px;font-size:13px;cursor:pointer;padding:0';
+      const refresh = () => { totalSp.textContent = '= ' + formatMoney((m.partGroups[gi].items[ii]?.qty||0)*(m.partGroups[gi].items[ii]?.unitPrice||0), state.currency); };
+      descIn.addEventListener('input',  () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].desc = descIn.value; updatePartTotal(); updatePreview(); });
+      qtyIn.addEventListener('input',   () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].qty = parseFloat(qtyIn.value)||0; refresh(); updatePartTotal(); updatePreview(); });
+      unitIn.addEventListener('input',  () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].unit = unitIn.value; updatePreview(); });
+      priceIn.addEventListener('input', () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].unitPrice = parseFloat(priceIn.value)||0; refresh(); updatePartTotal(); updatePreview(); });
+      delBtn.addEventListener('click',  () => { m.partGroups[gi].items.splice(ii,1); renderPartGroups(); updatePartTotal(); updatePreview(); });
+      fieldsRow.appendChild(descIn); fieldsRow.appendChild(qtyIn); fieldsRow.appendChild(unitIn);
+      fieldsRow.appendChild(priceIn); fieldsRow.appendChild(totalSp); fieldsRow.appendChild(delBtn);
+      row.appendChild(fieldsRow);
+
+      // Per-item image section
+      if (!item.images) item.images = [];
+      const itemImgWrap = document.createElement('div');
+      itemImgWrap.style.cssText = 'margin-top:5px;padding-top:5px;border-top:1px dashed #dde';
+      // Thumbnails
+      const itemThumbsWrap = document.createElement('div');
+      itemThumbsWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px';
+      item.images.forEach((src, iii) => {
+        if (!src) return;
+        const t = document.createElement('div'); t.className = 'img-thumb';
+        const img = document.createElement('img'); img.src = src;
+        const rm = document.createElement('button'); rm.className = 'rm-img'; rm.innerHTML = '&#215;';
+        rm.addEventListener('click', () => { m.partGroups[gi].items[ii].images.splice(iii,1); renderPartGroups(); updatePreview(); });
+        t.appendChild(img); t.appendChild(rm); itemThumbsWrap.appendChild(t);
+      });
+      itemImgWrap.appendChild(itemThumbsWrap);
+      // Upload button
+      const itemImgBtns = document.createElement('div');
+      itemImgBtns.style.cssText = 'display:flex;gap:5px';
+      const itemFileIn = document.createElement('input');
+      itemFileIn.type='file'; itemFileIn.accept='image/*'; itemFileIn.multiple=true; itemFileIn.style.display='none';
+      itemFileIn.addEventListener('change', e => {
+        Array.from(e.target.files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            if (!m.partGroups[gi].items[ii].images) m.partGroups[gi].items[ii].images = [];
+            m.partGroups[gi].items[ii].images.push(ev.target.result);
+            renderPartGroups(); updatePreview();
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+      const itemUpBtn = document.createElement('button');
+      itemUpBtn.textContent = '📎 Image';
+      itemUpBtn.style.cssText = 'padding:2px 8px;background:#e8f0fe;color:#1a3a5c;border:1px solid #9ab;border-radius:3px;font-size:11px;cursor:pointer';
+      itemUpBtn.addEventListener('click', () => itemFileIn.click());
+      const itemDriveBtn = document.createElement('button');
+      itemDriveBtn.textContent = '📷 Drive';
+      itemDriveBtn.style.cssText = 'padding:2px 8px;background:#e8f5e9;color:#2d6a2d;border:1px solid #8bc;border-radius:3px;font-size:11px;cursor:pointer';
+      itemDriveBtn.addEventListener('click', () => { _activeGroupIdx = gi; _activeItemIdx = ii; openImagePicker(); });
+      itemImgBtns.appendChild(itemFileIn); itemImgBtns.appendChild(itemUpBtn); itemImgBtns.appendChild(itemDriveBtn);
+      itemImgWrap.appendChild(itemImgBtns);
+      row.appendChild(itemImgWrap);
+      itemsWrap.appendChild(row);
+    });
+    groupDiv.appendChild(itemsWrap);
+
+    // Add item button
+    const addItemBtn = document.createElement('button');
+    addItemBtn.textContent = '+ Add Item';
+    addItemBtn.style.cssText = 'width:100%;padding:5px;background:#f0f4ff;border:1px dashed #9ab;border-radius:4px;color:#1a3a5c;font-size:12px;margin-top:4px;cursor:pointer';
+    addItemBtn.addEventListener('click', () => {
+      if (!m.partGroups[gi].items) m.partGroups[gi].items = [];
+      m.partGroups[gi].items.push({ desc:'', qty:1, unit:'Pcs', unitPrice:0 });
+      renderPartGroups(); updatePreview();
+    });
+    groupDiv.appendChild(addItemBtn);
+    wrap.appendChild(groupDiv);
+  });
+
+  updatePartTotal();
+}
+
+// Track which group is active for image picker
+let _activeGroupIdx = 0;
+let _activeItemIdx = -1; // -1 = group level, >=0 = item level
+
 function renderPartItems() {
   const m = M();
   if (!Array.isArray(m.partItems)) m.partItems = [];
@@ -1954,7 +2158,13 @@ function removePartItem(idx) {
 }
 function updatePartTotal() {
   const m = M();
-  const subtotal = (m.partItems||[]).reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0),0);
+  // Sum across all groups
+  let subtotal = 0;
+  if (Array.isArray(m.partGroups) && m.partGroups.length > 0) {
+    m.partGroups.forEach(g => { (g.items||[]).forEach(i => { subtotal += (i.qty||0)*(i.unitPrice||0); }); });
+  } else {
+    subtotal = (m.partItems||[]).reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0),0);
+  }
   const discAmt = (m.discountPct||0) > 0 ? subtotal * (m.discountPct/100) : (m.discountAmt||0);
   const net = subtotal - discAmt;
   m.sellPrice = net;
@@ -2264,6 +2474,7 @@ function updatePreview() {
     state.company    = g('f-company');
     state.addr       = g('f-addr');
     state.tel        = g('f-tel');
+    state.fax        = g('f-fax') || '';
     state.email      = g('f-email');
     state.attn       = g('f-attn');
     state.port       = g('f-port');
@@ -2355,14 +2566,19 @@ function buildContractHTML() {
         return;
       }
       // Parts machine: render as item rows, numbering continues from machine index
-      const groupRef = m.customTitle || '';
-      if (groupRef) itemRows += `<tr><td colspan="5" style="font-weight:700;padding:1.5mm 2mm;background:#f4f6fb;font-size:10pt">${mi+1})&nbsp;&nbsp;${esc(groupRef)}</td></tr>`;
-      if (m.desc) itemRows += `<tr><td colspan="5" style="padding:0.5mm 2mm 1.5mm 6mm;font-size:9.5pt;color:#222">${esc(m.desc)}</td></tr>`;
-      const partsImgs = (m.images||[]).filter(Boolean);
-      if (partsImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm"><div class="cp-img-gallery">${partsImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
-      itemNo = 0; // reset letter counter for each parts machine
+      // Support partGroups (new) and legacy partItems
+      const groups = (Array.isArray(m.partGroups) && m.partGroups.length > 0)
+        ? m.partGroups
+        : [{ title: m.customTitle||'', desc: m.desc||'', images: m.images||[], items: m.partItems||[] }];
       let partsSubtotal = 0;
-      (m.partItems||[]).forEach(item => {
+      groups.forEach((group, gi) => {
+        const groupNum = groups.length > 1 ? `${gi+1}` : `${mi+1}`;
+        if (group.title) itemRows += `<tr><td colspan="5" style="font-weight:700;padding:1.5mm 2mm;background:#f4f6fb;font-size:10pt">${groupNum})&nbsp;&nbsp;${esc(group.title)}</td></tr>`;
+        if (group.desc)  itemRows += `<tr><td colspan="5" style="padding:0.5mm 2mm 1.5mm 6mm;font-size:9.5pt;color:#222">${esc(group.desc)}</td></tr>`;
+        const grpImgs = (group.images||[]).filter(Boolean);
+        if (grpImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm"><div class="cp-img-gallery">${grpImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
+        itemNo = 0;
+        (group.items||[]).forEach(item => {
         const lineTotal = (item.qty||0)*(item.unitPrice||0);
         const letter = String.fromCharCode(97 + itemNo++); // a, b, c...
         partsSubtotal += lineTotal;
@@ -2373,6 +2589,9 @@ function buildContractHTML() {
           <td style="padding:1.5mm 2mm;text-align:right">${fmt(item.unitPrice||0)}</td>
           <td style="padding:1.5mm 2mm;text-align:right"> = &nbsp;${fmt(lineTotal)}</td>
         </tr>`;
+        // Item images
+        const itemImgs = (item.images||[]).filter(Boolean);
+        if (itemImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm 2mm 2mm 8mm"><div class="cp-img-gallery">${itemImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
       });
       // Per-parts-machine discount
       const discPct = m.discountPct||0;
@@ -2385,6 +2604,7 @@ function buildContractHTML() {
       } else {
         subtotalAll += partsSubtotal;
       }
+      }); // end groups.forEach
     });
 
     const totalAll = subtotalAll;
@@ -2399,7 +2619,7 @@ function buildContractHTML() {
     } else {
       payRows = `<tr><td colspan="4"><strong>~ Full Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;
     }
-    const telLine = `<div><span class="cp-label">Tel:</span> ${esc(state.tel)||'&nbsp;'}</div>`;
+    const telLine = state.tel||state.fax ? `<div><span class="cp-label">Tel:</span> ${esc(state.tel)||''}${state.fax?` &nbsp;&#124;&nbsp; <span class="cp-label">Fax:</span> ${esc(state.fax)}`:''}` + `</div>` : '';
     const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0">${esc(state.remarks)}</p>` : '';
     return `
   <div class="cp-header-wrap">
@@ -2872,6 +3092,28 @@ function doPrint() {
   }, 2000);
 }
 
+function normalizeState(s) {
+  if (!s) return;
+  if (!Array.isArray(s.machines)) s.machines = [];
+  s.machines.forEach(m => {
+    if (!m) return;
+    if (Array.isArray(m.extraSpecs)) {
+      m.extraSpecs = m.extraSpecs.map(sp => ({
+        label: sp.label||'', value: sp.value||'',
+        bold: sp.bold||false, boldLabel: sp.boldLabel||false,
+        underLabel: sp.underLabel||false, underValue: sp.underValue||false,
+      }));
+    } else { m.extraSpecs = []; }
+    if (!Array.isArray(m.cwItems))    m.cwItems    = [];
+    if (!Array.isArray(m.optItems))   m.optItems   = [];
+    if (!Array.isArray(m.partItems))  m.partItems  = [];
+    if (!Array.isArray(m.partGroups)) m.partGroups = [];
+    if (!Array.isArray(m.images))     m.images     = [];
+  });
+  if (!Array.isArray(s.remarkItems))     s.remarkItems     = [];
+  if (!Array.isArray(s.installmentRows)) s.installmentRows = [];
+}
+
 async function stripImagesForSave(stateObj) {
   const s = JSON.parse(JSON.stringify(stateObj));
   for (const m of (s.machines || [])) {
@@ -3009,7 +3251,7 @@ function newContract() {
   };
   document.getElementById('f-date').value = state.date;
   document.getElementById('f-company').value=''; document.getElementById('f-addr').value='';
-  document.getElementById('f-tel').value=''; document.getElementById('f-email').value='';
+  document.getElementById('f-tel').value=''; document.getElementById('f-fax').value=''; document.getElementById('f-email').value='';
   document.getElementById('f-attn').value=''; document.getElementById('f-port').value='';
   document.getElementById('f-currency').value='USD'; document.getElementById('f-revised').value='';
   document.getElementById('f-remarks').value=''; document.getElementById('f-notes').value='';
@@ -3092,6 +3334,7 @@ function loadStateJSON(input) {
       const loaded = JSON.parse(e.target.result);
       // Restore state
       state = loaded;
+      normalizeState(state);
       // Ensure machines array is valid
       if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
       if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
@@ -3106,6 +3349,7 @@ function loadStateJSON(input) {
       sv('f-company',      state.company);
       sv('f-addr',         state.addr);
       sv('f-tel',          state.tel);
+      sv('f-fax',          state.fax||'');
       sv('f-email',        state.email);
       sv('f-attn',         state.attn);
       sv('f-port',         state.port);
@@ -3181,6 +3425,7 @@ function loadFromPastedJSON() {
   try {
     const loaded = JSON.parse(raw);
     state = loaded;
+    normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
@@ -3193,6 +3438,7 @@ function loadFromPastedJSON() {
     sv('f-company',      state.company);
     sv('f-addr',         state.addr);
     sv('f-tel',          state.tel);
+    sv('f-fax',          state.fax||'');
     sv('f-email',        state.email);
     sv('f-attn',         state.attn);
     sv('f-port',         state.port);
@@ -3311,12 +3557,14 @@ async function loadFromLibrary(contractNo) {
     if (!confirm(`Load contract ${contractNo}?\nThis will overwrite the current form.`)) return;
     // Load state same as Paste JSON
     state = data.state;
+    normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
     sv('f-admin',state.admin); sv('f-doctype',state.docType); sv('f-status',state.status);
     sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
     sv('f-company',state.company); sv('f-addr',state.addr); sv('f-tel',state.tel);
+    sv('f-fax',state.fax||'');
     sv('f-email',state.email); sv('f-attn',state.attn); sv('f-port',state.port);
     sv('f-currency',state.currency); sv('f-rate-usd',state.rateUSD); sv('f-rate-myr',state.rateMYR);
     sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct);
@@ -3548,11 +3796,33 @@ async function searchImagePicker() {
 function selectImageFromPicker(idx) {
   const img = _imagePickerCache[idx];
   if (!img) return;
-  if (!M().images) M().images = [];
-  if (!M().images.includes(img.url)) {
-    M().images.push(img.url);
-    reloadImageThumbs();
+  const m = M();
+  // Check if parts machine with groups
+  if (m.machineType === 'parts' && Array.isArray(m.partGroups)) {
+    const gi = typeof _activeGroupIdx === 'number' ? _activeGroupIdx : 0;
+    if (!m.partGroups[gi]) return;
+    if (_activeItemIdx >= 0) {
+      // Item-level image
+      const item = m.partGroups[gi].items[_activeItemIdx];
+      if (item) {
+        if (!item.images) item.images = [];
+        if (!item.images.includes(img.url)) item.images.push(img.url);
+      }
+    } else {
+      // Group-level image
+      if (!m.partGroups[gi].images) m.partGroups[gi].images = [];
+      if (!m.partGroups[gi].images.includes(img.url)) m.partGroups[gi].images.push(img.url);
+    }
+    _activeItemIdx = -1;
+    renderPartGroups();
     updatePreview();
+  } else {
+    if (!m.images) m.images = [];
+    if (!m.images.includes(img.url)) {
+      m.images.push(img.url);
+      reloadImageThumbs();
+      updatePreview();
+    }
   }
   closeImagePicker();
 }
@@ -3612,6 +3882,7 @@ function loadCustomerFromDB(idx) {
   sv('f-company', c.company);
   sv('f-addr',    c.addr);
   sv('f-tel',     c.tel);
+  sv('f-fax',     c.fax||'');
   sv('f-email',   c.email);
   sv('f-attn',    c.attn);
   if (c.port) sv('f-port', c.port);
@@ -3622,22 +3893,23 @@ function loadCustomerFromDB(idx) {
 async function saveCurrentCustomerToDB() {
   if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
   const statusEl = document.getElementById('save-customer-status');
+  const setStatus = (txt, col) => { if (statusEl) { statusEl.textContent = txt; statusEl.style.color = col||'#888'; } };
   const company = (document.getElementById('f-company')?.value || '').trim();
   if (!company) {
-    statusEl.textContent = '⚠️ Company name is empty';
-    statusEl.style.color = '#c0392b';
+    setStatus('⚠️ Company name is empty', '#c0392b');
+    alert('Company name is empty!');
     return;
   }
   const customer = {
     company, 
-    addr:  document.getElementById('f-addr')?.value  || '',
-    tel:   document.getElementById('f-tel')?.value   || '',
-    email: document.getElementById('f-email')?.value || '',
+    addr:  (document.getElementById('f-addr')?.value  || '').replace(/[\r\n]+/g,' ').trim(),
+    tel:   (document.getElementById('f-tel')?.value   || '').replace(/[\r\n]+/g,' ').trim(),
+    email: (document.getElementById('f-email')?.value || '').replace(/[\r\n]+/g,' ').trim(),
+    fax:   (document.getElementById('f-fax')?.value   || '').replace(/[\r\n]+/g,' ').trim(),
     attn:  document.getElementById('f-attn')?.value  || '',
     port:  document.getElementById('f-port')?.value  || ''
   };
-  statusEl.textContent = 'Saving...';
-  statusEl.style.color = '#888';
+  setStatus('Saving...', '#888');
   try {
     await fetch(gsUrl, {
       method: 'POST', mode: 'no-cors',
@@ -3645,12 +3917,10 @@ async function saveCurrentCustomerToDB() {
       body: JSON.stringify({ action: 'saveCustomer', customer })
     });
     _customerDBCache = [];
-    statusEl.textContent = `✅ "${company}" saved!`;
-    statusEl.style.color = '#2e7d32';
-    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    setStatus(`✅ "${company}" saved!`, '#2e7d32');
+    setTimeout(() => setStatus('', '#888'), 3000);
   } catch(e) {
-    statusEl.textContent = '❌ ' + e.message;
-    statusEl.style.color = '#c0392b';
+    setStatus('❌ ' + e.message, '#c0392b');
   }
 }
 
