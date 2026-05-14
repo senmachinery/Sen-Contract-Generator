@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.2</title>
+<title>Sen Labels — Contract Generator v10.5</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.2</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.5</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -553,7 +553,8 @@ function mobileTab(tab) {
       </div>
       <div class="field-group">
         <label>Payment Condition</label>
-        <select id="f-pay-cond" onchange="updatePreview()">
+        <select id="f-pay-cond" onchange="onPayCondChange(this.value)">
+          <option value="20/80">20% Deposit, 80% Before Delivery</option>
           <option value="30/70">30% Deposit, 70% Before Delivery</option>
           <option value="50/50">50% Deposit, 50% Before Delivery</option>
           <option value="full">Full Payment Before Delivery</option>
@@ -1710,6 +1711,16 @@ function calcUnitTotal() {
   }
 }
 
+function onPayCondChange(val) {
+  // Auto-update deposit % based on selected condition
+  const depMap = { '20/80': 20, '30/70': 30, '50/50': 50, 'full': 100 };
+  if (depMap[val] !== undefined) {
+    const depField = document.getElementById('f-deposit-pct');
+    if (depField) { depField.value = depMap[val]; state.depositPct = depMap[val]; }
+  }
+  updatePreview();
+}
+
 function calcPrice() {
   // Show/hide unit price row for parts machines
   const isParts = M().machineType === 'parts';
@@ -2186,6 +2197,9 @@ function updatePartTotal() {
   const discAmt = (m.discountPct||0) > 0 ? subtotal * (m.discountPct/100) : (m.discountAmt||0);
   const net = subtotal - discAmt;
   m.sellPrice = net;
+  // Auto-update Price tab sell price field
+  const spField = document.getElementById('f-sell-price');
+  if (spField) spField.value = net || '';
   const el = document.getElementById('part-total-display');
   if (el) {
     let txt = '';
@@ -3052,9 +3066,11 @@ function buildBankDetails() {
 
 function buildPayCondText() {
   const p = state.payCond;
-  if (p==='30/70') return `${state.depositPct||30}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
-  if (p==='50/50') return '50% Deposit Upon Order Confirmed, Balance Before Delivery.';
-  if (p==='full') return 'Full Payment Before Delivery.';
+  const dep = state.depositPct || 30;
+  if (p==='20/80') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
+  if (p==='30/70') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
+  if (p==='50/50') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
+  if (p==='full')  return 'Full Payment Before Delivery.';
   return state.delivery||'As per agreement.';
 }
 
