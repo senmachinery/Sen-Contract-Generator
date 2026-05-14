@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v9.9</title>
+<title>Sen Labels — Contract Generator v10.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v9.9</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.1</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -386,7 +386,24 @@ function mobileTab(tab) {
       <label>Notes <span style="font-weight:400;font-size:11px;color:#888">(printed next to date on contract)</span></label>
       <textarea id="f-notes" rows="2" placeholder="e.g. Valid for export only" oninput="state.notes=this.value;updatePreview()"></textarea>
     </div>
-    <select id="f-status" style="display:none"><option value="Confirmed" selected>Confirmed</option></select>
+    <div class="field-group">
+      <label>Contract Status</label>
+      <select id="f-status" onchange="state.status=this.value;toggleSignedPDFSection(this.value);updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
+        <option value="Quotation Sent">📤 Quotation Sent</option>
+        <option value="Confirmed">✅ Confirmed</option>
+        <option value="Delivered">🚚 Delivered</option>
+        <option value="Cancelled">❌ Cancelled</option>
+      </select>
+    </div>
+    <div class="field-group" id="signed-pdf-section" style="display:none">
+      <label>Signed PDF <span style="font-weight:400;font-size:11px;color:#888">(upload customer signed copy)</span></label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button onclick="uploadSignedPDF()" style="padding:5px 12px;background:#1a73e8;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">📎 Upload Signed PDF</button>
+        <input type="file" id="signed-pdf-input" accept="application/pdf" style="display:none">
+        <span id="signed-pdf-status" style="font-size:11px;color:#888"></span>
+      </div>
+      <div id="signed-pdf-link" style="margin-top:4px;font-size:11px"></div>
+    </div>
     <div class="field-group">
       <label>Revised On</label>
       <input type="date" id="f-revised" oninput="updatePreview()">
@@ -876,8 +893,8 @@ let state = {
   installmentRate:0, installmentStartDate:'', installmentRows:[],
   validity:'One (1) Month only',
   delivery:'To be determined upon confirmation and/or full payment.',
-  balanceLabel:'', payTermsText:'', warrantyOverride:'',
-  docType:'Sales Contract', status:'Quotation', revised:'',
+  balanceLabel:'', payTermsText:'', warrantyOverride:'', signedPdfUrl:'',
+  docType:'Sales Contract', status:'Quotation Sent', revised:'',
   remarks:'',
   remarkItems:[
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
@@ -905,6 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('apps-script-code').textContent = getAppsScriptCode();
   genContractNo();
   renderRemarkItems();
+  toggleSignedPDFSection(state.status||'Quotation Sent');
   renderMachineTabs();
   updateMachineLabels();
   updatePreview();
@@ -3092,6 +3110,57 @@ function doPrint() {
   }, 2000);
 }
 
+function toggleSignedPDFSection(status) {
+  const sec = document.getElementById('signed-pdf-section');
+  if (sec) sec.style.display = (status === 'Confirmed' || status === 'Delivered') ? '' : 'none';
+}
+
+async function uploadSignedPDF() {
+  if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
+  const fileInput = document.getElementById('signed-pdf-input');
+  fileInput.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('signed-pdf-status');
+    statusEl.textContent = 'Uploading...';
+    statusEl.style.color = '#888';
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const contractNo = state.contractNo || 'unknown';
+      const filename = contractNo.replace(/\//g,'-') + '_SIGNED.pdf';
+      const resp = await fetch(gsUrl, {
+        method: 'POST', mode: 'no-cors',
+        headers: {'Content-Type': 'text/plain'},
+        body: JSON.stringify({ action: 'uploadSignedPDF', filename, base64, contractNo })
+      });
+      // Verify upload via GET
+      await new Promise(r => setTimeout(r, 2000));
+      const verify = await fetch(`${gsUrl}?action=getSignedPDF&contractNo=${encodeURIComponent(contractNo)}`);
+      const data = await verify.json();
+      if (data.url) {
+        state.signedPdfUrl = data.url;
+        statusEl.textContent = '✅ Uploaded!';
+        statusEl.style.color = '#2e7d32';
+        const lnk = document.getElementById('signed-pdf-link');
+        if (lnk) lnk.innerHTML = `<a href="${data.url}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`;
+        saveToSheets(true); // auto save record with new URL
+      } else {
+        statusEl.textContent = '⚠️ Upload sent - check Drive';
+        statusEl.style.color = '#e67e00';
+      }
+    } catch(err) {
+      statusEl.textContent = '❌ ' + err.message;
+      statusEl.style.color = '#c0392b';
+    }
+  };
+  fileInput.click();
+}
+
 function normalizeState(s) {
   if (!s) return;
   if (!Array.isArray(s.machines)) s.machines = [];
@@ -3157,7 +3226,8 @@ async function saveToSheets(silent=false) {
     const record = {
       contractNo: state.contractNo, date: state.date, company: state.company,
       machineTitle, currency: state.currency, amount: totalAmt,
-      status: state.status||'Confirmed', admin: state.admin||'NR', port: state.port, notes: state.notes||''
+      status: state.status||'Quotation Sent', admin: state.admin||'NR', port: state.port,
+      notes: state.notes||'', signedPdfUrl: state.signedPdfUrl||''
     };
     if (!silent) setBtn('💾 Saving...', '#888');
     const cleanState = await stripImagesForSave(state);
@@ -3195,7 +3265,7 @@ function loadFromHistory(i) {
   document.getElementById('f-company').value = r.company||'';
   document.getElementById('f-port').value    = r.port||'';
   document.getElementById('f-currency').value= r.currency||'USD';
-  document.getElementById('f-status').value  = r.status||'Quotation';
+  document.getElementById('f-status').value  = r.status||'Quotation Sent';
   document.getElementById('f-notes').value   = r.notes||'';
   document.getElementById('f-date').value    = new Date().toISOString().split('T')[0];
   const yr = new Date().getFullYear().toString().slice(-2);
@@ -3246,7 +3316,7 @@ function newContract() {
     installmentRate:0, installmentStartDate:'', installmentRows:[],
     validity:'One (1) Month only',
     delivery:'To be determined upon confirmation and/or full payment.',
-    docType:'Sales Contract', status:'Quotation', revised:'',
+    docType:'Sales Contract', status:'Quotation Sent', revised:'',
     remarks:'', activeMachineIdx:0, machines:[newMachine()]
   };
   document.getElementById('f-date').value = state.date;
@@ -3343,6 +3413,8 @@ function loadStateJSON(input) {
       sv('f-admin',        state.admin);
       sv('f-doctype',      state.docType);
       sv('f-status',       state.status);
+      toggleSignedPDFSection(state.status);
+      if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
       sv('f-contract-no',  state.contractNo);
       sv('f-date',         state.date);
       sv('f-revised',      state.revised);
@@ -3432,6 +3504,8 @@ function loadFromPastedJSON() {
     sv('f-admin',        state.admin);
     sv('f-doctype',      state.docType);
     sv('f-status',       state.status);
+    toggleSignedPDFSection(state.status);
+    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
     sv('f-contract-no',  state.contractNo);
     sv('f-date',         state.date);
     sv('f-revised',      state.revised);
@@ -3562,6 +3636,8 @@ async function loadFromLibrary(contractNo) {
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
     sv('f-admin',state.admin); sv('f-doctype',state.docType); sv('f-status',state.status);
+    toggleSignedPDFSection(state.status);
+    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
     sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
     sv('f-company',state.company); sv('f-addr',state.addr); sv('f-tel',state.tel);
     sv('f-fax',state.fax||'');
