@@ -558,6 +558,7 @@ function mobileTab(tab) {
           <option value="30/70">30% Deposit, 70% Before Delivery</option>
           <option value="50/50">50% Deposit, 50% Before Delivery</option>
           <option value="full">Full Payment Before Delivery</option>
+          <option value="tradein">Trade-In Offset (No Deposit)</option>
           <option value="custom">Custom (see Terms)</option>
         </select>
       </div>
@@ -1713,7 +1714,7 @@ function calcUnitTotal() {
 
 function onPayCondChange(val) {
   // Auto-update deposit % based on selected condition
-  const depMap = { '20/80': 20, '30/70': 30, '50/50': 50, 'full': 100 };
+  const depMap = { '20/80': 20, '30/70': 30, '50/50': 50, 'full': 100, 'tradein': 0 };
   if (depMap[val] !== undefined) {
     const depField = document.getElementById('f-deposit-pct');
     if (depField) { depField.value = depMap[val]; state.depositPct = depMap[val]; }
@@ -2197,9 +2198,6 @@ function updatePartTotal() {
   const discAmt = (m.discountPct||0) > 0 ? subtotal * (m.discountPct/100) : (m.discountAmt||0);
   const net = subtotal - discAmt;
   m.sellPrice = net;
-  // Auto-update Price tab sell price field
-  const spField = document.getElementById('f-sell-price');
-  if (spField) spField.value = net || '';
   const el = document.getElementById('part-total-display');
   if (el) {
     let txt = '';
@@ -2544,7 +2542,8 @@ function buildContractHTML() {
   const totalPrice = machinePrices.reduce((s,p)=>s+(p||0), 0);
   const totalDep = totalPrice * ((state.depositPct||30)/100);
   const tradeinAmt = (state.tradeinDesc && state.tradeinValue > 0) ? (state.tradeinValue||0) : 0;
-  const totalBal = totalPrice - totalDep - tradeinAmt;
+  const effectiveDep = state.payCond === 'tradein' ? 0 : totalDep;
+  const totalBal = totalPrice - effectiveDep - tradeinAmt;
 
   // ---- PARTS ORDER: different layout ----
   const isPartsOrder = state.machines.some(m => m.machineType === 'parts');
@@ -2789,7 +2788,15 @@ function buildContractHTML() {
   };
 
   let payRows = '';
-  if (state.payCond !== 'full') {
+  if (state.payCond === 'tradein') {
+    // Trade-In Offset: no deposit, just trade-in deduction then balance
+    if (tradeinAmt > 0) {
+      payRows = `
+    <tr><td colspan="4"><strong>~ Trade-In : ${esc(state.tradeinDesc||'Trade-In Machine')}</strong></td><td style="text-align:right;font-weight:700;color:#7b3f00">- ${fmt(tradeinAmt)}</td></tr>`;
+    }
+    payRows += `
+    <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(totalBal)}</td></tr>`;
+  } else if (state.payCond !== 'full') {
     payRows = `
     <tr><td colspan="4"><strong>~ ${state.depositPct||30}% Deposit Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(totalDep)}</td></tr>`;
     if (tradeinAmt > 0) {
@@ -3070,7 +3077,8 @@ function buildPayCondText() {
   if (p==='20/80') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
   if (p==='30/70') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
   if (p==='50/50') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
-  if (p==='full')  return 'Full Payment Before Delivery.';
+  if (p==='full')     return 'Full Payment Before Delivery.';
+  if (p==='tradein')  return 'Trade-In offset applied. Balance payment before delivery.';
   return state.delivery||'As per agreement.';
 }
 
