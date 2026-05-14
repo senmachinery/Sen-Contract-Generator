@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.1</title>
+<title>Sen Labels — Contract Generator v10.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.1</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.2</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2611,7 +2611,8 @@ function buildContractHTML() {
         const itemImgs = (item.images||[]).filter(Boolean);
         if (itemImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm 2mm 2mm 8mm"><div class="cp-img-gallery">${itemImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
       });
-      // Per-parts-machine discount
+      }); // end groups.forEach
+      // Per-parts-machine discount (applied once after all groups)
       const discPct = m.discountPct||0;
       const discFixed = m.discountAmt||0;
       const discAmt = discPct > 0 ? partsSubtotal*(discPct/100) : discFixed;
@@ -2622,7 +2623,6 @@ function buildContractHTML() {
       } else {
         subtotalAll += partsSubtotal;
       }
-      }); // end groups.forEach
     });
 
     const totalAll = subtotalAll;
