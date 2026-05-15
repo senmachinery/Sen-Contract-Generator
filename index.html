@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.5</title>
+<title>Sen Labels — Contract Generator v10.6</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.5</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.6</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -952,6 +952,14 @@ function renderMachineTabs() {
         del.innerHTML = '&#215;';
         del.title = 'Remove';
         del.addEventListener('click', e => { e.stopPropagation(); removeMachine(i); });
+        // iOS touch support for delete button
+        del.addEventListener('touchend', e => {
+          e.stopPropagation();
+          e.preventDefault();
+          clearTimeout(btn._tapTimer);
+          btn._longPress = true; // prevent btn touchend from firing switchMachine
+          removeMachine(i);
+        }, { passive: false });
         btn.appendChild(del);
       }
       btn.addEventListener('click', () => switchMachine(i));
@@ -969,6 +977,7 @@ function renderMachineTabs() {
       }, { passive: true });
       btn.addEventListener('touchend', e => {
         clearTimeout(btn._tapTimer);
+        if (e.target.classList.contains('m-tab-del')) return; // del handled separately
         if (!btn._longPress) switchMachine(i); // short tap = switch
       }, { passive: true });
       btn.addEventListener('touchmove', e => {
