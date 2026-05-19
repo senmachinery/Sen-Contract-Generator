@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.20</title>
+<title>Sen Labels — Contract Generator v10.22</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.20</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.22</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -949,6 +949,7 @@ let state = {
   remarkItems:[
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
     'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.',
+    'Warranty does not cover consumable parts including but not limited to UV/LED lamps or lamp sheets, Printing Rollers, Impression Rollers, and Nip Rollers. Warranty also does not cover any mechanical damage caused by misuse, negligence, or human error.',
     'This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer\'s Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded.'
   ],
   activeMachineIdx:0,
@@ -2761,9 +2762,9 @@ function buildContractHTML() {
   ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${esc(m.desc)}</div>` : ''}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
+  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>` : ''}
   ${imgHtml}
-  ${unitPriceHtml}
-  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>` : ''}`;
+  ${unitPriceHtml}`;
         // Add a summary row in the table for this machine
         machineRows += `<tr style="background:#f4f6fb">
           <td style="padding:1.5mm 2mm;font-weight:700">${mi+1})</td>
@@ -2883,9 +2884,16 @@ function buildContractHTML() {
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}</table>
   ${(function(){
       const isPartsOnly = state.machines.length > 0 && state.machines.every(m => m.machineType === 'parts');
+      const hasNonParts = state.machines.some(m => m.machineType !== 'parts');
       const SPEC = 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify';
+      const WARRANTY = 'Warranty does not cover consumable parts';
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
-      if (isPartsOnly) items = items.filter(x => !String(x).startsWith(SPEC));
+      if (isPartsOnly) {
+        // Parts only: remove spec remark and warranty remark
+        items = items.filter(x => !String(x).startsWith(SPEC) && !String(x).startsWith(WARRANTY));
+      } else if (!hasNonParts) {
+        // No machines at all: keep all
+      }
       return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
     })()}
   <table class="cp-terms-table">
@@ -2943,10 +2951,10 @@ function buildContractHTML() {
   ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${esc(m.desc)}</div>` : ''}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
+  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>` : ''}
   ${imgHtml}
   ${unitPriceHtml}
-  ${buildOptionalItems(m)}
-  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>` : ''}`;
+  ${buildOptionalItems(m)}`;
   });
 
   // Payment summary rows — use net price (after discount)
@@ -3058,9 +3066,16 @@ function buildContractHTML() {
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${typeof instRows!=='undefined'?instRows:''}</table>
   ${(function(){
       const isPartsOnly = state.machines.length > 0 && state.machines.every(m => m.machineType === 'parts');
+      const hasNonParts = state.machines.some(m => m.machineType !== 'parts');
       const SPEC = 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify';
+      const WARRANTY = 'Warranty does not cover consumable parts';
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
-      if (isPartsOnly) items = items.filter(x => !String(x).startsWith(SPEC));
+      if (isPartsOnly) {
+        // Parts only: remove spec remark and warranty remark
+        items = items.filter(x => !String(x).startsWith(SPEC) && !String(x).startsWith(WARRANTY));
+      } else if (!hasNonParts) {
+        // No machines at all: keep all
+      }
       return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
     })()}
 
@@ -3625,6 +3640,7 @@ function newContract() {
   state.remarkItems = [
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
     'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.',
+    'Warranty does not cover consumable parts including but not limited to UV/LED lamps or lamp sheets, Printing Rollers, Impression Rollers, and Nip Rollers. Warranty also does not cover any mechanical damage caused by misuse, negligence, or human error.',
     'This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer\'s Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded.'
   ];
   renderRemarkItems();
