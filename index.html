@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.25</title>
+<title>Sen Labels — Contract Generator v10.26</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.25</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.26</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3452,24 +3452,31 @@ function buildExportFilename(ext) {
 
 function doPrint() {
   saveToSheets(true);
-  // Set document title so PDF filename matches contract
+  const fname = buildExportFilename('pdf').replace(/\.pdf$/,'');
   const origTitle = document.title;
-  document.title = buildExportFilename('pdf').replace(/\.pdf$/,'');
+  const origState = history.state;
+
+  // Step 1: Set contract filename as title (for PDF save dialog)
+  document.title = fname;
+
+  // Step 2: Clear URL to remove watermark — do it just before print
+  try { history.replaceState(null, '', '/'); } catch(e) {}
+
   const style = document.createElement('style');
-  style.id = '_print_scale_fix';
-  style.textContent = `
-    @media print {
-      html { zoom: 1 !important; transform: none !important; }
-      body { zoom: 1 !important; transform: none !important; }
-    }
-  `;
+  style.id = '_print_fix';
+  style.textContent = '@media print{html,body{zoom:1!important;transform:none!important}}';
   document.head.appendChild(style);
-  window.print();
+
   setTimeout(() => {
-    document.title = origTitle;
-    const el = document.getElementById('_print_scale_fix');
-    if (el) el.remove();
-  }, 2000);
+    window.print();
+    // Restore after print dialog closes
+    setTimeout(() => {
+      document.title = origTitle;
+      try { history.replaceState(origState, '', window.location.pathname + window.location.search); } catch(e) {}
+      const el = document.getElementById('_print_fix');
+      if (el) el.remove();
+    }, 3000);
+  }, 150);
 }
 
 function toggleSignedPDFSection(status) {
