@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.15</title>
+<title>Sen Labels — Contract Generator v10.17</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.15</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.17</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2748,18 +2748,12 @@ function buildContractHTML() {
         const qtyStr = uQty > 1 ? ` ${fmt(uPrice)} x ${uQty} Units = ` : '';
         if (discountAmt > 0) {
           const dLabel = (m.discountLabel||'') ? ((m.discountPct||0)>0 ? `${m.discountLabel} (${m.discountPct}%)` : m.discountLabel) : ((m.discountPct||0)>0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount');
-          unitPriceHtml = `<div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;UNIT PRICE :${qtyStr} ${fmt(grossPrice)}${portStr}</div>
-  <div style="font-size:10pt;margin:0 0 1mm 6mm;color:#c0392b">${dLabel} : &minus; ${fmt(discountAmt)}</div>
-  <div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;NET PRICE : ${fmt(netPrice)}${portStr}</div>`;
+          unitPriceHtml = ''; // buildComeWith handles pricing; discount shown separately
         } else {
           // If cwItems have prices, show unitPrice separately; buildComeWith handles breakdown + total
           const cwTotal2 = (m.cwItems||[]).reduce((s,i)=>{const v=parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0;return s+v;},0);
           const hasItemizedCw2 = cwTotal2 > 0 && (m.unitPrice||0) > 0;
-          if (hasItemizedCw2) {
-            unitPriceHtml = ''; // buildComeWith will handle the full price display
-          } else {
-            unitPriceHtml = `<div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;UNIT PRICE :${qtyStr} ${fmt(netPrice)}${portStr}</div>`;
-          }
+          unitPriceHtml = ''; // buildComeWith always handles pricing now
         }
         machineBlocks += `
   <div class="cp-machine-title">${mi+1})&nbsp;&nbsp;${buildMachineTitle(m)}</div>
@@ -2933,13 +2927,9 @@ function buildContractHTML() {
     const uPrice = m.unitPrice || grossPrice;
     const qtyStr = uQty > 1 ? ` ${fmt(uPrice)} x ${uQty} Units = ` : '';
     if (discountAmt > 0) {
-      const discLabel = (m.discountLabel||'') ? ((m.discountPct||0)>0 ? `${m.discountLabel} (${m.discountPct}%)` : m.discountLabel) : ((m.discountPct||0)>0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount');
-      unitPriceHtml = `
-  <div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;UNIT PRICE :${qtyStr} ${fmt(grossPrice)}${portStr}</div>
-  <div style="font-size:10pt;margin:0 0 1mm 6mm;color:#c0392b">${discLabel} : &minus; ${fmt(discountAmt)}</div>
-  <div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;NET PRICE : ${fmt(netPrice)}${portStr}</div>`;
+      unitPriceHtml = ''; // buildComeWith handles pricing
     } else {
-      unitPriceHtml = `<div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;UNIT PRICE :${qtyStr} ${fmt(netPrice)}${portStr}</div>`;
+      unitPriceHtml = ''; // buildComeWith always handles pricing now
     }
     machineBlocks += `
   <div class="cp-machine-title">${i+1})&nbsp;&nbsp;${title}</div>
@@ -3212,49 +3202,56 @@ function parseCwVal(val) {
 }
 
 function buildComeWith(m) {
-  const items = (m.cwItems||[]).filter(Boolean).filter(i=>i.desc);
-  if (!items.length) return '';
   const curr = state.currency;
   const fmt  = n => formatMoney(n, curr);
+  const items = (m.cwItems||[]).filter(Boolean).filter(i=>i.desc);
   const cwTotal = items.reduce((s,i) => s + parseCwVal(i.val), 0);
-  const hasItemizedCw = cwTotal > 0 && (m.unitPrice||0) > 0;
+  const unitPrice = m.unitPrice || m.sellPrice || 0;
+  const grandTotal = unitPrice + cwTotal;
+  const portLabel = state.port ? ` [${state.port}]` : '';
 
-  let html = '<div class="cp-come-with">';
+  // Always use itemized format with orange box
+  let inner = '';
 
-  if (hasItemizedCw) {
-    // Itemized format: Unit Price + each item + total
-    html += `<div style="display:flex;justify-content:space-between;font-size:10pt;font-weight:600;margin-bottom:1mm">
+  // Unit Price row (always show if we have a price)
+  if (unitPrice > 0) {
+    inner += `<div style="display:flex;justify-content:space-between;font-size:10pt;font-weight:600;margin-bottom:1.5mm">
       <span>Unit Price</span>
-      <span>${curr}&nbsp;&nbsp;${fmt(m.unitPrice)}</span></div>`;
+      <span>${fmt(unitPrice)}</span></div>`;
+  }
+
+  // Come With items
+  if (items.length > 0) {
     items.forEach(item => {
       const itemAmt = parseCwVal(item.val);
       const label = esc(item.qty) ? esc(item.qty)+' '+esc(item.desc) : esc(item.desc);
       if (itemAmt > 0) {
-        html += `<div style="display:flex;justify-content:space-between;font-size:10pt;margin-left:4mm">
+        inner += `<div style="display:flex;justify-content:space-between;font-size:10pt;margin-left:4mm;margin-bottom:0.5mm">
           <span>- ${label}</span>
-          <span>${curr}&nbsp;&nbsp;${fmt(itemAmt)}</span></div>`;
+          <span>${fmt(itemAmt)}</span></div>`;
       } else {
-        html += `<div style="font-size:10pt;margin-left:4mm;font-weight:600;text-decoration:underline">- ${label}</div>`;
+        inner += `<div style="font-size:10pt;margin-left:4mm;font-weight:600;text-decoration:underline;margin-bottom:0.5mm">- ${label}</div>`;
       }
     });
-    const grandTotal = (m.unitPrice||0) + cwTotal;
-    const portLabel = state.port ? ` [${state.port}]` : '';
-    const remarkLabel = m.machineRemarks ? esc(m.machineRemarks) : '';
-    html += `<div style="display:flex;justify-content:space-between;font-size:10pt;font-weight:700;border-top:1.5px solid #1e3a5f;margin-top:2mm;padding-top:1.5mm;color:#7a4500">
-      <span>${remarkLabel}${portLabel}</span>
-      <span>${curr}&nbsp;&nbsp;${fmt(grandTotal)}</span></div>`;
-  } else {
-    // Simple format
-    html += '<div class="cw-title">Come With :</div>';
-    items.forEach(item => {
-      const valStr = item.val ? (item.val.startsWith('@')?item.val:'@'+item.val) : '';
-      html += `<div style="display:flex;justify-content:space-between;font-size:10pt;margin-left:20mm">
-        <span>- ${esc(item.qty)?esc(item.qty)+' '+esc(item.desc):esc(item.desc)}</span>
-        <span>${valStr}</span></div>`;
-    });
   }
-  html += '</div>';
-  return html;
+
+  // Discount row if any
+  const discAmt2 = (m.discountPct||0) > 0 ? grandTotal*((m.discountPct||0)/100) : (m.discountAmt||0);
+  if (discAmt2 > 0) {
+    const dLbl = (m.discountLabel||'') ? ((m.discountPct||0)>0?`${m.discountLabel} (${m.discountPct}%)`:m.discountLabel) : ((m.discountPct||0)>0?`Special Discount (${m.discountPct}%)`:'Special Discount');
+    inner += `<div style="display:flex;justify-content:space-between;font-size:10pt;border-top:1px solid #e07800;margin-top:1mm;padding-top:1mm">
+      <span>${esc(dLbl)}</span><span style="color:#c0392b">- ${fmt(discAmt2)}</span></div>`;
+    inner += `<div style="display:flex;justify-content:space-between;font-size:10.5pt;font-weight:700;padding-top:1mm">
+      <span>${portLabel ? portLabel.trim() : '&nbsp;'}</span>
+      <span>${fmt(grandTotal - discAmt2)}</span></div>`;
+  } else {
+    inner += `<div style="display:flex;justify-content:space-between;font-size:10.5pt;font-weight:700;border-top:1px solid #e07800;margin-top:2mm;padding-top:1.5mm">
+      <span>${portLabel ? portLabel.trim() : '&nbsp;'}</span>
+      <span>${fmt(grandTotal)}</span></div>`;
+  }
+
+  // Wrap in orange box
+  return `<div style="background:#fff8ee;border:1px solid #f5d9a8;border-left:4px solid #e07800;border-radius:0 3px 3px 0;padding:3mm 4mm;margin:3mm 0;color:#7a4500">${inner}</div>`;
 }
 
 function buildOptionalItems(m) {
