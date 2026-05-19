@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.7</title>
+<title>Sen Labels — Contract Generator v10.9</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.7</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.9</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -531,6 +531,7 @@ function mobileTab(tab) {
     </div>
     <div class="field-group">
       <label>Special Discount</label>
+      <input type="text" id="f-discount-label" placeholder="e.g. Special Discount / VVIP Discount / Early Bird" style="width:100%;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;box-sizing:border-box;margin-bottom:6px" oninput="M().discountLabel=this.value;updatePreview()">
       <div class="field-row" style="margin-bottom:0">
         <div class="field-group">
           <label style="font-size:10px;font-weight:400;color:#888">By % (e.g. 10 = 10%)</label>
@@ -620,6 +621,17 @@ function mobileTab(tab) {
       <label>Balance Payment Label</label>
       <input type="text" id="f-balance-label" placeholder="Before Delivery" oninput="updatePreview()">
       <div class="field-hint">e.g. "Before Delivery" / "After Installation Within 30 Days"</div>
+    </div>
+    <div class="field-group" style="margin-top:10px">
+      <label style="display:flex;align-items:center;justify-content:space-between">
+        <span>Custom Payment Rows <span style="font-weight:400;font-size:11px;color:#888">(replaces auto Deposit/Balance)</span></span>
+        <span style="display:flex;gap:4px">
+          <button onclick="addCustomPayRow()" style="padding:2px 8px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;font-size:11px;cursor:pointer">+ Add Row</button>
+          <button onclick="clearCustomPayRows()" style="padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;font-size:11px;cursor:pointer">Clear All</button>
+        </span>
+      </label>
+      <div id="custom-pay-rows-wrap" style="margin-top:6px"></div>
+      <div style="font-size:11px;color:#888;margin-top:4px">Leave empty to use auto-calculated Deposit/Balance rows.</div>
     </div>
     <div class="field-group">
       <label>Term Of Payment (override)</label>
@@ -908,7 +920,7 @@ function newMachine() {
     qty:'1 Unit',
     partItems:[],
     partGroups:[],
-    discountPct:0, discountAmt:0,
+    discountPct:0, discountAmt:0, discountLabel:'',
     costMachine:0, costAddons:0, costStd:60000, costTradein:0,
     custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
     _finalPrice:0
@@ -930,6 +942,7 @@ let state = {
   validity:'One (1) Month only',
   delivery:'To be determined upon confirmation and/or full payment.',
   balanceLabel:'', payTermsText:'', warrantyOverride:'', signedPdfUrl:'',
+  customPayRows:[],
   bankOverride: false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
   docType:'Sales Contract', status:'Quotation Sent', revised:'',
   remarks:'',
@@ -1237,8 +1250,9 @@ function savePriceFields() {
   M().sellPrice   = n('f-sell-price');
   M().unitPrice   = n('f-unit-price') || 0;
   M().unitQty     = parseInt(g('f-unit-qty')) || 1;
-  M().discountPct = n('f-discount-pct') || 0;
-  M().discountAmt = n('f-discount-amt') || 0;
+  M().discountPct   = n('f-discount-pct') || 0;
+  M().discountAmt   = n('f-discount-amt') || 0;
+  M().discountLabel = g('f-discount-label');
 }
 
 function saveRates() {
@@ -1287,6 +1301,7 @@ function loadMachineIntoForm() {
     setTimeout(() => {
       setVal('f-discount-pct', m.discountPct||'');
       setVal('f-discount-amt', m.discountAmt||'');
+      setVal('f-discount-label', m.discountLabel||'');
       renderPartItems();
     }, 0);
   }
@@ -1762,6 +1777,95 @@ function calcUnitTotal() {
   }
 }
 
+function renderCustomPayRows() {
+  const wrap = document.getElementById('custom-pay-rows-wrap');
+  if (!wrap) return;
+  if (!Array.isArray(state.customPayRows)) state.customPayRows = [];
+  wrap.innerHTML = '';
+  state.customPayRows.forEach((row, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px';
+
+    const labelIn = document.createElement('input');
+    labelIn.type = 'text'; labelIn.placeholder = 'e.g. ~ 30% Deposit Upon Order Confirmation';
+    labelIn.value = row.label || '';
+    labelIn.style.cssText = 'flex:2;padding:5px 7px;border:1px solid #c0cde0;border-radius:4px;font-size:12px';
+    labelIn.addEventListener('input', () => { state.customPayRows[i].label = labelIn.value; updatePreview(); });
+
+    const amtIn = document.createElement('input');
+    amtIn.type = 'text'; amtIn.placeholder = 'Amount or auto';
+    amtIn.value = row.amount || '';
+    amtIn.style.cssText = 'flex:1;padding:5px 7px;border:1px solid #c0cde0;border-radius:4px;font-size:12px';
+    amtIn.title = 'Leave blank = auto-calculate from %. Enter number for fixed amount. Enter "30%" to calc from total.';
+    amtIn.addEventListener('input', () => { state.customPayRows[i].amount = amtIn.value; updatePreview(); });
+
+    const colorSel = document.createElement('select');
+    colorSel.style.cssText = 'padding:5px 4px;border:1px solid #c0cde0;border-radius:4px;font-size:11px;width:75px';
+    [['auto','Auto'],['orange','🟠'],['green','🟢'],['red','🔴'],['normal','⚫']].forEach(([v,l]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = l;
+      if (row.color === v) o.selected = true;
+      colorSel.appendChild(o);
+    });
+    colorSel.addEventListener('change', () => { state.customPayRows[i].color = colorSel.value; updatePreview(); });
+
+    const delBtn = document.createElement('button');
+    delBtn.innerHTML = '✕'; delBtn.style.cssText = 'padding:4px 7px;background:#e74c3c;color:#fff;border:none;border-radius:3px;font-size:12px;cursor:pointer;flex-shrink:0';
+    delBtn.addEventListener('click', () => { state.customPayRows.splice(i, 1); renderCustomPayRows(); updatePreview(); });
+
+    div.appendChild(labelIn); div.appendChild(amtIn); div.appendChild(colorSel); div.appendChild(delBtn);
+    wrap.appendChild(div);
+  });
+}
+
+function addCustomPayRow() {
+  if (!Array.isArray(state.customPayRows)) state.customPayRows = [];
+  state.customPayRows.push({ label: '', amount: '', color: 'auto' });
+  renderCustomPayRows();
+  updatePreview();
+}
+
+function clearCustomPayRows() {
+  state.customPayRows = [];
+  renderCustomPayRows();
+  updatePreview();
+}
+
+function buildCustomPayRowsHTML(totalPrice, fmt) {
+  if (!Array.isArray(state.customPayRows) || state.customPayRows.length === 0) return '';
+  let html = '';
+  state.customPayRows.forEach(row => {
+    if (!row.label) return;
+    // Determine amount
+    let amtDisplay = '';
+    let colorStyle = '';
+    const rawAmt = String(row.amount || '').trim();
+    if (rawAmt.endsWith('%')) {
+      const pct = parseFloat(rawAmt) || 0;
+      const calc = totalPrice * (pct / 100);
+      amtDisplay = fmt(calc);
+    } else if (rawAmt && !isNaN(parseFloat(rawAmt))) {
+      amtDisplay = fmt(parseFloat(rawAmt));
+    }
+    // Color
+    const colorMap = {
+      orange: 'color:#e67e00;', green: 'color:#2e7d32;', red: 'color:#c0392b;',
+      normal: '', auto: ''
+    };
+    // Auto color: orange for deposit-like, green for balance, red for deductions
+    if (row.color === 'auto') {
+      const lbl = (row.label||'').toLowerCase();
+      if (lbl.includes('deposit') || lbl.includes('upon')) colorStyle = 'color:#e67e00;';
+      else if (lbl.includes('balance') || lbl.includes('payment')) colorStyle = 'color:#2e7d32;';
+      else if (lbl.startsWith('~ -') || lbl.includes('trade')) colorStyle = 'color:#7b3f00;';
+    } else {
+      colorStyle = colorMap[row.color] || '';
+    }
+    const labelStr = row.label.startsWith('~') ? row.label : '~ ' + row.label;
+    html += `<tr><td colspan="4"><strong>${esc(labelStr)}</strong></td><td style="text-align:right;font-weight:700;${colorStyle}">${amtDisplay}</td></tr>`;
+  });
+  return html;
+}
+
 function onPayCondChange(val) {
   // Auto-update deposit % based on selected condition
   const depMap = { '20/80': 20, '30/70': 30, '50/50': 50, 'full': 100, 'tradein': 0 };
@@ -1797,7 +1901,7 @@ function calcPrice() {
       resultDiv.style.display = 'block';
       let html = `<div class="pc-row"><span>Selling Price</span><span class="price-tag">${fmt(grossPrice)}</span></div>`;
       if (discountAmt > 0) {
-        const discLabel = (m.discountPct||0) > 0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount';
+        const discLabel = (m.discountLabel||'') ? ((m.discountPct||0)>0 ? `${m.discountLabel} (${m.discountPct}%)` : m.discountLabel) : ((m.discountPct||0)>0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount');
         html += `<div class="pc-row red"><span>${discLabel}</span><span class="price-tag">&#8722; ${fmt(discountAmt)}</span></div>`;
         html += `<div class="pc-row total"><span>Net Price</span><span class="price-tag" style="font-size:15px">${fmt(sellPrice)}</span></div>`;
       } else {
@@ -2627,7 +2731,7 @@ function buildContractHTML() {
         const uPrice = m.unitPrice || grossPrice;
         const qtyStr = uQty > 1 ? ` ${fmt(uPrice)} x ${uQty} Units = ` : '';
         if (discountAmt > 0) {
-          const dLabel = (m.discountPct||0) > 0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount';
+          const dLabel = (m.discountLabel||'') ? ((m.discountPct||0)>0 ? `${m.discountLabel} (${m.discountPct}%)` : m.discountLabel) : ((m.discountPct||0)>0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount');
           unitPriceHtml = `<div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;UNIT PRICE :${qtyStr} ${fmt(grossPrice)}${portStr}</div>
   <div style="font-size:10pt;margin:0 0 1mm 6mm;color:#c0392b">${dLabel} : &minus; ${fmt(discountAmt)}</div>
   <div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;NET PRICE : ${fmt(netPrice)}${portStr}</div>`;
@@ -2699,7 +2803,9 @@ function buildContractHTML() {
     const bal = totalAll - dep;
     const balLbl = state.balanceLabel || 'Before Delivery';
     let payRows = '';
-    if (state.payCond !== 'full') {
+    if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
+      payRows = buildCustomPayRowsHTML(totalPrice, fmt);
+    } else if (state.payCond !== 'full') {
       payRows = `
         <tr><td colspan="4"><strong>~ ${state.depositPct||30}% Deposit Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(dep)}</td></tr>
         <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(bal)}</td></tr>`;
@@ -2804,7 +2910,7 @@ function buildContractHTML() {
     const uPrice = m.unitPrice || grossPrice;
     const qtyStr = uQty > 1 ? ` ${fmt(uPrice)} x ${uQty} Units = ` : '';
     if (discountAmt > 0) {
-      const discLabel = (m.discountPct||0) > 0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount';
+      const discLabel = (m.discountLabel||'') ? ((m.discountPct||0)>0 ? `${m.discountLabel} (${m.discountPct}%)` : m.discountLabel) : ((m.discountPct||0)>0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount');
       unitPriceHtml = `
   <div class="cp-unit-price">&nbsp;&nbsp;&nbsp;&nbsp;UNIT PRICE :${qtyStr} ${fmt(grossPrice)}${portStr}</div>
   <div style="font-size:10pt;margin:0 0 1mm 6mm;color:#c0392b">${discLabel} : &minus; ${fmt(discountAmt)}</div>
@@ -2844,7 +2950,10 @@ function buildContractHTML() {
   };
 
   let payRows = '';
-  if (state.payCond === 'tradein') {
+  // Use custom pay rows if defined
+  if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
+    payRows = buildCustomPayRowsHTML(totalAll, fmt);
+  } else if (state.payCond === 'tradein') {
     // Trade-In Offset: no deposit, just trade-in deduction then balance
     if (tradeinAmt > 0) {
       payRows = `
@@ -3568,6 +3677,7 @@ function loadStateJSON(input) {
       // Bank details
       const bankCb = document.getElementById('f-bank-override');
       if (bankCb) bankCb.checked = state.bankOverride||false;
+      if (Array.isArray(state.customPayRows)) renderCustomPayRows();
       const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
       svBank('f-bank-account',     state.bankAccount||'');
       svBank('f-bank-beneficiary', state.bankBeneficiary||'');
@@ -3666,6 +3776,7 @@ function loadFromPastedJSON() {
     sv('f-warranty-override', state.warrantyOverride || '');
     sv('f-remarks',           state.remarks);
     {const cb=document.getElementById('f-bank-override');if(cb)cb.checked=state.bankOverride||false;}
+    if (Array.isArray(state.customPayRows)) renderCustomPayRows();
     ['account','beneficiary','name','swift','branch'].forEach(k=>{const el=document.getElementById('f-bank-'+k);const sk='bank'+k.charAt(0).toUpperCase()+k.slice(1);if(el)el.value=state[sk]||'';});
     sv('f-notes',        state.notes || '');
     if (!state.remarkItems || state.remarkItems.length === 0) {
@@ -3779,6 +3890,7 @@ async function loadFromLibrary(contractNo) {
       // Bank details
       const bankCb = document.getElementById('f-bank-override');
       if (bankCb) bankCb.checked = state.bankOverride||false;
+      if (Array.isArray(state.customPayRows)) renderCustomPayRows();
       const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
       svBank('f-bank-account',     state.bankAccount||'');
       svBank('f-bank-beneficiary', state.bankBeneficiary||'');
