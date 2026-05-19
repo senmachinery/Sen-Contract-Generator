@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.22</title>
+<title>Sen Labels — Contract Generator v10.23</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.22</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.23</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -722,7 +722,11 @@ function mobileTab(tab) {
     <div class="field-group">
       <label>Remark Items (numbered, printed at bottom of contract)</label>
       <div id="remark-items-list" style="margin-bottom:6px"></div>
-      <button onclick="addRemarkItem()" style="width:100%;padding:5px 0;background:#e8f0fe;color:#1a3a5c;border:1px dashed #7a9ccc;border-radius:4px;font-size:12px;cursor:pointer;margin-top:2px">+ Add Remark</button>
+      <div style="margin-top:4px">
+        <div style="font-size:11px;color:#888;margin-bottom:4px">Quick add preset remarks:</div>
+        <div id="remark-presets-wrap" style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px"></div>
+        <button onclick="addRemarkItem()" style="width:100%;padding:5px 0;background:#e8f0fe;color:#1a3a5c;border:1px dashed #7a9ccc;border-radius:4px;font-size:12px;cursor:pointer">+ Add Custom Remark</button>
+      </div>
     </div>
 
     </div>
@@ -2399,7 +2403,50 @@ function addDefaultCwItems() {
 // ============================================================
 // REMARK ITEMS
 // ============================================================
+const REMARK_PRESETS = [
+  {
+    key: 'delivery',
+    label: '📦 Force Majeure / Delivery Delay',
+    text: 'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.'
+  },
+  {
+    key: 'spec',
+    label: '🔧 Right to Modify Specifications',
+    text: 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.'
+  },
+  {
+    key: 'warranty',
+    label: '⚠️ Warranty Exclusions',
+    text: 'Warranty does not cover consumable parts including but not limited to UV/LED lamps or lamp sheets, Printing Rollers, Impression Rollers, and Nip Rollers. Warranty also does not cover any mechanical damage caused by misuse, negligence, or human error.'
+  },
+  {
+    key: 'binding',
+    label: '📋 Contract Binding & Non-Refundable Deposit',
+    text: "This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer's Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded."
+  }
+];
+
+function renderRemarkPresets() {
+  const wrap = document.getElementById('remark-presets-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  REMARK_PRESETS.forEach(preset => {
+    const alreadyAdded = (state.remarkItems||[]).some(r => r && r.includes(preset.text.substring(0, 40)));
+    const btn = document.createElement('button');
+    btn.style.cssText = `width:100%;padding:5px 10px;text-align:left;border:1px solid ${alreadyAdded?'#b0c4b0':'#c0cde0'};border-radius:4px;font-size:11px;cursor:pointer;background:${alreadyAdded?'#e8f5e8':'#f8fafc'};color:${alreadyAdded?'#2e7d32':'#1a3a5c'};display:flex;align-items:center;justify-content:space-between;gap:6px`;
+    btn.innerHTML = `<span>${preset.label}</span><span style="font-size:10px;opacity:0.7">${alreadyAdded?'✓ Added':'+ Add'}</span>`;
+    btn.addEventListener('click', () => {
+      if (!alreadyAdded) {
+        addRemarkItem(preset.text);
+        renderRemarkPresets(); // refresh to show ✓ Added
+      }
+    });
+    wrap.appendChild(btn);
+  });
+}
+
 function renderRemarkItems() {
+  renderRemarkPresets();
   const list = document.getElementById('remark-items-list');
   if (!list) return;
   list.innerHTML = '';
