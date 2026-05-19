@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.9</title>
+<title>Sen Labels — Contract Generator v10.10</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.9</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.10</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1320,14 +1320,16 @@ function loadMachineIntoForm() {
     document.getElementById('f-unit-price').value   = '';
     document.getElementById('f-unit-qty').value     = 1;
     document.getElementById('f-sell-price').value   = (partsTotal - discAmt) || '';
-    document.getElementById('f-discount-pct').value = m.discountPct || '';
-    document.getElementById('f-discount-amt').value = m.discountAmt || '';
+    document.getElementById('f-discount-pct').value   = m.discountPct || '';
+    document.getElementById('f-discount-amt').value   = m.discountAmt || '';
+    const dlEl = document.getElementById('f-discount-label'); if(dlEl) dlEl.value = m.discountLabel||'';
   } else {
     document.getElementById('f-unit-price').value   = m.unitPrice || '';
     document.getElementById('f-unit-qty').value     = m.unitQty   || 1;
     document.getElementById('f-sell-price').value   = m.sellPrice || '';
-    document.getElementById('f-discount-pct').value = m.discountPct || '';
-    document.getElementById('f-discount-amt').value = m.discountAmt || '';
+    document.getElementById('f-discount-pct').value   = m.discountPct || '';
+    document.getElementById('f-discount-amt').value   = m.discountAmt || '';
+    const dlEl = document.getElementById('f-discount-label'); if(dlEl) dlEl.value = m.discountLabel||'';
   }
   if (document.getElementById('f-parts-desc')) document.getElementById('f-parts-desc').value = m.desc || '';
   // Show extra specs section
@@ -1532,6 +1534,10 @@ function renderMachineParams(type, condition) {
       <button id="btn-add-group" style="width:100%;padding:8px;background:#e8f4e8;border:2px dashed #5a9a5a;border-radius:6px;color:#2d6a2d;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer">+ Add New Group (New 1) 2) 3)...)</button>
       <div style="margin-top:10px;padding:8px;background:#fff8f0;border:1px solid #f0d0a0;border-radius:4px">
         <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount <span style="font-weight:400;color:#888">(applies to total, fill one only)</span></div>
+        <div style="margin-bottom:6px">
+          <label style="font-size:11px;color:#555;font-weight:600">Discount Label</label>
+          <input type="text" id="f-discount-label" placeholder="e.g. Special Discount / VVIP Discount" style="width:100%;padding:5px 8px;border:1px solid #ccd;border-radius:4px;font-size:12px;box-sizing:border-box;margin-top:2px">
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
           <div class="field-group" style="flex:1;margin:0"><label>Discount %</label>
             <input type="number" id="f-discount-pct" min="0" max="100" step="0.1" placeholder="e.g. 10" style="width:100%;padding:6px 8px;border:1px solid #ccd;border-radius:4px;font-size:13px">
@@ -1552,6 +1558,11 @@ function renderMachineParams(type, condition) {
       M().partGroups.push({ title:'', desc:'', images:[], items:[] });
       renderPartGroups(); updatePreview();
     });
+    const discLabelInput = panel.querySelector('#f-discount-label');
+    if (discLabelInput) {
+      discLabelInput.value = M().discountLabel || '';
+      discLabelInput.addEventListener('input', () => { M().discountLabel = discLabelInput.value; updatePreview(); });
+    }
     const discPctInput = panel.querySelector('#f-discount-pct');
     discPctInput.value = M().discountPct || '';
     discPctInput.addEventListener('input', () => {
