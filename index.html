@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.12</title>
+<title>Sen Labels — Contract Generator v10.13</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.12</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.13</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2963,7 +2963,7 @@ function buildContractHTML() {
   let payRows = '';
   // Use custom pay rows if defined
   if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
-    payRows = buildCustomPayRowsHTML(totalAll, fmt);
+    payRows = buildCustomPayRowsHTML(totalPrice, fmt);
   } else if (state.payCond === 'tradein') {
     // Trade-In Offset: no deposit, just trade-in deduction then balance
     if (tradeinAmt > 0) {
