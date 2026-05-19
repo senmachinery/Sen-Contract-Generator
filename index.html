@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.11</title>
+<title>Sen Labels — Contract Generator v10.12</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.11</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.12</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2815,7 +2815,7 @@ function buildContractHTML() {
     const balLbl = state.balanceLabel || 'Before Delivery';
     let payRows = '';
     if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
-      payRows = buildCustomPayRowsHTML(totalPrice, fmt);
+      payRows = buildCustomPayRowsHTML(totalAll, fmt);
     } else if (state.payCond !== 'full') {
       payRows = `
         <tr><td colspan="4"><strong>~ ${state.depositPct||30}% Deposit Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(dep)}</td></tr>
