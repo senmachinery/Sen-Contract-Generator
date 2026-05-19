@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.17</title>
+<title>Sen Labels — Contract Generator v10.19</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.17</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.19</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -948,7 +948,8 @@ let state = {
   remarks:'',
   remarkItems:[
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
-    'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.'
+    'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.',
+    'This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer\'s Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded.'
   ],
   activeMachineIdx:0,
   machines:[newMachine()]
@@ -2880,7 +2881,13 @@ function buildContractHTML() {
   ${state.machines.filter(m=>m.machineType==='parts'&&m.machineRemarks).map(m=>`<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>`).join('')}
   <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#dce8f5;padding:1.2mm 4mm;border-radius:2px;display:inline-block;border:1px solid #c0d6ea;border-left:4px solid #1e3a5f">REMARK</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}</table>
-  ${(function(){const items=(state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');})()}
+  ${(function(){
+      const isPartsOnly = state.machines.length > 0 && state.machines.every(m => m.machineType === 'parts');
+      const SPEC = 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify';
+      let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
+      if (isPartsOnly) items = items.filter(x => !String(x).startsWith(SPEC));
+      return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
+    })()}
   <table class="cp-terms-table">
     <tr><td>Price Validity</td><td>: ${esc(state.validity)}</td></tr>
     <tr><td>Term Of Payment</td><td>: ${esc(state.payTermsText) || buildPayCondText()}</td></tr>
@@ -3049,7 +3056,13 @@ function buildContractHTML() {
 
   <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#dce8f5;padding:1.2mm 4mm;border-radius:2px;display:inline-block;border:1px solid #c0d6ea;border-left:4px solid #1e3a5f">REMARK</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${typeof instRows!=='undefined'?instRows:''}</table>
-  ${(function(){const items=(state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');})()}
+  ${(function(){
+      const isPartsOnly = state.machines.length > 0 && state.machines.every(m => m.machineType === 'parts');
+      const SPEC = 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify';
+      let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
+      if (isPartsOnly) items = items.filter(x => !String(x).startsWith(SPEC));
+      return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
+    })()}
 
   <table class="cp-terms-table">
     <tr><td>Price Validity</td><td>: ${esc(state.validity)}</td></tr>
@@ -3215,20 +3228,21 @@ function buildComeWith(m) {
 
   // Unit Price row (always show if we have a price)
   if (unitPrice > 0) {
-    inner += `<div style="display:flex;justify-content:space-between;font-size:10pt;font-weight:600;margin-bottom:1.5mm">
+    inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
       <span>Unit Price</span>
-      <span>${fmt(unitPrice)}</span></div>`;
+      <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(unitPrice)}</span></div>`;
   }
 
   // Come With items
   if (items.length > 0) {
+    inner += `<div style="font-size:10pt;font-weight:600;margin:2mm 0 1mm 0">Come With :</div>`;
     items.forEach(item => {
       const itemAmt = parseCwVal(item.val);
       const label = esc(item.qty) ? esc(item.qty)+' '+esc(item.desc) : esc(item.desc);
       if (itemAmt > 0) {
-        inner += `<div style="display:flex;justify-content:space-between;font-size:10pt;margin-left:4mm;margin-bottom:0.5mm">
+        inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;margin-left:4mm;margin-bottom:0.5mm;align-items:baseline">
           <span>- ${label}</span>
-          <span>${fmt(itemAmt)}</span></div>`;
+          <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(itemAmt)}</span></div>`;
       } else {
         inner += `<div style="font-size:10pt;margin-left:4mm;font-weight:600;text-decoration:underline;margin-bottom:0.5mm">- ${label}</div>`;
       }
@@ -3239,15 +3253,15 @@ function buildComeWith(m) {
   const discAmt2 = (m.discountPct||0) > 0 ? grandTotal*((m.discountPct||0)/100) : (m.discountAmt||0);
   if (discAmt2 > 0) {
     const dLbl = (m.discountLabel||'') ? ((m.discountPct||0)>0?`${m.discountLabel} (${m.discountPct}%)`:m.discountLabel) : ((m.discountPct||0)>0?`Special Discount (${m.discountPct}%)`:'Special Discount');
-    inner += `<div style="display:flex;justify-content:space-between;font-size:10pt;border-top:1px solid #e07800;margin-top:1mm;padding-top:1mm">
-      <span>${esc(dLbl)}</span><span style="color:#c0392b">- ${fmt(discAmt2)}</span></div>`;
-    inner += `<div style="display:flex;justify-content:space-between;font-size:10.5pt;font-weight:700;padding-top:1mm">
+    inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;border-top:1px solid #e07800;margin-top:1mm;padding-top:1mm;align-items:baseline">
+      <span>${esc(dLbl)}</span><span style="color:#c0392b;text-align:right;white-space:nowrap;min-width:90px">- ${fmt(discAmt2)}</span></div>`;
+    inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10.5pt;font-weight:700;padding-top:1mm;align-items:baseline">
       <span>${portLabel ? portLabel.trim() : '&nbsp;'}</span>
-      <span>${fmt(grandTotal - discAmt2)}</span></div>`;
+      <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(grandTotal - discAmt2)}</span></div>`;
   } else {
-    inner += `<div style="display:flex;justify-content:space-between;font-size:10.5pt;font-weight:700;border-top:1px solid #e07800;margin-top:2mm;padding-top:1.5mm">
+    inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10.5pt;font-weight:700;border-top:1px solid #e07800;margin-top:2mm;padding-top:1.5mm;align-items:baseline">
       <span>${portLabel ? portLabel.trim() : '&nbsp;'}</span>
-      <span>${fmt(grandTotal)}</span></div>`;
+      <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(grandTotal)}</span></div>`;
   }
 
   // Wrap in orange box
@@ -3610,7 +3624,8 @@ function newContract() {
   document.getElementById('f-remarks').value=''; document.getElementById('f-notes').value='';
   state.remarkItems = [
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
-    'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.'
+    'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.',
+    'This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer\'s Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded.'
   ];
   renderRemarkItems();
   document.getElementById('f-rate-usd').value='0.1385'; document.getElementById('f-rate-myr').value='0.618';
