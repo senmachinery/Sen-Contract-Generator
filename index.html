@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.6</title>
+<title>Sen Labels — Contract Generator v10.7</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -323,7 +323,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.6</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.7</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -668,6 +668,40 @@ function mobileTab(tab) {
     <div class="field-group">
       <textarea id="f-machine-remarks" rows="3" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. * Price includes installation and training on-site." oninput="M().machineRemarks=this.value;updatePreview()"></textarea>
     </div>
+    <div class="section-title" style="margin-top:16px">Bank Details</div>
+    <div style="background:#f8fafc;border:1px solid #dce6f0;border-radius:6px;padding:10px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <label style="font-size:12px;font-weight:600;color:#444;margin:0">Use Custom Bank Details</label>
+        <input type="checkbox" id="f-bank-override" onchange="onBankOverrideChange()" style="width:16px;height:16px;cursor:pointer">
+        <span style="font-size:11px;color:#888">(uncheck to use default by currency)</span>
+      </div>
+      <div id="bank-fields-wrap">
+        <div class="field-row" style="margin-bottom:6px">
+          <div class="field-group" style="margin:0">
+            <label>Account Label &amp; Number</label>
+            <input type="text" id="f-bank-account" placeholder="e.g. USD Account : 800007984740" oninput="state.bankAccount=this.value;updatePreview()" style="width:100%;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;box-sizing:border-box">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label>Beneficiary</label>
+            <input type="text" id="f-bank-beneficiary" placeholder="Sen Labels Machinery Sdn Bhd" oninput="state.bankBeneficiary=this.value;updatePreview()" style="width:100%;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;box-sizing:border-box">
+          </div>
+        </div>
+        <div class="field-row" style="margin-bottom:6px">
+          <div class="field-group" style="margin:0">
+            <label>Bank Name</label>
+            <input type="text" id="f-bank-name" placeholder="CIMB Bank Berhad" oninput="state.bankName=this.value;updatePreview()" style="width:100%;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;box-sizing:border-box">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label>Swift Code</label>
+            <input type="text" id="f-bank-swift" placeholder="CIBBMYKL" oninput="state.bankSwift=this.value;updatePreview()" style="width:100%;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;box-sizing:border-box">
+          </div>
+        </div>
+        <div class="field-group" style="margin:0">
+          <label>Branch Address</label>
+          <input type="text" id="f-bank-branch" placeholder="No. 2-8, Jalan Dedap 20, Taman Johor Jaya..." oninput="state.bankBranch=this.value;updatePreview()" style="width:100%;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;box-sizing:border-box">
+        </div>
+      </div>
+    </div>
     <div class="section-title" style="margin-top:16px">Remarks (shared)</div>
     <div class="field-group">
       <label>Pre-Remark Note (italic, printed above REMARK section)</label>
@@ -896,6 +930,7 @@ let state = {
   validity:'One (1) Month only',
   delivery:'To be determined upon confirmation and/or full payment.',
   balanceLabel:'', payTermsText:'', warrantyOverride:'', signedPdfUrl:'',
+  bankOverride: false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
   docType:'Sales Contract', status:'Quotation Sent', revised:'',
   remarks:'',
   remarkItems:[
@@ -1178,6 +1213,12 @@ function saveCurrentMachineToState() {
   state.balanceLabel    = g('f-balance-label');
   state.payTermsText    = g('f-pay-terms-text');
   state.warrantyOverride = g('f-warranty-override');
+  state.bankOverride     = document.getElementById('f-bank-override')?.checked || false;
+  state.bankAccount      = g('f-bank-account');
+  state.bankBeneficiary  = g('f-bank-beneficiary');
+  state.bankName         = g('f-bank-name');
+  state.bankSwift        = g('f-bank-swift');
+  state.bankBranch       = g('f-bank-branch');
   state.remarks         = g('f-remarks');
   // Machine-level
   readMachineParams();
@@ -2527,6 +2568,12 @@ function updatePreview() {
     state.balanceLabel    = g('f-balance-label') || '';
     state.payTermsText    = g('f-pay-terms-text') || '';
     state.warrantyOverride = g('f-warranty-override') || '';
+    state.bankOverride     = document.getElementById('f-bank-override')?.checked || false;
+    state.bankAccount      = g('f-bank-account');
+    state.bankBeneficiary  = g('f-bank-beneficiary');
+    state.bankName         = g('f-bank-name');
+    state.bankSwift        = g('f-bank-swift');
+    state.bankBranch       = g('f-bank-branch');
     state.remarks    = g('f-remarks');
     state.notes      = g('f-notes') || '';
     readMachineParams();
@@ -3055,28 +3102,65 @@ function buildOptionalItems(m) {
   return html;
 }
 
+// Default bank details per currency
+const DEFAULT_BANK = {
+  MYR: { account:'MYR Account : 8605832302', beneficiary:'Sen Labels Machinery Sdn Bhd', name:'CIMB Bank Berhad', swift:'CIBBMYKL', branch:'No. 2-8, Jalan Dedap 20, Taman Johor Jaya, 81100 Johor Bahru, Johor' },
+  SGD: { account:'SGD Account : 800014193602', beneficiary:'Sen Labels Machinery Sdn Bhd', name:'CIMB Bank Berhad', swift:'CIBBMYKL', branch:'No. 2-8, Jalan Dedap 20, Taman Johor Jaya, 81100 Johor Bahru, Johor' },
+  USD: { account:'USD Account : 800007984740', beneficiary:'Sen Labels Machinery Sdn Bhd', name:'CIMB Bank Berhad', swift:'CIBBMYKL', branch:'No. 2-8, Jalan Dedap 20, Taman Johor Jaya, 81100 Johor Bahru, Johor' },
+};
+
+function onBankOverrideChange() {
+  const cb = document.getElementById('f-bank-override');
+  state.bankOverride = cb ? cb.checked : false;
+  if (state.bankOverride) {
+    // Pre-fill with current currency defaults if fields are empty
+    const def = DEFAULT_BANK[state.currency] || DEFAULT_BANK.USD;
+    if (!state.bankAccount)     { state.bankAccount     = def.account;      document.getElementById('f-bank-account').value     = def.account; }
+    if (!state.bankBeneficiary) { state.bankBeneficiary = def.beneficiary;  document.getElementById('f-bank-beneficiary').value = def.beneficiary; }
+    if (!state.bankName)        { state.bankName        = def.name;         document.getElementById('f-bank-name').value        = def.name; }
+    if (!state.bankSwift)       { state.bankSwift       = def.swift;        document.getElementById('f-bank-swift').value       = def.swift; }
+    if (!state.bankBranch)      { state.bankBranch      = def.branch;       document.getElementById('f-bank-branch').value      = def.branch; }
+  }
+  updatePreview();
+}
+
+function buildBankRow(label, value) {
+  if (!value) return '';
+  // Split "Label : Value" format
+  const colonIdx = value.indexOf(':');
+  if (colonIdx > 0) {
+    return `<tr><td>${esc(value.substring(0,colonIdx).trim())}</td><td>: ${esc(value.substring(colonIdx+1).trim())}</td></tr>`;
+  }
+  return `<tr><td>${esc(label)}</td><td>: ${esc(value)}</td></tr>`;
+}
+
 function buildBankDetails() {
-  const curr = state.currency;
-  if (curr === 'MYR') return `<div class="cp-bank"><div class="bank-title">BANK DETAILS</div><table>
-    <tr><td>MYR Account</td><td>: 8605832302</td></tr>
-    <tr><td>Beneficiary</td><td>: Sen Labels Machinery Sdn Bhd</td></tr>
-    <tr><td>Banker</td><td>: CIMB Bank Berhad</td></tr>
-    <tr><td>Swift Code</td><td>: CIBBMYKL</td></tr>
-    <tr><td>Branch</td><td>: No. 2-8, Jalan Dedap 20, Taman Johor Jaya, 81100 Johor Bahru, Johor</td></tr>
-  </table></div>`;
-  if (curr === 'SGD') return `<div class="cp-bank"><div class="bank-title">BANK DETAILS</div><table>
-    <tr><td>SGD Account</td><td>: 800014193602</td></tr>
-    <tr><td>Swift Code</td><td>: CIBBMYKL</td></tr>
-    <tr><td>Beneficiary</td><td>: Sen Labels Machinery Sdn Bhd</td></tr>
-    <tr><td>Banker</td><td>: CIMB Bank Berhad</td></tr>
-    <tr><td>Branch</td><td>: No. 2-8, Jalan Dedap 20, Taman Johor Jaya, 81100 Johor Bahru, Johor</td></tr>
-  </table></div>`;
+  let acct, ben, name, swift, branch;
+  if (state.bankOverride && (state.bankAccount || state.bankName)) {
+    // Use custom fields
+    acct   = state.bankAccount     || '';
+    ben    = state.bankBeneficiary || '';
+    name   = state.bankName        || '';
+    swift  = state.bankSwift       || '';
+    branch = state.bankBranch      || '';
+  } else {
+    // Use defaults by currency
+    const def = DEFAULT_BANK[state.currency] || DEFAULT_BANK.USD;
+    acct   = def.account;
+    ben    = def.beneficiary;
+    name   = def.name;
+    swift  = def.swift;
+    branch = def.branch;
+  }
+  const acctColon = acct.indexOf(':');
+  const acctLabel = acctColon > 0 ? acct.substring(0,acctColon).trim() : 'Account';
+  const acctValue = acctColon > 0 ? acct.substring(acctColon+1).trim() : acct;
   return `<div class="cp-bank"><div class="bank-title">BANK DETAILS</div><table>
-    <tr><td>USD Account</td><td>: 800007984740</td></tr>
-    <tr><td>Swift Code</td><td>: CIBBMYKL</td></tr>
-    <tr><td>Beneficiary</td><td>: Sen Labels Machinery Sdn Bhd</td></tr>
-    <tr><td>Banker</td><td>: CIMB Bank Berhad</td></tr>
-    <tr><td>Branch</td><td>: No. 2-8, Jalan Dedap 20, Taman Johor Jaya, 81100 Johor Bahru, Johor</td></tr>
+    ${acctValue ? `<tr><td>${esc(acctLabel)}</td><td>: ${esc(acctValue)}</td></tr>` : ''}
+    ${ben    ? `<tr><td>Beneficiary</td><td>: ${esc(ben)}</td></tr>` : ''}
+    ${name   ? `<tr><td>Banker</td><td>: ${esc(name)}</td></tr>` : ''}
+    ${swift  ? `<tr><td>Swift Code</td><td>: ${esc(swift)}</td></tr>` : ''}
+    ${branch ? `<tr><td>Branch</td><td>: ${esc(branch)}</td></tr>` : ''}
   </table></div>`;
 }
 
@@ -3481,6 +3565,15 @@ function loadStateJSON(input) {
       sv('f-pay-terms-text',    state.payTermsText    || '');
       sv('f-warranty-override', state.warrantyOverride || '');
       sv('f-remarks',           state.remarks);
+      // Bank details
+      const bankCb = document.getElementById('f-bank-override');
+      if (bankCb) bankCb.checked = state.bankOverride||false;
+      const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+      svBank('f-bank-account',     state.bankAccount||'');
+      svBank('f-bank-beneficiary', state.bankBeneficiary||'');
+      svBank('f-bank-name',        state.bankName||'');
+      svBank('f-bank-swift',       state.bankSwift||'');
+      svBank('f-bank-branch',      state.bankBranch||'');
       sv('f-notes',        state.notes || '');
       if (!state.remarkItems || state.remarkItems.length === 0) {
         state.remarkItems = [
@@ -3572,6 +3665,8 @@ function loadFromPastedJSON() {
     sv('f-pay-terms-text',    state.payTermsText    || '');
     sv('f-warranty-override', state.warrantyOverride || '');
     sv('f-remarks',           state.remarks);
+    {const cb=document.getElementById('f-bank-override');if(cb)cb.checked=state.bankOverride||false;}
+    ['account','beneficiary','name','swift','branch'].forEach(k=>{const el=document.getElementById('f-bank-'+k);const sk='bank'+k.charAt(0).toUpperCase()+k.slice(1);if(el)el.value=state[sk]||'';});
     sv('f-notes',        state.notes || '');
     if (!state.remarkItems || state.remarkItems.length === 0) {
       state.remarkItems = [
@@ -3681,6 +3776,15 @@ async function loadFromLibrary(contractNo) {
     sv('f-validity',state.validity); sv('f-delivery',state.delivery);
     sv('f-balance-label',state.balanceLabel||''); sv('f-pay-terms-text',state.payTermsText||'');
     sv('f-warranty-override',state.warrantyOverride||''); sv('f-remarks',state.remarks);
+      // Bank details
+      const bankCb = document.getElementById('f-bank-override');
+      if (bankCb) bankCb.checked = state.bankOverride||false;
+      const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+      svBank('f-bank-account',     state.bankAccount||'');
+      svBank('f-bank-beneficiary', state.bankBeneficiary||'');
+      svBank('f-bank-name',        state.bankName||'');
+      svBank('f-bank-swift',       state.bankSwift||'');
+      svBank('f-bank-branch',      state.bankBranch||'');
     sv('f-notes',state.notes||'');
     setTimeout(() => renderRemarkItems(), 50);
     renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
