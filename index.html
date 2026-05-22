@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.26</title>
+<title>Sen Labels — Contract Generator v10.27</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.26</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.27</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1777,8 +1777,9 @@ function calcPriceForMachine(m) {
   const cwTotal = (m.cwItems||[]).reduce((s,i) => {
     const v = parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0; return s+v;
   }, 0);
+  const uQty2 = m.unitQty || 1;
   const hasItemizedCw = cwTotal > 0 && (m.unitPrice||0) > 0;
-  const gross = hasItemizedCw ? ((m.unitPrice||0) + cwTotal) : (m.sellPrice || 0);
+  const gross = hasItemizedCw ? ((m.unitPrice||0) * uQty2 + cwTotal) : (m.sellPrice || m.unitPrice * uQty2 || 0);
   const discAmt = (m.discountPct||0) > 0 ? gross * ((m.discountPct||0)/100) : (m.discountAmt||0);
   const sp = Math.max(0, gross - discAmt);
   const dep = sp * ((state.depositPct||30)/100);
@@ -3285,17 +3286,20 @@ function buildComeWith(m) {
   const items = (m.cwItems||[]).filter(Boolean).filter(i=>i.desc);
   const cwTotal = items.reduce((s,i) => s + parseCwVal(i.val), 0);
   const unitPrice = m.unitPrice || m.sellPrice || 0;
-  const grandTotal = unitPrice + cwTotal;
+  const uQty = m.unitQty || 1;
+  const grandTotal = (unitPrice * uQty) + cwTotal;
   const portLabel = state.port ? ` [${state.port}]` : '';
 
   // Always use itemized format with orange box
   let inner = '';
 
-  // Unit Price row — only show separately if there are Come With items
-  if (unitPrice > 0 && items.length > 0) {
+  // Unit Price row — only show separately if there are Come With items or qty > 1
+  if (unitPrice > 0 && (items.length > 0 || uQty > 1)) {
+    const qtyStr = uQty > 1 ? `${fmt(unitPrice)} x ${uQty} Units = ` : 'Unit Price';
+    const upDisplay = uQty > 1 ? fmt(unitPrice * uQty) : fmt(unitPrice);
     inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
-      <span>Unit Price</span>
-      <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(unitPrice)}</span></div>`;
+      <span>${qtyStr}</span>
+      <span style="text-align:right;white-space:nowrap;min-width:90px">${upDisplay}</span></div>`;
   }
 
   // Come With items
