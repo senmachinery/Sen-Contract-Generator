@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.27</title>
+<title>Sen Labels — Contract Generator v10.28</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.27</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.28</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3295,11 +3295,15 @@ function buildComeWith(m) {
 
   // Unit Price row — only show separately if there are Come With items or qty > 1
   if (unitPrice > 0 && (items.length > 0 || uQty > 1)) {
-    const qtyStr = uQty > 1 ? `${fmt(unitPrice)} x ${uQty} Units = ` : 'Unit Price';
-    const upDisplay = uQty > 1 ? fmt(unitPrice * uQty) : fmt(unitPrice);
-    inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
-      <span>${qtyStr}</span>
-      <span style="text-align:right;white-space:nowrap;min-width:90px">${upDisplay}</span></div>`;
+    if (uQty > 1) {
+      inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
+        <span>Unit Price : ${fmt(unitPrice)} x ${uQty} Units =</span>
+        <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(unitPrice * uQty)}</span></div>`;
+    } else {
+      inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
+        <span>Unit Price</span>
+        <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(unitPrice)}</span></div>`;
+    }
   }
 
   // Come With items
