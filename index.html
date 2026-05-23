@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.29</title>
+<title>Sen Labels — Contract Generator v10.30</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.29</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.30</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3276,15 +3276,16 @@ function buildSpecRows(m) {
 }
 
 function parseCwVal(val) {
-  const s = String(val||'').replace(/[^0-9.]/g, '');
+  if (!val) return 0;
+  const s = String(val).replace(/[^0-9.]/g, '');
   return parseFloat(s) || 0;
 }
 
 function buildComeWith(m) {
   const curr = state.currency;
   const fmt  = n => formatMoney(n, curr);
-  const items = (m.cwItems||[]).filter(Boolean).filter(i=>i.desc);
-  const cwTotal = items.reduce((s,i) => s + parseCwVal(i.val), 0);
+  const items = (m.cwItems||[]).filter(i=>i && typeof i === 'object' && i.desc);
+  const cwTotal = items.reduce((s,i) => s + (i ? parseCwVal(i.val) : 0), 0);
   const unitPrice = m.unitPrice || m.sellPrice || 0;
   const uQty = m.unitQty || 1;
   const grandTotal = (unitPrice * uQty) + cwTotal;
@@ -3568,6 +3569,7 @@ function normalizeState(s) {
 
     // ── Fix arrays ────────────────────────────────────────────────────────
     if (!Array.isArray(m.cwItems))    m.cwItems    = [];
+    m.cwItems = m.cwItems.filter(i => i && typeof i === 'object');
     if (!Array.isArray(m.optItems))   m.optItems   = [];
     if (!Array.isArray(m.partItems))  m.partItems  = [];
     if (!Array.isArray(m.partGroups)) m.partGroups = [];
