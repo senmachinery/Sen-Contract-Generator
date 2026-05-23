@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.28</title>
+<title>Sen Labels — Contract Generator v10.29</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.28</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.29</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3541,8 +3541,23 @@ async function uploadSignedPDF() {
 function normalizeState(s) {
   if (!s) return;
   if (!Array.isArray(s.machines)) s.machines = [];
+
   s.machines.forEach(m => {
     if (!m) return;
+
+    // ── Fix machineType: old values → valid values ────────────────────────
+    const typeMap = {
+      'refurb': 'other', 'new': 'other', 'demo': 'other',
+      'accessory': 'parts', 'accessories': 'parts', 'spare': 'parts'
+    };
+    if (typeMap[m.machineType]) m.machineType = typeMap[m.machineType];
+    if (!m.machineType) m.machineType = 'other';
+
+    // ── Fix condition: old values → valid values ──────────────────────────
+    if (m.condition === 'Demo') m.condition = 'Refurbished';
+    if (!m.condition) m.condition = 'New';
+
+    // ── Fix extraSpecs ────────────────────────────────────────────────────
     if (Array.isArray(m.extraSpecs)) {
       m.extraSpecs = m.extraSpecs.map(sp => ({
         label: sp.label||'', value: sp.value||'',
@@ -3550,14 +3565,62 @@ function normalizeState(s) {
         underLabel: sp.underLabel||false, underValue: sp.underValue||false,
       }));
     } else { m.extraSpecs = []; }
+
+    // ── Fix arrays ────────────────────────────────────────────────────────
     if (!Array.isArray(m.cwItems))    m.cwItems    = [];
     if (!Array.isArray(m.optItems))   m.optItems   = [];
     if (!Array.isArray(m.partItems))  m.partItems  = [];
     if (!Array.isArray(m.partGroups)) m.partGroups = [];
     if (!Array.isArray(m.images))     m.images     = [];
+
+    // ── Fix missing price fields ──────────────────────────────────────────
+    if (!m.unitPrice && m.sellPrice)  m.unitPrice  = m.sellPrice;
+    if (!m.sellPrice && m.unitPrice)  m.sellPrice  = m.unitPrice;
+    if (!m.unitQty)                   m.unitQty    = 1;
+    if (!m.discountPct)               m.discountPct = 0;
+    if (!m.discountAmt)               m.discountAmt = 0;
+    if (!m.discountLabel)             m.discountLabel = '';
+
+    // ── Fix missing text fields ───────────────────────────────────────────
+    if (!m.customTitle)   m.customTitle   = '';
+    if (!m.desc)          m.desc          = '';
+    if (!m.machineRemarks) m.machineRemarks = '';
+
+    // ── Migrate old partItems → partGroups if needed ─────────────────────
+    if (m.machineType === 'parts' &&
+        Array.isArray(m.partItems) && m.partItems.length > 0 &&
+        (!Array.isArray(m.partGroups) || m.partGroups.length === 0)) {
+      m.partGroups = [{
+        title: m.customTitle || '',
+        desc:  m.desc || '',
+        images: m.images || [],
+        items: m.partItems
+      }];
+    }
+
+    // ── Clean images: remove empty/null entries ───────────────────────────
+    m.images = (m.images||[]).filter(Boolean);
+    // Clean partGroup images too
+    (m.partGroups||[]).forEach(g => {
+      g.images = (g.images||[]).filter(Boolean);
+      (g.items||[]).forEach(item => {
+        item.images = (item.images||[]).filter(Boolean);
+      });
+    });
   });
+
+  // ── Fix state-level arrays ────────────────────────────────────────────────
   if (!Array.isArray(s.remarkItems))     s.remarkItems     = [];
   if (!Array.isArray(s.installmentRows)) s.installmentRows = [];
+  if (!Array.isArray(s.customPayRows))   s.customPayRows   = [];
+
+  // ── Fix missing state fields ──────────────────────────────────────────────
+  if (!s.currency)    s.currency    = 'USD';
+  if (!s.depositPct)  s.depositPct  = 30;
+  if (!s.payCond)     s.payCond     = '30/70';
+  if (!s.validity)    s.validity    = 'One (1) Month only';
+  if (!s.status)      s.status      = 'Quotation Sent';
+  if (s.status === 'Quotation') s.status = 'Quotation Sent'; // fix old value
 }
 
 async function stripImagesForSave(stateObj) {
