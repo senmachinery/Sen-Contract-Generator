@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.31</title>
+<title>Sen Labels — Contract Generator v10.32</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.31</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.32</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3295,8 +3295,8 @@ function buildComeWith(m) {
   // Always use itemized format with orange box
   let inner = '';
 
-  // Unit Price row — only show separately if there are Come With items or qty > 1
-  if (unitPrice > 0 && (items.length > 0 || uQty > 1)) {
+  // Unit Price row — only show if there are Come With items (otherwise total row is enough)
+  if (unitPrice > 0 && items.length > 0) {
     if (uQty > 1) {
       inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
         <span>Unit Price : ${fmt(unitPrice)} x ${uQty} Units =</span>
@@ -3334,9 +3334,16 @@ function buildComeWith(m) {
       <span>${portLabel ? portLabel.trim() : '&nbsp;'}</span>
       <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(grandTotal - discAmt2)}</span></div>`;
   } else {
+    const totalLabel = (!items.length && uQty > 1)
+      ? `Unit Price : ${fmt(unitPrice)} x ${uQty} Units =`
+      : (portLabel ? portLabel.trim() : '&nbsp;');
     inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10.5pt;font-weight:700;border-top:1px solid #e07800;margin-top:2mm;padding-top:1.5mm;align-items:baseline">
-      <span>${portLabel ? portLabel.trim() : '&nbsp;'}</span>
+      <span>${totalLabel}</span>
       <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(grandTotal)}</span></div>`;
+    // Show port below if qty label used above
+    if (!items.length && uQty > 1 && portLabel) {
+      inner += `<div style="font-size:9.5pt;color:#7a4500;margin-top:1mm">${portLabel.trim()}</div>`;
+    }
   }
 
   // Wrap in orange box
