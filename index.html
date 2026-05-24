@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.30</title>
+<title>Sen Labels — Contract Generator v10.31</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.30</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.31</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1774,7 +1774,7 @@ function calcPriceForMachine(m) {
     return { sellPrice: sp, grossPrice: total, discountAmt: discAmt, costInCurr: 0, actualMargin: 0, deposit: dep, balance: sp - dep };
   }
   // For machines with itemized cwItems, sellPrice = unitPrice + cwItems total
-  const cwTotal = (m.cwItems||[]).reduce((s,i) => {
+  const cwTotal = (m.cwItems||[]).filter(i=>i&&typeof i==='object').reduce((s,i) => {
     const v = parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0; return s+v;
   }, 0);
   const uQty2 = m.unitQty || 1;
@@ -2509,8 +2509,9 @@ function updateCwItem(idx) {
 }
 
 function removeCwItem(idx) {
-  document.getElementById('cw-'+idx)?.remove();
-  M().cwItems[idx] = null;
+  M().cwItems.splice(idx, 1);
+  // Re-render to update indices
+  renderCwItems();
   updatePreview();
 }
 
@@ -2560,8 +2561,8 @@ function updateOptItem(idx) {
 }
 
 function removeOptItem(idx) {
-  document.getElementById('opt-'+idx)?.remove();
-  if (M().optItems) M().optItems[idx] = null;
+  if (M().optItems) M().optItems.splice(idx, 1);
+  renderOptItems();
   updatePreview();
 }
 
