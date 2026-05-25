@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.33</title>
+<title>Sen Labels — Contract Generator v10.34</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -1769,7 +1769,7 @@ function calcPriceForMachine(m) {
       total = (m.partItems||[]).reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0), 0);
     }
     const discAmt = (m.discountPct||0) > 0 ? total * (m.discountPct/100) : (m.discountAmt||0);
-    const sp = m.sellPrice || (total - discAmt);
+    const sp = total - discAmt;
     const dep = sp * ((state.depositPct||30)/100);
     return { sellPrice: sp, grossPrice: total, discountAmt: discAmt, costInCurr: 0, actualMargin: 0, deposit: dep, balance: sp - dep };
   }
@@ -3271,7 +3271,7 @@ function buildSpecRows(m) {
     });
     rows.push(row('Power Required', m.power));
     rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
-    rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim());return p.length>=3?`(L) ${p[0]} x (W) ${p[1]} x (H) ${p[2]} mm`:m.dimension+' mm';})() : ''));
+    rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
   }
   rows.push(row('Country Of Origin', m.coo));
 
@@ -4788,7 +4788,7 @@ function exportToExcel() {
       });
       sp('Power Required', m.power);
       sp('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : '');
-      sp('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim());return p.length>=3?`(L) ${p[0]} x (W) ${p[1]} x (H) ${p[2]} mm`:m.dimension+' mm';})() : '');
+      sp('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : '');
       sp('Country Of Origin', m.coo);
     }
     blank();
@@ -4938,7 +4938,7 @@ function buildSpecRowsWord(m) {
   });
   rows.push(row('Power Required', m.power));
   rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
-  rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim());return p.length>=3?`(L) ${p[0]} x (W) ${p[1]} x (H) ${p[2]} mm`:m.dimension+' mm';})() : ''));
+  rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
   rows.push(row('Country Of Origin', m.coo));
   return rows.filter(Boolean).join('');
 }
