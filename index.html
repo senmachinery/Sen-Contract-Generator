@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.43</title>
+<title>Sen Labels — Contract Generator v10.45</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.43</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.45</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2885,7 +2885,7 @@ function buildContractHTML() {
       payRows = `<tr><td colspan="4"><strong>~ Full Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;
     }
     const telLine = state.tel||state.fax ? `<div><span class="cp-label">Tel:</span> ${esc(state.tel)||''}${state.fax?` &nbsp;&#124;&nbsp; <span class="cp-label">Fax:</span> ${esc(state.fax)}`:''}` + `</div>` : '';
-    const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0">${esc(state.remarks)}</p>` : '';
+    const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${esc(state.remarks)}</p>` : '';
     return `
   <div class="cp-header-wrap">
     <img class="cp-logo" src="${LOGO_B64}" alt="Sen Labels">
@@ -2936,17 +2936,7 @@ function buildContractHTML() {
   <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#dce8f5;padding:1.2mm 4mm;border-radius:2px;display:inline-block;border:1px solid #c0d6ea;border-left:4px solid #1e3a5f">REMARK</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}</table>
   ${(function(){
-      const isPartsOnly = state.machines.length > 0 && state.machines.every(m => m.machineType === 'parts');
-      const hasNonParts = state.machines.some(m => m.machineType !== 'parts');
-      const SPEC = 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify';
-      const WARRANTY = 'Warranty does not cover consumable parts';
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
-      if (isPartsOnly) {
-        // Parts only: remove spec remark and warranty remark
-        items = items.filter(x => !String(x).startsWith(SPEC) && !String(x).startsWith(WARRANTY));
-      } else if (!hasNonParts) {
-        // No machines at all: keep all
-      }
       return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
     })()}
   <table class="cp-terms-table">
@@ -3064,7 +3054,7 @@ function buildContractHTML() {
     });
   }
 
-  const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0">${esc(state.remarks)}</p>` : '';
+  const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${esc(state.remarks)}</p>` : '';
 
   return `
   <div class="cp-header-wrap">
@@ -3118,17 +3108,7 @@ function buildContractHTML() {
   <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#dce8f5;padding:1.2mm 4mm;border-radius:2px;display:inline-block;border:1px solid #c0d6ea;border-left:4px solid #1e3a5f">REMARK</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${typeof instRows!=='undefined'?instRows:''}</table>
   ${(function(){
-      const isPartsOnly = state.machines.length > 0 && state.machines.every(m => m.machineType === 'parts');
-      const hasNonParts = state.machines.some(m => m.machineType !== 'parts');
-      const SPEC = 'Sen Labels Machinery Sdn. Bhd. reserves the right to modify';
-      const WARRANTY = 'Warranty does not cover consumable parts';
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
-      if (isPartsOnly) {
-        // Parts only: remove spec remark and warranty remark
-        items = items.filter(x => !String(x).startsWith(SPEC) && !String(x).startsWith(WARRANTY));
-      } else if (!hasNonParts) {
-        // No machines at all: keep all
-      }
       return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
     })()}
 
@@ -4654,8 +4634,11 @@ function loadMachineFromDB(idx) {
     M().extraSpecs = (m.extraSpecs || []).map(s => ({ label: s.label, value: s.value }));
     M().cwItems    = (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty || '', val: c.val || '' }));
 
+    // Re-save customTitle to state (DOM rebuild clears it)
+    M().customTitle = m.modelName || '';
+
     const setF = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
-    setF('f-custom-title', machine.customTitle);
+    setF('f-custom-title', m.modelName || '');
     setF('f-other-model', '');
     setF('f-desc', machine.desc);
     setF('f-condition', machine.condition);
