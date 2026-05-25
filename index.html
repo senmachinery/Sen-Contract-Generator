@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.48</title>
+<title>Sen Labels — Contract Generator v10.49</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.48</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.49</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5878,13 +5878,34 @@ function parsePDFText(text) {
     out.attn = m[1].split(/\n|Sales|Email/)[0].trim().replace(/\s+/g,' ');
   }
   
-  // Email
-  m = blob.match(/Email\s*[:.]?\s*([^\s\n]+@[^\s\n]+(?:\s*[;,]\s*[^\s\n]+@[^\s\n]+)*)/i);
-  if (m) out.email = m[1].trim();
+  // Find buyer section (after "To:", before "Sales Contract" or "1)")
+  // Only extract email/tel/attn from this section, otherwise we get Sen Labels' own contact info
+  const toIdx = blob.search(/(?:^|\n)\s*To\s*[:.]?\s+[A-Z]/i);
+  const stopIdx = (() => {
+    const a = blob.search(/Sales Contract\s*(?:No|n No)/i);
+    const b = blob.search(/\n\s*1\)\s+(?:Refurbish|New|100%|Used)/i);
+    const candidates = [a, b].filter(x => x > toIdx);
+    return candidates.length ? Math.min(...candidates) : blob.length;
+  })();
+  const buyerSection = toIdx >= 0 ? blob.slice(toIdx, stopIdx) : '';
   
-  // Tel
-  m = blob.match(/Tel\.?\s*[:.]?\s*([+\d][\d\s\-()+]{5,30})/i);
-  if (m) out.tel = m[1].trim();
+  // Email — search in buyer section first, then full blob as fallback
+  m = (buyerSection || blob).match(/Email\s*[:.]?\s*([^\s\n]+@[^\s\n]+(?:\s*[;,]\s*[^\s\n]+@[^\s\n]+)*)/i);
+  if (m) {
+    let email = m[1].trim();
+    // Skip Sen Labels' own email
+    if (!/senlabel|senmachinery|anise\.|gina\./i.test(email)) out.email = email;
+  }
+  
+  // Tel — search in buyer section first
+  m = (buyerSection || '').match(/Tel\.?\s*[:.]?\s*([+\d][\d\s\-()+]{5,30})/i);
+  if (m) {
+    let tel = m[1].trim();
+    // Skip Sen Labels' own tel (starts with 006 07 8710019 or +60 13)
+    if (!/^006\s*07\s*87100|^\+?60\s*13[\s-]*288|^\+?60\s*13[\s-]*778/i.test(tel)) {
+      out.tel = tel;
+    }
+  }
   
   // Port (CIF/FOB/EXW) — look inside square brackets specifically, fallback to inline
   m = blob.match(/\[\s*\*?(CIF|FOB|EXW|DAP|DDP|CIP|FCA|DAT)[,\s]+([^\]]+)\]/i);
@@ -5931,6 +5952,7 @@ function parsePDFText(text) {
   // ── Machines — find numbered machine blocks
   // Pattern: "1) <title>" or "2) <title>" etc, then specs until next machine or REMARK section
   const machineHeaders = [];
+  const seenTitles = new Set();
   for (let i = 0; i < lines.length; i++) {
     const m2 = lines[i].match(/^(\d{1,2})\)\s+(.{15,200})/);
     if (m2 && parseInt(m2[1]) <= 9) {
@@ -5938,6 +5960,19 @@ function parsePDFText(text) {
       const title = m2[2];
       if (/^(Less|Deposit|Balance|Price|Total|USD|MYR|RM\d|sub)/i.test(title)) continue;
       if (!/(Machine|Printing|Press|Cutting|Slitter|Lamin|Coater|UV|Servo|Equipment|System|Plate|CTP|Dryer|Rewinder|Parts)/i.test(title)) continue;
+      
+      // SKIP summary table rows: they contain inline "1 Unit USD" or "USD X,XXX.XX" pattern in same line
+      if (/\b\d+\s+Unit\s+USD\b/i.test(lines[i])) continue;
+      if (/\bUSD\s+[\d,]+\.\d{2}\b/.test(lines[i])) continue;
+      
+      // SKIP if next line is the summary table header
+      if (i > 0 && /^(#|Description|HS\s*CODE)/.test(lines[i-1])) continue;
+      
+      // SKIP duplicate title (same machine appearing again is always a summary)
+      const titleKey = title.trim().toLowerCase().slice(0, 50);
+      if (seenTitles.has(titleKey)) continue;
+      seenTitles.add(titleKey);
+      
       machineHeaders.push({ idx: i, num: m2[1], title: title.trim() });
     }
   }
