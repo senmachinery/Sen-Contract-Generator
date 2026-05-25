@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.38</title>
+<title>Sen Labels — Contract Generator v10.39</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.38</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.39</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1523,9 +1523,17 @@ function renderMachineParams(type, condition) {
       field('Resolution','f-resolution','text',null,'4000dpi')
     ]);
   } else if (isRef || isOther) {
-    html += ``;
-    html += field('Custom Title (optional)','f-custom-title','text',null,'e.g. New Sen SMP-320 Letterpress Label Printing Machine');
+    html += field('Custom Title (optional)','f-custom-title','text',null,'e.g. Refurbished SEN Brand Automatic Flat Bed Die Cutting Machine');
     html += field('Model Name','f-other-model','text',null,'e.g. Sen MQS 320 (Single Head)');
+    html += `<div class="field-group"><label>Sub-Title / Note (under title, optional)</label><textarea id="f-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. ~ With Die Cutting Station, 2nd Pass Scanner..." oninput="M().desc=this.value;updatePreview()"></textarea></div>`;
+    html += fieldRow([
+      field('Serial No.','f-serial','text',null,'leave blank if none'),
+      field('Mfg. Year','f-mfg-year','text',null,'e.g. 2020')
+    ]);
+    html += fieldRow([
+      field('Refurbished Year','f-refurb-year','text',null,'e.g. 2026'),
+      field('Country of Origin','f-coo','text',null,'e.g. Japan / China')
+    ]);
     html += fieldRow([
       field('Paper Width (max)','f-paper-width','text',null,'e.g. 320mm'),
       field('Speed','f-speed','text',null,'e.g. 12,000/hr')
@@ -1538,7 +1546,11 @@ function renderMachineParams(type, condition) {
       field('Colours','f-colours','text',null,'e.g. 1'),
       field('UV System','f-uv','select',`<option value="none">No UV</option><option value="uv">UV Dryer</option><option value="led">LED UV</option><option value="mercury">Mercury UV</option><option value="ir">IR Dryer</option>`)
     ]);
-    html += `<div class="field-group"><label>Sub-Title / Note (under title, optional)</label><textarea id="f-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. Fully overhauled, tested and ready for delivery" oninput="M().desc=this.value;updatePreview()"></textarea></div>`;
+    html += fieldRow([
+      field('Power Required','f-power','text',null,'e.g. Single Phase 2200V 8 KVA'),
+      field('Net Weight','f-weight','text',null,'e.g. 1,400 KGS')
+    ]);
+    html += field('Dimension (L x W x H)','f-dim','text',null,'e.g. 2750 x 1250 x 1600');
   } else if (isParts) {
     // Migrate old partItems to partGroups if needed
     const m = M();
