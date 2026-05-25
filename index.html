@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.49</title>
+<title>Sen Labels — Contract Generator v10.50</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.49</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.50</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5335,6 +5335,92 @@ function getAppsScriptCode() {
     "",
     "function jsonResponse(obj) {",
     "  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);",
+    "}",
+    "",
+    "// ============================================================",
+    "// PROTECTION: Daily backup, audit log, archive before overwrite",
+    "// ============================================================",
+    "",
+    "// Run this ONCE to set up daily backup at 2am",
+    "// Apps Script → Triggers → Add Trigger → dailyBackup → Time-driven → Day → 2am",
+    "function dailyBackup() {",
+    "  const ss = SpreadsheetApp.getActiveSpreadsheet();",
+    "  const folderName = 'Sen Contracts Backup';",
+    "  let folder;",
+    "  const folders = DriveApp.getFoldersByName(folderName);",
+    "  folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);",
+    "  const today = Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');",
+    "  const copyName = ss.getName() + ' - Backup ' + today;",
+    "  // Skip if today's backup already exists",
+    "  const existing = folder.getFilesByName(copyName);",
+    "  if (existing.hasNext()) return;",
+    "  const file = DriveApp.getFileById(ss.getId());",
+    "  file.makeCopy(copyName, folder);",
+    "  // Delete backups older than 30 days",
+    "  const files = folder.getFiles();",
+    "  const cutoff = new Date(Date.now() - 30*24*60*60*1000);",
+    "  while (files.hasNext()) {",
+    "    const f = files.next();",
+    "    if (f.getDateCreated() < cutoff && f.getName().indexOf('Backup') !== -1) f.setTrashed(true);",
+    "  }",
+    "}",
+    "",
+    "// Archive a row before overwriting it (preserves history)",
+    "function archiveRow(sheet, row, action) {",
+    "  const ss = SpreadsheetApp.getActiveSpreadsheet();",
+    "  let arch = ss.getSheetByName('_Archive');",
+    "  if (!arch) {",
+    "    arch = ss.insertSheet('_Archive');",
+    "    arch.appendRow(['Archived At', 'Action', 'Source Sheet', 'Original Data']);",
+    "    arch.setFrozenRows(1);",
+    "    arch.getRange(1,1,1,4).setBackground('#5d4037').setFontColor('#ffffff').setFontWeight('bold');",
+    "    arch.hideSheet();",
+    "  }",
+    "  arch.appendRow([new Date().toISOString(), action, sheet.getName(), JSON.stringify(row)]);",
+    "}",
+    "",
+    "// Audit log: triggered on any edit",
+    "// Set up: Apps Script → Triggers → Add Trigger → onEditAudit → From spreadsheet → On edit",
+    "function onEditAudit(e) {",
+    "  if (!e || !e.range) return;",
+    "  const ss = e.source;",
+    "  const sheet = e.range.getSheet();",
+    "  const name = sheet.getName();",
+    "  // Skip audit log on the audit log itself or archive",
+    "  if (name === '_AuditLog' || name === '_Archive') return;",
+    "  let log = ss.getSheetByName('_AuditLog');",
+    "  if (!log) {",
+    "    log = ss.insertSheet('_AuditLog');",
+    "    log.appendRow(['Timestamp', 'User', 'Sheet', 'Cell', 'Old Value', 'New Value']);",
+    "    log.setFrozenRows(1);",
+    "    log.getRange(1,1,1,6).setBackground('#5d4037').setFontColor('#ffffff').setFontWeight('bold');",
+    "    log.hideSheet();",
+    "  }",
+    "  const user = (Session.getActiveUser().getEmail() || 'unknown');",
+    "  const cell = e.range.getA1Notation();",
+    "  const oldVal = e.oldValue !== undefined ? e.oldValue : '';",
+    "  const newVal = e.value !== undefined ? e.value : '';",
+    "  log.appendRow([new Date().toISOString(), user, name, cell, oldVal, newVal]);",
+    "  // Keep only last 5000 audit entries",
+    "  const numRows = log.getLastRow();",
+    "  if (numRows > 5001) log.deleteRows(2, numRows - 5001);",
+    "}",
+    "",
+    "// Manual restore: copy a backup file's content back into this sheet",
+    "// Run this manually after disaster: restoreFromBackup('2026-05-25')",
+    "function restoreFromBackup(dateStr) {",
+    "  const folder = DriveApp.getFoldersByName('Sen Contracts Backup').next();",
+    "  const files = folder.getFiles();",
+    "  while (files.hasNext()) {",
+    "    const f = files.next();",
+    "    if (f.getName().indexOf(dateStr) !== -1) {",
+    "      Logger.log('Found backup: ' + f.getName());",
+    "      Logger.log('URL: ' + f.getUrl());",
+    "      Logger.log('Open this file and copy/paste the data back manually, OR replace current spreadsheet.');",
+    "      return f.getUrl();",
+    "    }",
+    "  }",
+    "  return 'No backup found for ' + dateStr;",
     "}"
   ];
   return lines.join('\n');
