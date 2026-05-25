@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.47</title>
+<title>Sen Labels — Contract Generator v10.48</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.47</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.48</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5857,8 +5857,12 @@ function parsePDFText(text) {
   
   // ── Buyer Info
   // "To:" line — capture company name (next caps line)
-  m = blob.match(/To\s*[:.]?\s*([A-Z][A-Z0-9 &.,()\-\/]{3,80})/);
-  if (m) out.company = m[1].trim().replace(/\s+/g, ' ');
+  m = blob.match(/(?:^|\n)\s*To\s*[:.]?\s*([A-Z][A-Z0-9 &.,()\-\/]{3,100})/i);
+  if (m) {
+    out.company = m[1].trim().replace(/\s+/g, ' ');
+    // Strip trailing fragments like "Sales Contract..." that often appear inline
+    out.company = out.company.replace(/\s+Sales\s+Contract.*$/i, '').trim();
+  }
   
   // Address — "Add:" or "Addr:" line
   m = blob.match(/Add(?:ress|r)?\s*[:.]?\s*([^\n]+(?:\n[^\n:]+)?)/i);
@@ -5882,9 +5886,14 @@ function parsePDFText(text) {
   m = blob.match(/Tel\.?\s*[:.]?\s*([+\d][\d\s\-()+]{5,30})/i);
   if (m) out.tel = m[1].trim();
   
-  // Port (CIF/FOB/EXW)
-  m = blob.match(/((?:CIF|FOB|EXW|DAP|DDP|CIP|FCA|DAT)[,\s]+[^\]\n,]+(?:,\s*[A-Za-z][^\]\n,]+)*)/i);
-  if (m) out.port = m[1].trim().replace(/\s+/g, ' ');
+  // Port (CIF/FOB/EXW) — look inside square brackets specifically, fallback to inline
+  m = blob.match(/\[\s*\*?(CIF|FOB|EXW|DAP|DDP|CIP|FCA|DAT)[,\s]+([^\]]+)\]/i);
+  if (m) {
+    out.port = (m[1] + ' ' + m[2]).trim().replace(/\s+/g, ' ').replace(/[,\s]+$/, '');
+  } else {
+    m = blob.match(/((?:CIF|FOB|EXW|DAP|DDP|CIP|FCA|DAT)[,\s]+(?:Jakarta|Incheon|Pasir|Surabaya|Singapore|Bangkok|Manila|Mumbai|Chennai|Tanjung|Belawan|Semarang|Port|Pelabuhan)[^\n.]{3,80})/i);
+    if (m) out.port = m[1].trim().replace(/\s+/g, ' ').replace(/[.,\s]+$/, '');
+  }
   
   // ── Pre-remark (lines starting with *)
   const preRemarks = lines.filter(l => /^\*[A-Z]/.test(l)).slice(0, 5);
@@ -5964,18 +5973,29 @@ function parsePDFText(text) {
     for (let i = h.idx + 1; i < endIdx; i++) {
       const ln = lines[i];
       
-      // Stop at common terminator
-      if (/^(Unit Price|Term Of|Total Amount|Price Validity|Payment|BANK|REMARK|Date of|Warranty)/i.test(ln)) break;
+      // Stop at common terminator (case-sensitive REMARK only matches section header all-caps)
+      if (/^(Unit Price|Term Of |Total Amount|Price Validity|Payment Terms|BANK |Date of Delivery|Warranty :|Date Of Delivery)/i.test(ln)) break;
+      if (/^REMARK\b/.test(ln)) break; // only stop at all-caps standalone REMARK section header
       
       // Detect "Come With"
       if (/^Come\s*With/i.test(ln) || /^With\s+Standard\s+Accessories/i.test(ln) || /^COME WITH/i.test(ln)) { inCw = true; continue; }
       
       // Come With items (start with number or ~ unit/desc)
       if (inCw) {
-        const cwM = ln.match(/^(?:\d+\s*[~xX×]?\s*)?([^\n]{10,150})$/);
-        if (cwM && !/^Unit Price|Term|Total/i.test(cwM[1])) {
-          const desc = cwM[1].replace(/^\d+\s*Unit\s*[~]?\s*/i, '').trim();
-          if (desc.length > 10) machine.cwItems.push({ desc, qty: '1 Unit', val: '' });
+        // Stop CW collection if we hit a label-value spec or terminator
+        if (/^(Unit Price|Term|Total|Price Validity|Payment|BANK|REMARK)/i.test(ln)) { inCw = false; }
+        else if (/^[-~*]?\s*\d*\s*(Unit|Pcs|Set|Box|Pair)/i.test(ln) || /^[-~*]\s+/.test(ln)) {
+          // Looks like a CW item
+          let raw = ln.replace(/^[-~*]\s*/, '').trim();
+          // Extract @USDxxx as the value
+          let val = '';
+          const priceM = raw.match(/@\s*(?:USD|MYR|RM|SGD)\s*([\d,]+(?:\.\d+)?)/i);
+          if (priceM) { val = priceM[1].replace(/,/g, ''); raw = raw.replace(/@.*$/, '').trim(); }
+          // Extract qty prefix
+          const qtyM = raw.match(/^(\d+\s*(?:Unit|Pcs|Set|Box|Pair)s?)\s+(.+)$/i);
+          let qty = '1 Unit', desc = raw;
+          if (qtyM) { qty = qtyM[1]; desc = qtyM[2]; }
+          if (desc.length > 5) machine.cwItems.push({ desc, qty, val });
           continue;
         }
       }
