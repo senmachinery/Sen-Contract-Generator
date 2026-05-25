@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.39</title>
+<title>Sen Labels — Contract Generator v10.41</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.39</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.41</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1524,33 +1524,7 @@ function renderMachineParams(type, condition) {
     ]);
   } else if (isRef || isOther) {
     html += field('Custom Title (optional)','f-custom-title','text',null,'e.g. Refurbished SEN Brand Automatic Flat Bed Die Cutting Machine');
-    html += field('Model Name','f-other-model','text',null,'e.g. Sen MQS 320 (Single Head)');
     html += `<div class="field-group"><label>Sub-Title / Note (under title, optional)</label><textarea id="f-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. ~ With Die Cutting Station, 2nd Pass Scanner..." oninput="M().desc=this.value;updatePreview()"></textarea></div>`;
-    html += fieldRow([
-      field('Serial No.','f-serial','text',null,'leave blank if none'),
-      field('Mfg. Year','f-mfg-year','text',null,'e.g. 2020')
-    ]);
-    html += fieldRow([
-      field('Refurbished Year','f-refurb-year','text',null,'e.g. 2026'),
-      field('Country of Origin','f-coo','text',null,'e.g. Japan / China')
-    ]);
-    html += fieldRow([
-      field('Paper Width (max)','f-paper-width','text',null,'e.g. 320mm'),
-      field('Speed','f-speed','text',null,'e.g. 12,000/hr')
-    ]);
-    html += fieldRow([
-      field('Print Width (max)','f-print-width','text',null,'optional'),
-      field('Print Length','f-print-len','text',null,'optional')
-    ]);
-    html += fieldRow([
-      field('Colours','f-colours','text',null,'e.g. 1'),
-      field('UV System','f-uv','select',`<option value="none">No UV</option><option value="uv">UV Dryer</option><option value="led">LED UV</option><option value="mercury">Mercury UV</option><option value="ir">IR Dryer</option>`)
-    ]);
-    html += fieldRow([
-      field('Power Required','f-power','text',null,'e.g. Single Phase 2200V 8 KVA'),
-      field('Net Weight','f-weight','text',null,'e.g. 1,400 KGS')
-    ]);
-    html += field('Dimension (L x W x H)','f-dim','text',null,'e.g. 2750 x 1250 x 1600');
   } else if (isParts) {
     // Migrate old partItems to partGroups if needed
     const m = M();
@@ -3268,16 +3242,7 @@ function buildSpecRows(m) {
     rows.push(row('Max. Plate Size', m.plateSize));
     rows.push(row('Resolution', m.resolution));
   } else if (t === 'other') {
-    // 'other' type: render all standard fields that have values
-    if (m.colours) rows.push(row('Colour', m.colours + ' Colour'));
-    if (m.uvSystem && m.uvSystem !== 'none') {
-      const uvLabel = m.uvSystem==='led'?'LED UV':m.uvSystem==='mercury'?'Mercury UV (Traditional)':m.uvSystem==='ir'?'IR Dryer':'UV Dryer';
-      rows.push(row('UV Dryer', uvLabel));
-    }
-    if (m.paperWidth) rows.push(row('Max. Paper Width', m.paperWidth + (String(m.paperWidth).toLowerCase().includes('mm') ? '' : 'mm')));
-    if (m.printWidth) rows.push(row('Max. Printing Width', m.printWidth + (String(m.printWidth).toLowerCase().includes('mm') ? '' : 'mm')));
-    if (m.printLen)   rows.push(row('Max. Printing Length', m.printLen + (String(m.printLen).toLowerCase().includes('mm') ? '' : 'mm')));
-    if (m.speed)      rows.push(row('Speed', m.speed));
+    // 'other' type: all specs entered via extraSpecs for free ordering
   }
 
   // Extra custom spec rows (appear ABOVE Power/Dimension/Country)
@@ -4968,15 +4933,7 @@ function buildSpecRowsWord(m) {
     rows.push(row('Max. Plate Size', m.plateSize));
     rows.push(row('Resolution', m.resolution));
   } else if (t === 'other') {
-    if (m.colours) rows.push(row('Colour', m.colours + ' Colour'));
-    if (m.uvSystem && m.uvSystem !== 'none') {
-      const uvLabel = m.uvSystem==='led'?'LED UV':m.uvSystem==='mercury'?'Mercury UV (Traditional)':m.uvSystem==='ir'?'IR Dryer':'UV Dryer';
-      rows.push(row('UV Dryer', uvLabel));
-    }
-    if (m.paperWidth) rows.push(row('Max. Paper Width', m.paperWidth + (String(m.paperWidth).toLowerCase().includes('mm') ? '' : 'mm')));
-    if (m.printWidth) rows.push(row('Max. Printing Width', m.printWidth + (String(m.printWidth).toLowerCase().includes('mm') ? '' : 'mm')));
-    if (m.printLen)   rows.push(row('Max. Printing Length', m.printLen + (String(m.printLen).toLowerCase().includes('mm') ? '' : 'mm')));
-    if (m.speed)      rows.push(row('Speed', m.speed));
+    // all specs via extraSpecs
   }
   // Extra custom spec rows (above Power/Dimension/Country)
   (Array.isArray(m.extraSpecs)?m.extraSpecs:[]).forEach(spec => {
