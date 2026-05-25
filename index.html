@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.42</title>
+<title>Sen Labels — Contract Generator v10.43</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.42</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.43</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3271,11 +3271,13 @@ function buildSpecRows(m) {
         }
       }
     });
-    rows.push(row('Power Required', m.power));
-    rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
-    rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
+    if (t !== 'other') {
+      rows.push(row('Power Required', m.power));
+      rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
+      rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
+    }
   }
-  rows.push(row('Country Of Origin', m.coo));
+  if (t !== 'other') rows.push(row('Country Of Origin', m.coo));
 
   return rows.filter(Boolean).join('');
 }
@@ -3637,6 +3639,11 @@ function normalizeState(s) {
   if (!s.validity)    s.validity    = 'One (1) Month only';
   if (!s.status)      s.status      = 'Quotation Sent';
   if (s.status === 'Quotation') s.status = 'Quotation Sent'; // fix old value
+
+  // ── Ensure activeMachineIdx is a valid number ─────────────────────────────
+  if (typeof s.activeMachineIdx !== 'number' || s.activeMachineIdx < 0 || s.activeMachineIdx >= s.machines.length) {
+    s.activeMachineIdx = 0;
+  }
 }
 
 async function stripImagesForSave(stateObj) {
@@ -4790,10 +4797,12 @@ function exportToExcel() {
         const _wL=(spec.label||''),_wD=_wL.replace(/^[~#]+/,'');
         if(_wL.startsWith('#')){r([c(_wD,ST.bold)]);}else if(_wD&&spec.value){sp(_wD,spec.value);}else if(_wD){r([c(''),c(_wD),c(''),c(''),c('')]);}
       });
-      sp('Power Required', m.power);
-      sp('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : '');
-      sp('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : '');
-      sp('Country Of Origin', m.coo);
+      if (m.machineType !== 'other') {
+        sp('Power Required', m.power);
+        sp('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : '');
+        sp('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : '');
+        sp('Country Of Origin', m.coo);
+      }
     }
     blank();
 
@@ -4943,10 +4952,12 @@ function buildSpecRowsWord(m) {
     else if (_bD&&spec.value) rows.push(row(_bD, spec.value));
     else if (spec.label) rows.push(`<tr><td width="6">&nbsp;</td><td colspan="3" style="${B}padding:2pt 8pt">${esc(spec.label)}</td></tr>`);
   });
-  rows.push(row('Power Required', m.power));
-  rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
-  rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
-  rows.push(row('Country Of Origin', m.coo));
+  if (t !== 'other') {
+    rows.push(row('Power Required', m.power));
+    rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
+    rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
+    rows.push(row('Country Of Origin', m.coo));
+  }
   return rows.filter(Boolean).join('');
 }
 
