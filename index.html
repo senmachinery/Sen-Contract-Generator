@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.45</title>
+<title>Sen Labels — Contract Generator v10.46</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,11 +326,12 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.45</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.46</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
     <span id="gs-status" class="gs-warn" title="Google Sheets status">&#9881; Sheets: Not configured</span>
+    <span id="autosave-status" title="Auto-save status" style="font-size:11px;padding:3px 8px;border-radius:3px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;display:inline-flex;align-items:center;gap:4px"><span id="autosave-icon">&#9989;</span> <span id="autosave-text">Saved</span></span>
     <button class="btn btn-outline btn-sm" onclick="openSettings()">&#9881; Settings</button>
     <button class="btn btn-success btn-sm" onclick="saveToSheets()">&#128190; Save Record</button>
     <button class="btn btn-sm" onclick="openLibrary()" style="background:#6a1b9a;color:#fff">&#128218; Library</button>
@@ -341,6 +342,7 @@ function mobileTab(tab) {
     <button class="btn btn-outline btn-sm" onclick="saveStateJSON()" title="Save full contract data as .json for future re-editing">&#128190; Save JSON</button>
     <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file">&#128194; Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this)"></label>
     <button class="btn btn-outline btn-sm" onclick="openPasteModal()" title="Paste JSON text to load contract (iPad friendly)">&#128203; Paste JSON</button>
+    <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff">&#128203; Duplicate</button>
     <button class="btn btn-primary btn-sm" onclick="newContract()">&#xFF0B; New Contract</button>
   </div>
 </div>
@@ -465,7 +467,10 @@ function mobileTab(tab) {
 
   <!-- TAB: MACHINE -->
   <div id="tab-machine" class="tab-content">
-    <div class="m-selector-bar" id="machine-selector-bar"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div class="m-selector-bar" id="machine-selector-bar" style="flex:1"></div>
+      <button onclick="applyBulkDiscount()" title="Apply same % discount to all machines" style="background:#fbe9e7;color:#bf360c;border:1px solid #ffab91;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap">% Bulk Discount</button>
+    </div>
     <div class="machine-body">
       <div class="field-group">
         <label>Machine Type</label>
@@ -5328,6 +5333,398 @@ function getAppsScriptCode() {
   ];
   return lines.join('\n');
 }
+
+// ============================================================
+// v10.46: AUTO-SAVE / DUPLICATE / VALIDATION / DRAG-DROP / etc
+// ============================================================
+
+// ───── AUTO-SAVE ────────────────────────────────────────────
+let autosaveTimer = null;
+let autosaveDirty = false;
+const AUTOSAVE_KEY = 'sen_autosave_draft';
+const AUTOSAVE_INTERVAL_MS = 5000; // save 5 sec after last edit
+
+function setAutosaveStatus(state) {
+  const icon = document.getElementById('autosave-icon');
+  const text = document.getElementById('autosave-text');
+  const wrap = document.getElementById('autosave-status');
+  if (!icon || !text || !wrap) return;
+  if (state === 'dirty') {
+    icon.innerHTML = '&#9679;'; text.textContent = 'Unsaved';
+    wrap.style.background = '#fff3e0'; wrap.style.color = '#e65100'; wrap.style.borderColor = '#ffcc80';
+  } else if (state === 'saving') {
+    icon.innerHTML = '&#8987;'; text.textContent = 'Saving...';
+    wrap.style.background = '#fff8e1'; wrap.style.color = '#f57f17'; wrap.style.borderColor = '#fff176';
+  } else {
+    icon.innerHTML = '&#9989;'; text.textContent = 'Saved';
+    wrap.style.background = '#e8f5e9'; wrap.style.color = '#2e7d32'; wrap.style.borderColor = '#a5d6a7';
+  }
+}
+
+function markDirty() {
+  autosaveDirty = true;
+  setAutosaveStatus('dirty');
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(performAutosave, AUTOSAVE_INTERVAL_MS);
+}
+
+async function performAutosave() {
+  if (!autosaveDirty) return;
+  try {
+    setAutosaveStatus('saving');
+    saveCurrentMachineToState();
+    // Strip images to fit localStorage quota
+    const cleanState = JSON.parse(JSON.stringify(state));
+    (cleanState.machines || []).forEach(m => {
+      m.images = []; (m.partGroups||[]).forEach(g => { g.images=[]; (g.items||[]).forEach(i=>i.images=[]); });
+    });
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+      ts: new Date().toISOString(), contractNo: state.contractNo, state: cleanState
+    }));
+    autosaveDirty = false;
+    setAutosaveStatus('saved');
+  } catch (e) {
+    console.error('Autosave failed:', e);
+    setAutosaveStatus('dirty');
+  }
+}
+
+function hasAutosaveDraft() {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return d && d.state ? d : null;
+  } catch { return null; }
+}
+
+function restoreAutosaveDraft() {
+  const d = hasAutosaveDraft();
+  if (!d) return false;
+  const when = new Date(d.ts).toLocaleString();
+  if (!confirm(`Restore auto-saved draft?\n\nContract: ${d.contractNo || '(no number)'}\nSaved: ${when}\n\nClick OK to restore, Cancel to discard.`)) {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    return false;
+  }
+  state = d.state;
+  normalizeState(state);
+  // Reload all form fields
+  const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
+  ['admin','doctype','status','contract-no','date','revised','company','addr','tel','fax','email','attn','port','currency','deposit-pct','pay-cond','validity','delivery','remarks','notes','tradein-desc','tradein-value']
+    .forEach(k => sv('f-'+k, state[k.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] || state[k] || ''));
+  sv('f-contract-no', state.contractNo); sv('f-date', state.date);
+  sv('f-deposit-pct', state.depositPct); sv('f-pay-cond', state.payCond);
+  sv('f-tradein-desc', state.tradeinDesc); sv('f-tradein-value', state.tradeinValue);
+  renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
+  renderCwItems(); renderRemarkItems(); updatePreview();
+  setAutosaveStatus('saved');
+  return true;
+}
+
+// Hook into existing updatePreview to mark dirty
+const __origUpdatePreview = window.updatePreview;
+if (typeof __origUpdatePreview === 'function') {
+  window.updatePreview = function() {
+    __origUpdatePreview.apply(this, arguments);
+    markDirty();
+  };
+}
+
+// Clear autosave after successful explicit save
+const __origSaveStateJSON = window.saveStateJSON;
+if (typeof __origSaveStateJSON === 'function') {
+  window.saveStateJSON = async function() {
+    const r = await __origSaveStateJSON.apply(this, arguments);
+    localStorage.removeItem(AUTOSAVE_KEY);
+    setAutosaveStatus('saved');
+    return r;
+  };
+}
+
+// ───── DUPLICATE AS NEW ─────────────────────────────────────
+function duplicateAsNew() {
+  if (!state.contractNo && !state.company) {
+    alert('Nothing to duplicate. Please open or create a contract first.');
+    return;
+  }
+  if (!confirm('Duplicate this contract as a new draft?\n\n• Contract No. will be regenerated\n• Date will be set to today\n• Status reset to "Quotation Sent"\n• All other data preserved')) return;
+  
+  saveCurrentMachineToState();
+  const dup = JSON.parse(JSON.stringify(state));
+  dup.contractNo = '';
+  dup.date = new Date().toISOString().split('T')[0];
+  dup.revised = '';
+  dup.status = 'Quotation Sent';
+  dup.signedPdfUrl = '';
+  // Reset images to avoid duplicate references
+  (dup.machines||[]).forEach(m => { m.images = []; });
+  
+  state = dup;
+  normalizeState(state);
+  // Refill form
+  const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
+  sv('f-contract-no', ''); sv('f-date', state.date); sv('f-revised', '');
+  sv('f-status', 'Quotation Sent');
+  sv('f-company', state.company); sv('f-addr', state.addr);
+  sv('f-tel', state.tel); sv('f-fax', state.fax||''); sv('f-email', state.email); sv('f-attn', state.attn);
+  sv('f-port', state.port); sv('f-currency', state.currency);
+  sv('f-deposit-pct', state.depositPct); sv('f-pay-cond', state.payCond);
+  sv('f-validity', state.validity); sv('f-delivery', state.delivery);
+  sv('f-remarks', state.remarks); sv('f-notes', state.notes||'');
+  genContractNo(); // try to auto-generate next number
+  renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
+  renderCwItems(); renderRemarkItems(); updatePreview();
+  alert('✅ Duplicated as new draft. Please review and update Contract No.');
+}
+
+// ───── CONTRACT NO. VALIDATION ──────────────────────────────
+function validateContractNo() {
+  const el = document.getElementById('f-contract-no');
+  if (!el) return;
+  const v = (el.value || '').trim();
+  // Expected pattern: SEN/SC/<admin>/<YY>-<NNNN>  or  SEN/QT/<admin>/<YY>-<NNNN>
+  const ok = !v || /^SEN\/(SC|QT)\/[A-Z]{1,4}\/\d{2}-\d{3,5}$/i.test(v);
+  el.style.borderColor = ok ? '' : '#e57373';
+  el.style.background = ok ? '' : '#ffebee';
+  el.title = ok ? '' : 'Expected format: SEN/SC/NR/26-2422';
+}
+
+// ───── DRAG-DROP JSON FILE ──────────────────────────────────
+function setupDragDrop() {
+  const target = document.body;
+  let overlay = null;
+  function showOverlay() {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(26,58,95,.85);z-index:99999;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;pointer-events:none';
+    overlay.innerHTML = '&#128194; Drop .json file to load contract';
+    document.body.appendChild(overlay);
+  }
+  function hideOverlay() { if (overlay) { overlay.remove(); overlay = null; } }
+  
+  target.addEventListener('dragover', e => { 
+    if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); showOverlay(); }
+  });
+  target.addEventListener('dragleave', e => {
+    if (e.target === target || e.clientX <= 0 || e.clientY <= 0) hideOverlay();
+  });
+  target.addEventListener('drop', e => {
+    hideOverlay();
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.json')) return;
+    e.preventDefault();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('paste-json-text').value = ev.target.result;
+      openPasteModal(); 
+      setTimeout(loadFromPastedJSON, 200);
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ───── AUTOCOMPLETE for company name ─────────────────────────
+let __companyCache = null;
+async function setupCompanyAutocomplete() {
+  const input = document.getElementById('f-company');
+  if (!input || !gsUrl) return;
+  
+  let dropdown = null;
+  function closeDropdown() { if (dropdown) { dropdown.remove(); dropdown = null; } }
+  
+  async function fetchCompanies() {
+    if (__companyCache) return __companyCache;
+    try {
+      const resp = await fetch(`${gsUrl}?action=customerDB&q=`);
+      const data = await resp.json();
+      __companyCache = (data.customers || []).map(c => ({
+        company: c.company || '', addr: c.addr||'', tel: c.tel||'', fax: c.fax||'',
+        email: c.email||'', attn: c.attn||''
+      }));
+      return __companyCache;
+    } catch { return []; }
+  }
+  
+  input.addEventListener('input', async () => {
+    const q = input.value.toLowerCase().trim();
+    closeDropdown();
+    if (q.length < 2) return;
+    const list = await fetchCompanies();
+    const matches = list.filter(c => c.company.toLowerCase().includes(q)).slice(0, 6);
+    if (!matches.length) return;
+    dropdown = document.createElement('div');
+    dropdown.style.cssText = 'position:absolute;background:#fff;border:1px solid #c0cde0;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.15);max-height:240px;overflow:auto;z-index:9999;font-size:12px;min-width:300px';
+    const rect = input.getBoundingClientRect();
+    dropdown.style.left = (rect.left + window.scrollX) + 'px';
+    dropdown.style.top  = (rect.bottom + window.scrollY) + 'px';
+    dropdown.style.width = rect.width + 'px';
+    matches.forEach(m => {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:6px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0';
+      item.innerHTML = `<div style="font-weight:600">${m.company}</div><div style="color:#888;font-size:11px">${m.addr.slice(0,60)}</div>`;
+      item.addEventListener('mouseenter', () => item.style.background = '#f5f9ff');
+      item.addEventListener('mouseleave', () => item.style.background = '');
+      item.addEventListener('click', () => {
+        input.value = m.company;
+        document.getElementById('f-addr').value = m.addr;
+        document.getElementById('f-tel').value  = m.tel;
+        const fx = document.getElementById('f-fax'); if (fx) fx.value = m.fax;
+        document.getElementById('f-email').value = m.email;
+        document.getElementById('f-attn').value  = m.attn;
+        state.company = m.company; state.addr = m.addr; state.tel = m.tel;
+        state.fax = m.fax; state.email = m.email; state.attn = m.attn;
+        closeDropdown(); updatePreview();
+      });
+      dropdown.appendChild(item);
+    });
+    document.body.appendChild(dropdown);
+  });
+  input.addEventListener('blur', () => setTimeout(closeDropdown, 200));
+}
+
+// ───── BULK DISCOUNT (apply % to all machines) ──────────────
+function applyBulkDiscount() {
+  if (!state.machines || state.machines.length < 2) {
+    alert('Bulk discount only works with 2 or more machines.');
+    return;
+  }
+  const pct = prompt('Apply discount % to ALL machines:\n(e.g. 10 for 10% off each)\nLeave empty to cancel.');
+  if (!pct) return;
+  const pctNum = parseFloat(pct);
+  if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) { alert('Invalid percentage.'); return; }
+  if (!confirm(`Apply ${pctNum}% discount to all ${state.machines.length} machines?`)) return;
+  saveCurrentMachineToState();
+  state.machines.forEach(m => {
+    m.discountPct = pctNum;
+    m.discountAmt = 0;
+    if (!m.discountLabel) m.discountLabel = `Special Discount (${pctNum}%)`;
+  });
+  loadMachineIntoForm(); updatePreview();
+  alert(`✅ ${pctNum}% discount applied to ${state.machines.length} machines.`);
+}
+
+// ───── EXPIRY WARNING ───────────────────────────────────────
+function checkExpiry() {
+  if (!state.date || !state.validity) return;
+  // Match either "1 month" or "One (1) Month" — pull the number from parens or word boundary
+  const v = String(state.validity);
+  let n = 0, unit = '';
+  const m1 = v.match(/\((\d+)\)\s*(month|week|day)/i); // "One (1) Month"
+  const m2 = v.match(/(\d+)\s*(month|week|day)/i);     // "1 month"
+  const m = m1 || m2;
+  if (!m) return;
+  n = parseInt(m[1]); unit = m[2].toLowerCase();
+  const ms = unit === 'month' ? n*30*864e5 : unit === 'week' ? n*7*864e5 : n*864e5;
+  const expiry = new Date(state.date).getTime() + ms;
+  const now = Date.now();
+  const dateEl = document.getElementById('f-date');
+  if (!dateEl) return;
+  if (now > expiry) {
+    dateEl.style.borderColor = '#e57373';
+    dateEl.style.background = '#ffebee';
+    dateEl.title = '⚠️ Quotation may be expired (past validity period). Update date or revise.';
+  } else if (now > expiry - 7*864e5) {
+    dateEl.style.borderColor = '#ffb74d';
+    dateEl.style.background = '#fff8e1';
+    dateEl.title = '⏰ Quotation expires within 7 days.';
+  } else {
+    dateEl.style.borderColor = '';
+    dateEl.style.background = '';
+    dateEl.title = '';
+  }
+}
+
+// ───── UNDO MACHINE DELETE ──────────────────────────────────
+let __deletedMachineStack = [];
+const __origRemoveMachine = window.removeMachine;
+if (typeof __origRemoveMachine === 'function') {
+  window.removeMachine = function(idx) {
+    if (!state.machines[idx]) return;
+    const removed = JSON.parse(JSON.stringify(state.machines[idx]));
+    const wasIdx = idx;
+    if (!confirm(`Delete this machine?\n\nYou can undo this with the "Undo Delete" button or Ctrl+Z.`)) return;
+    __deletedMachineStack.push({ machine: removed, idx: wasIdx });
+    if (__deletedMachineStack.length > 10) __deletedMachineStack.shift();
+    state.machines.splice(idx, 1);
+    if (state.machines.length === 0) state.machines.push(newMachine());
+    if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = state.machines.length - 1;
+    renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm(); updatePreview();
+    showUndoToast();
+  };
+}
+
+function undoMachineDelete() {
+  if (!__deletedMachineStack.length) return;
+  const { machine, idx } = __deletedMachineStack.pop();
+  const insertAt = Math.min(idx, state.machines.length);
+  state.machines.splice(insertAt, 0, machine);
+  state.activeMachineIdx = insertAt;
+  renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm(); updatePreview();
+}
+
+function showUndoToast() {
+  let toast = document.getElementById('undo-toast');
+  if (toast) toast.remove();
+  toast = document.createElement('div');
+  toast.id = 'undo-toast';
+  toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 20px;border-radius:6px;font-size:14px;z-index:99998;box-shadow:0 4px 12px rgba(0,0,0,.3);display:flex;align-items:center;gap:12px';
+  toast.innerHTML = '<span>Machine deleted</span> <button onclick="undoMachineDelete();document.getElementById(\'undo-toast\').remove()" style="background:#4fc3f7;color:#000;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-weight:600">UNDO</button>';
+  document.body.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
+}
+
+// Ctrl+Z keyboard shortcut for undo
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    // Only undo if focus is not inside an input/textarea
+    const tag = (document.activeElement?.tagName || '').toLowerCase();
+    if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+      if (__deletedMachineStack.length) {
+        e.preventDefault();
+        undoMachineDelete();
+        const toast = document.getElementById('undo-toast');
+        if (toast) toast.remove();
+      }
+    }
+  }
+});
+
+// ───── INIT all v10.46 features ─────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  setupDragDrop();
+  
+  // Check for autosaved draft
+  setTimeout(() => {
+    const draft = hasAutosaveDraft();
+    if (draft && (!state.contractNo || state.machines.length <= 1)) {
+      restoreAutosaveDraft();
+    }
+  }, 800);
+  
+  // Setup contract no validation
+  const cn = document.getElementById('f-contract-no');
+  if (cn) cn.addEventListener('input', validateContractNo);
+  
+  // Setup expiry check
+  const dateEl = document.getElementById('f-date');
+  if (dateEl) dateEl.addEventListener('change', checkExpiry);
+  setInterval(checkExpiry, 60000); // re-check every minute
+  setTimeout(checkExpiry, 1500);
+  
+  // Autocomplete (once gsUrl is configured)
+  setTimeout(setupCompanyAutocomplete, 1000);
+  
+  // Warn before unload if dirty
+  window.addEventListener('beforeunload', e => {
+    if (autosaveDirty) {
+      e.preventDefault();
+      e.returnValue = 'You have unsaved changes. Auto-save is in progress.';
+      performAutosave();
+      return e.returnValue;
+    }
+  });
+});
+
 </script>
 </body>
 </html>
