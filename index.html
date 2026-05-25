@@ -1779,7 +1779,9 @@ function calcPriceForMachine(m) {
   }, 0);
   const uQty2 = m.unitQty || 1;
   const hasItemizedCw = cwTotal > 0 && (m.unitPrice||0) > 0;
-  const gross = hasItemizedCw ? ((m.unitPrice||0) * uQty2 + cwTotal) : (m.sellPrice || m.unitPrice * uQty2 || 0);
+  // gross always = unitPrice × qty (+ cwItems if itemized); never use sellPrice as gross
+  const baseGross = (m.unitPrice||0) > 0 ? (m.unitPrice||0) * uQty2 : (m.sellPrice||0);
+  const gross = hasItemizedCw ? (baseGross + cwTotal) : baseGross;
   const discAmt = (m.discountPct||0) > 0 ? gross * ((m.discountPct||0)/100) : (m.discountAmt||0);
   const sp = Math.max(0, gross - discAmt);
   const dep = sp * ((state.depositPct||30)/100);
