@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.46</title>
+<title>Sen Labels — Contract Generator v10.47</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -290,6 +290,12 @@ function mobileTab(tab) {
 }
 
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
 </head>
 <body>
 <div id="pw-overlay">
@@ -326,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.46</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.47</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5497,7 +5503,7 @@ function setupDragDrop() {
     if (overlay) return;
     overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(26,58,95,.85);z-index:99999;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;pointer-events:none';
-    overlay.innerHTML = '&#128194; Drop .json file to load contract';
+    overlay.innerHTML = '&#128194; Drop .json or .pdf file to load contract';
     document.body.appendChild(overlay);
   }
   function hideOverlay() { if (overlay) { overlay.remove(); overlay = null; } }
@@ -5508,18 +5514,26 @@ function setupDragDrop() {
   target.addEventListener('dragleave', e => {
     if (e.target === target || e.clientX <= 0 || e.clientY <= 0) hideOverlay();
   });
-  target.addEventListener('drop', e => {
+  target.addEventListener('drop', async e => {
     hideOverlay();
     const file = e.dataTransfer.files[0];
-    if (!file || !file.name.endsWith('.json')) return;
+    if (!file) return;
     e.preventDefault();
-    const reader = new FileReader();
-    reader.onload = ev => {
-      document.getElementById('paste-json-text').value = ev.target.result;
-      openPasteModal(); 
-      setTimeout(loadFromPastedJSON, 200);
-    };
-    reader.readAsText(file);
+    
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        document.getElementById('paste-json-text').value = ev.target.result;
+        openPasteModal();
+        setTimeout(loadFromPastedJSON, 200);
+      };
+      reader.readAsText(file);
+    } else if (lower.endsWith('.pdf')) {
+      await extractFromPDF(file);
+    } else {
+      alert('Only .json or .pdf files supported.\n\nDrag a JSON contract file OR a PDF (text-based) to auto-load.');
+    }
   });
 }
 
@@ -5724,6 +5738,296 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+
+
+// ============================================================
+// v10.47: PDF AUTO-EXTRACT (text-based PDFs only)
+// ============================================================
+async function extractFromPDF(file) {
+  if (typeof pdfjsLib === 'undefined') {
+    alert('PDF library not loaded. Please refresh the page and try again.');
+    return;
+  }
+  
+  // Show progress overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'pdf-extract-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(26,58,95,.85);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:18px;gap:16px';
+  overlay.innerHTML = '<div style="font-size:48px">&#128194;</div><div id="pdf-progress">Reading PDF...</div><div style="font-size:13px;opacity:.8">Extracting text from PDF...</div>';
+  document.body.appendChild(overlay);
+  const setProgress = msg => { const el = document.getElementById('pdf-progress'); if (el) el.textContent = msg; };
+  
+  try {
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    setProgress(`Reading ${pdf.numPages} page(s)...`);
+    
+    let fullText = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      // Sort items by Y then X to preserve reading order
+      const items = content.items.slice().sort((a, b) => {
+        const yDiff = (b.transform[5] - a.transform[5]);
+        if (Math.abs(yDiff) > 2) return yDiff;
+        return a.transform[4] - b.transform[4];
+      });
+      let lastY = null;
+      items.forEach(it => {
+        const y = it.transform[5];
+        if (lastY !== null && Math.abs(lastY - y) > 2) fullText += '\n';
+        else if (fullText && !fullText.endsWith('\n') && !fullText.endsWith(' ')) fullText += ' ';
+        fullText += it.str;
+        lastY = y;
+      });
+      fullText += '\n\n';
+    }
+    
+    setProgress('Parsing contract data...');
+    const parsed = parsePDFText(fullText);
+    
+    if (!parsed.machines.length) {
+      document.body.removeChild(overlay);
+      alert('Could not detect any machine in the PDF.\n\nThe PDF may be scanned (image-based) or in an unsupported format.\n\nText preview:\n\n' + fullText.slice(0, 400));
+      return;
+    }
+    
+    document.body.removeChild(overlay);
+    
+    if (!confirm(`Loaded ${parsed.machines.length} machine(s) from PDF.\n\nContract No: ${parsed.contractNo || '(not found)'}\nBuyer: ${parsed.company || '(not found)'}\n\nClick OK to load into form (will replace current data).\nClick Cancel to abort.`)) return;
+    
+    // Use existing loadFromPastedJSON path  
+    document.getElementById('paste-json-text').value = JSON.stringify(parsed);
+    openPasteModal();
+    setTimeout(loadFromPastedJSON, 200);
+  } catch (e) {
+    document.body.removeChild(overlay);
+    console.error(e);
+    alert('Failed to read PDF: ' + e.message + '\n\nMake sure it is a text-based PDF (not a scanned image).');
+  }
+}
+
+// Parse raw text from PDF into state JSON
+function parsePDFText(text) {
+  const out = {
+    contractNo: '', date: '', admin: 'NR',
+    company: '', addr: '', tel: '', fax: '', email: '', attn: '',
+    port: '', currency: 'USD',
+    depositPct: 30, payCond: '30/70',
+    validity: 'One (1) Month only', delivery: 'TBA upon chopped/signed Sales Contract.',
+    docType: 'Sales Contract', status: 'Quotation Sent',
+    remarks: '', remarkItems: [],
+    activeMachineIdx: 0, machines: []
+  };
+  
+  // Normalize whitespace per line
+  const lines = text.split(/\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(l => l);
+  const blob = lines.join('\n');
+  
+  // ── Contract No.
+  let m = blob.match(/Sales Contract\s*(?:No|n No)?\.?\s*[:.]?\s*(SEN\/(?:SC|QT)\/[A-Z]{1,4}\/\d{2}-\d{3,5})/i) ||
+          blob.match(/(SEN\/SC\/[A-Z]{1,4}\/\d{2}-\d{3,5})/) ||
+          blob.match(/Sales Contract\s*[:#]?\s*(SC\/[A-Z]{1,4}\/\d{2}-\d{3,5})/i);
+  if (m) {
+    let cn = m[1];
+    if (!cn.startsWith('SEN/')) cn = 'SEN/' + cn;
+    out.contractNo = cn;
+    // Extract admin code
+    const adminMatch = cn.match(/SEN\/(?:SC|QT)\/([A-Z]+)\//);
+    if (adminMatch) out.admin = adminMatch[1];
+  }
+  
+  // ── Date (multiple formats: "25 May 2026", "21/07/2025", "21-07-2025")
+  m = blob.match(/Date\s*[:.]?\s*(\d{1,2}\s+\w+\s+\d{4})/i);
+  if (m) {
+    const dt = new Date(m[1]);
+    if (!isNaN(dt)) out.date = dt.toISOString().split('T')[0];
+  }
+  if (!out.date) {
+    m = blob.match(/Date\s*[:.]?\s*(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+    if (m) {
+      // Assume DD/MM/YYYY (international format)
+      const dd = parseInt(m[1]), mm = parseInt(m[2]), yy = parseInt(m[3]);
+      if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+        out.date = `${yy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+      }
+    }
+  }
+  
+  // ── Buyer Info
+  // "To:" line — capture company name (next caps line)
+  m = blob.match(/To\s*[:.]?\s*([A-Z][A-Z0-9 &.,()\-\/]{3,80})/);
+  if (m) out.company = m[1].trim().replace(/\s+/g, ' ');
+  
+  // Address — "Add:" or "Addr:" line
+  m = blob.match(/Add(?:ress|r)?\s*[:.]?\s*([^\n]+(?:\n[^\n:]+)?)/i);
+  if (m) {
+    let addr = m[1].split(/\n(?:Tel|Email|Attn|Sales|Date)/i)[0].trim();
+    addr = addr.replace(/\s+/g, ' ').replace(/(Indonesia|Malaysia|Singapore|Korea|Japan|China|Thailand|Vietnam|Philippines|India)\b.*/i, '$1').trim();
+    if (addr.length > 5 && addr.length < 200) out.addr = addr;
+  }
+  
+  // Attn
+  m = blob.match(/Attn\.?\s*[:.]?\s*([^\n]{3,100})/i);
+  if (m) {
+    out.attn = m[1].split(/\n|Sales|Email/)[0].trim().replace(/\s+/g,' ');
+  }
+  
+  // Email
+  m = blob.match(/Email\s*[:.]?\s*([^\s\n]+@[^\s\n]+(?:\s*[;,]\s*[^\s\n]+@[^\s\n]+)*)/i);
+  if (m) out.email = m[1].trim();
+  
+  // Tel
+  m = blob.match(/Tel\.?\s*[:.]?\s*([+\d][\d\s\-()+]{5,30})/i);
+  if (m) out.tel = m[1].trim();
+  
+  // Port (CIF/FOB/EXW)
+  m = blob.match(/((?:CIF|FOB|EXW|DAP|DDP|CIP|FCA|DAT)[,\s]+[^\]\n,]+(?:,\s*[A-Za-z][^\]\n,]+)*)/i);
+  if (m) out.port = m[1].trim().replace(/\s+/g, ' ');
+  
+  // ── Pre-remark (lines starting with *)
+  const preRemarks = lines.filter(l => /^\*[A-Z]/.test(l)).slice(0, 5);
+  if (preRemarks.length) out.remarks = preRemarks.join('\n');
+  
+  // ── Remark items (numbered)
+  const remarkItems = [];
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    const r = ln.match(/^(\d{1,2})\.\s+(.{30,})/);
+    if (r && parseInt(r[1]) >= 1 && parseInt(r[1]) <= 9) {
+      // Continue if next lines don't start with number
+      let full = r[2];
+      for (let j = i+1; j < lines.length && j < i+8; j++) {
+        if (/^\d{1,2}\.\s+/.test(lines[j])) break;
+        if (/^(Price Validity|Term|Date of Delivery|BANK|Warranty|SELLER|REMARK)/i.test(lines[j])) break;
+        full += ' ' + lines[j];
+      }
+      if (full.length > 50 && full.length < 800) remarkItems.push(full.trim());
+    }
+  }
+  if (remarkItems.length >= 2 && remarkItems.length <= 8) out.remarkItems = remarkItems;
+  
+  // ── Currency detection
+  if (/\bUSD\b/.test(blob)) out.currency = 'USD';
+  else if (/\bMYR\b|\bRM\b/.test(blob)) out.currency = 'MYR';
+  else if (/\bSGD\b|\bS\$\b/.test(blob)) out.currency = 'SGD';
+  else if (/\bIDR\b|\bRP\b/.test(blob)) out.currency = 'IDR';
+  
+  // ── Payment Condition
+  if (/FULL PAYMENT/i.test(blob)) { out.payCond = 'FULL PAYMENT BEFORE DELIVERY'; out.depositPct = 100; }
+  else if (/30\s*[\/%]\s*70|30%.*deposit/i.test(blob)) { out.payCond = '30/70'; out.depositPct = 30; }
+  else if (/50\s*[\/%]\s*50/i.test(blob)) { out.payCond = '50/50'; out.depositPct = 50; }
+  
+  // ── Machines — find numbered machine blocks
+  // Pattern: "1) <title>" or "2) <title>" etc, then specs until next machine or REMARK section
+  const machineHeaders = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m2 = lines[i].match(/^(\d{1,2})\)\s+(.{15,200})/);
+    if (m2 && parseInt(m2[1]) <= 9) {
+      // Filter out: payment summary, item rows
+      const title = m2[2];
+      if (/^(Less|Deposit|Balance|Price|Total|USD|MYR|RM\d|sub)/i.test(title)) continue;
+      if (!/(Machine|Printing|Press|Cutting|Slitter|Lamin|Coater|UV|Servo|Equipment|System|Plate|CTP|Dryer|Rewinder|Parts)/i.test(title)) continue;
+      machineHeaders.push({ idx: i, num: m2[1], title: title.trim() });
+    }
+  }
+  
+  // For each machine header, collect specs until next header or end
+  for (let mi = 0; mi < machineHeaders.length; mi++) {
+    const h = machineHeaders[mi];
+    const endIdx = (mi + 1 < machineHeaders.length) ? machineHeaders[mi+1].idx : lines.length;
+    
+    const machine = {
+      machineType: 'other',
+      condition: /Refurbish/i.test(h.title) ? 'Refurbished' : /\bNew\b/i.test(h.title) ? 'New' : 'Refurbished',
+      customTitle: h.title.replace(/\s*HS\s*CODE.*$|\s*\d{8}\s*$/i, '').trim(),
+      otherModel: '', desc: '',
+      serialNo:'', mfgYear:'', refurbYear:'', colours:'', uvSystem:'none', coo:'',
+      paperWidth:'', printWidth:'', printLen:'', weight:'', dimension:'', power:'', speed:'',
+      extraSpecs: [], cwItems: [],
+      qty: '1 Unit', unitPrice: 0, unitQty: 1, sellPrice: 0,
+      discountPct: 0, discountAmt: 0, discountLabel: '',
+      costMachine:0, costAddons:0, costStd:0, costTradein:0, custType:'direct', margin:0,
+      images: [], optItems: [], partItems: [], partGroups: [],
+      machineRemarks: ''
+    };
+    
+    // Sub-title (~) line directly after
+    if (h.idx + 1 < lines.length && /^[~*]\s/.test(lines[h.idx+1])) {
+      machine.desc = lines[h.idx+1].trim();
+    }
+    
+    // Parse spec lines like "Label : Value" — collect into extraSpecs
+    const cwStart = -1;
+    let inCw = false;
+    for (let i = h.idx + 1; i < endIdx; i++) {
+      const ln = lines[i];
+      
+      // Stop at common terminator
+      if (/^(Unit Price|Term Of|Total Amount|Price Validity|Payment|BANK|REMARK|Date of|Warranty)/i.test(ln)) break;
+      
+      // Detect "Come With"
+      if (/^Come\s*With/i.test(ln) || /^With\s+Standard\s+Accessories/i.test(ln) || /^COME WITH/i.test(ln)) { inCw = true; continue; }
+      
+      // Come With items (start with number or ~ unit/desc)
+      if (inCw) {
+        const cwM = ln.match(/^(?:\d+\s*[~xX×]?\s*)?([^\n]{10,150})$/);
+        if (cwM && !/^Unit Price|Term|Total/i.test(cwM[1])) {
+          const desc = cwM[1].replace(/^\d+\s*Unit\s*[~]?\s*/i, '').trim();
+          if (desc.length > 10) machine.cwItems.push({ desc, qty: '1 Unit', val: '' });
+          continue;
+        }
+      }
+      
+      // Spec line: "Label : Value" or "Label Value"
+      let specM = ln.match(/^([A-Z0-9][\w\s./()&-]{2,40})\s*[:.]\s*(.+?)$/);
+      if (specM) {
+        let label = specM[1].trim();
+        let value = specM[2].trim();
+        if (label.length < 60 && value.length < 200 && label !== 'Email' && label !== 'Tel' && label !== 'Attn' && label !== 'Date' && label !== 'Add') {
+          machine.extraSpecs.push({ label, value, bold: false, boldLabel: false });
+        }
+      }
+    }
+    
+    // ── Unit price (search whole machine block)
+    const machineBlock = lines.slice(h.idx, endIdx).join('\n');
+    const priceM = machineBlock.match(/Unit\s*Price[^\n]*?(?:USD|MYR|SGD|IDR|RM)\s*([\d,]+(?:\.\d+)?)/i) ||
+                   machineBlock.match(/(?:USD|MYR|SGD|IDR|RM)\s*([\d,]+(?:\.\d+)?)\s*[~\-]+\s*\d*\s*(?:per|each)?/i);
+    if (priceM) {
+      const p = parseFloat(priceM[1].replace(/,/g, ''));
+      if (p > 100) {
+        machine.unitPrice = p;
+        machine.sellPrice = p;
+      }
+    }
+    
+    // ── Discount detection
+    const discM = machineBlock.match(/(?:Special\s*Discount|VVIP|Discount)[\s\S]{0,50}?[-]?\s*(?:USD|MYR|RM)\s*([\d,]+(?:\.\d+)?)/i);
+    if (discM) {
+      machine.discountAmt = parseFloat(discM[1].replace(/,/g, ''));
+      machine.discountLabel = /VVIP/i.test(machineBlock) ? 'VVIP Special Discount' : 'Special Discount';
+    }
+    
+    out.machines.push(machine);
+  }
+  
+  // If no machines detected, create empty placeholder
+  if (!out.machines.length) {
+    out.machines = [{
+      machineType: 'other', condition: 'Refurbished', customTitle: '', otherModel: '', desc: '',
+      serialNo:'', mfgYear:'', refurbYear:'', colours:'', uvSystem:'none', coo:'',
+      paperWidth:'', printWidth:'', printLen:'', weight:'', dimension:'', power:'', speed:'',
+      extraSpecs: [], cwItems: [], qty: '1 Unit',
+      unitPrice: 0, unitQty: 1, sellPrice: 0, discountPct: 0, discountAmt: 0, discountLabel: '',
+      costMachine:0, costAddons:0, costStd:0, costTradein:0, custType:'direct', margin:0,
+      images: [], optItems: [], partItems: [], partGroups: [], machineRemarks: ''
+    }];
+  }
+  
+  return out;
+}
 
 </script>
 </body>
