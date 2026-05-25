@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.35</title>
+<title>Sen Labels — Contract Generator v10.37</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.35</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.37</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3242,6 +3242,17 @@ function buildSpecRows(m) {
     rows.push(row('Software / RIP', m.rip||'Eagle RIP'));
     rows.push(row('Max. Plate Size', m.plateSize));
     rows.push(row('Resolution', m.resolution));
+  } else if (t === 'other') {
+    // 'other' type: render all standard fields that have values
+    if (m.colours) rows.push(row('Colour', m.colours + ' Colour'));
+    if (m.uvSystem && m.uvSystem !== 'none') {
+      const uvLabel = m.uvSystem==='led'?'LED UV':m.uvSystem==='mercury'?'Mercury UV (Traditional)':m.uvSystem==='ir'?'IR Dryer':'UV Dryer';
+      rows.push(row('UV Dryer', uvLabel));
+    }
+    if (m.paperWidth) rows.push(row('Max. Paper Width', m.paperWidth + (String(m.paperWidth).toLowerCase().includes('mm') ? '' : 'mm')));
+    if (m.printWidth) rows.push(row('Max. Printing Width', m.printWidth + (String(m.printWidth).toLowerCase().includes('mm') ? '' : 'mm')));
+    if (m.printLen)   rows.push(row('Max. Printing Length', m.printLen + (String(m.printLen).toLowerCase().includes('mm') ? '' : 'mm')));
+    if (m.speed)      rows.push(row('Speed', m.speed));
   }
 
   // Extra custom spec rows (appear ABOVE Power/Dimension/Country)
@@ -3272,7 +3283,7 @@ function buildSpecRows(m) {
     });
     rows.push(row('Power Required', m.power));
     rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
-    rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
+    rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
   }
   rows.push(row('Country Of Origin', m.coo));
 
@@ -4791,7 +4802,7 @@ function exportToExcel() {
       });
       sp('Power Required', m.power);
       sp('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : '');
-      sp('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : '');
+      sp('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : '');
       sp('Country Of Origin', m.coo);
     }
     blank();
@@ -4931,6 +4942,16 @@ function buildSpecRowsWord(m) {
     rows.push(row('Software / RIP', m.rip||'Eagle RIP'));
     rows.push(row('Max. Plate Size', m.plateSize));
     rows.push(row('Resolution', m.resolution));
+  } else if (t === 'other') {
+    if (m.colours) rows.push(row('Colour', m.colours + ' Colour'));
+    if (m.uvSystem && m.uvSystem !== 'none') {
+      const uvLabel = m.uvSystem==='led'?'LED UV':m.uvSystem==='mercury'?'Mercury UV (Traditional)':m.uvSystem==='ir'?'IR Dryer':'UV Dryer';
+      rows.push(row('UV Dryer', uvLabel));
+    }
+    if (m.paperWidth) rows.push(row('Max. Paper Width', m.paperWidth + (String(m.paperWidth).toLowerCase().includes('mm') ? '' : 'mm')));
+    if (m.printWidth) rows.push(row('Max. Printing Width', m.printWidth + (String(m.printWidth).toLowerCase().includes('mm') ? '' : 'mm')));
+    if (m.printLen)   rows.push(row('Max. Printing Length', m.printLen + (String(m.printLen).toLowerCase().includes('mm') ? '' : 'mm')));
+    if (m.speed)      rows.push(row('Speed', m.speed));
   }
   // Extra custom spec rows (above Power/Dimension/Country)
   (Array.isArray(m.extraSpecs)?m.extraSpecs:[]).forEach(spec => {
@@ -4942,7 +4963,7 @@ function buildSpecRowsWord(m) {
   });
   rows.push(row('Power Required', m.power));
   rows.push(row('Net Weight', m.weight ? m.weight+(m.weight.toLowerCase().includes('kg')?'':' Kgs') : ''));
-  rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
+  rows.push(row('Dimension', m.dimension ? (()=>{const p=m.dimension.split(/[x×]/i).map(s=>s.trim().replace(/\s*mm$/i,'').replace(/^\([LWHlwh]\)\s*/,''));return p.length>=3?`(L) ${p[0]}mm x (W) ${p[1]}mm x (H) ${p[2]}mm`:(/mm/i.test(m.dimension)?m.dimension:m.dimension+' mm');})() : ''));
   rows.push(row('Country Of Origin', m.coo));
   return rows.filter(Boolean).join('');
 }
