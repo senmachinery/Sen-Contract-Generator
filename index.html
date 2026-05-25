@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.34</title>
+<title>Sen Labels — Contract Generator v10.35</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -326,7 +326,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.33</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.35</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3209,6 +3209,7 @@ function buildSpecRows(m) {
     ? (m.otherModel || (m.customTitle||'').replace(/^(New|Refurbished)\s+/,'') || '')
     : buildMachineTitle(m).replace(/^(New|Refurbished)\s+/,'');
   if (t !== 'other' && t !== 'refurb') rows.push(row('Model', modelName));
+  else if ((t === 'other') && modelName) rows.push(row('Model', modelName));
   rows.push(row('Serial Number', m.serialNo));
   rows.push(row('Mfg. Year', m.mfgYear));
   if (m.condition==='Refurbished'&&m.refurbYear) rows.push(row('Refurbished Year', m.refurbYear));
@@ -3297,8 +3298,11 @@ function buildComeWith(m) {
   // Always use itemized format with orange box
   let inner = '';
 
-  // Unit Price row — only show if there are Come With items (otherwise total row is enough)
-  if (unitPrice > 0 && items.length > 0) {
+  // Compute discount early so we can decide whether to show unit price
+  const discAmt2 = (m.discountPct||0) > 0 ? grandTotal*((m.discountPct||0)/100) : (m.discountAmt||0);
+
+  // Unit Price row — show when discount exists (so buyer sees original price) or when cwItems present
+  if (unitPrice > 0 && (items.length > 0 || discAmt2 > 0)) {
     if (uQty > 1) {
       inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;font-weight:600;margin-bottom:1.5mm;align-items:baseline">
         <span>Unit Price : ${fmt(unitPrice)} x ${uQty} Units =</span>
@@ -3327,7 +3331,6 @@ function buildComeWith(m) {
   }
 
   // Discount row if any
-  const discAmt2 = (m.discountPct||0) > 0 ? grandTotal*((m.discountPct||0)/100) : (m.discountAmt||0);
   if (discAmt2 > 0) {
     const dLbl = (m.discountLabel||'') ? ((m.discountPct||0)>0?`${m.discountLabel} (${m.discountPct}%)`:m.discountLabel) : ((m.discountPct||0)>0?`Special Discount (${m.discountPct}%)`:'Special Discount');
     inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;border-top:1px solid #e07800;margin-top:1mm;padding-top:1mm;align-items:baseline">
@@ -4896,6 +4899,7 @@ function buildSpecRowsWord(m) {
     ? (m.otherModel || (m.customTitle||'').replace(/^(New|Refurbished)\s+/,'') || '')
     : buildMachineTitle(m).replace(/^(New|Refurbished)\s+/,'');
   if (t !== 'other' && t !== 'refurb') rows.push(row('Model', modelName));
+  else if ((t === 'other') && modelName) rows.push(row('Model', modelName));
   rows.push(row('Serial Number', m.serialNo));
   rows.push(row('Mfg. Year', m.mfgYear));
   if (m.condition==='Refurbished'&&m.refurbYear) rows.push(row('Refurbished Year', m.refurbYear));
