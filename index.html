@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.50</title>
+<title>Sen Labels — Contract Generator v10.52</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.50</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.52</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3455,20 +3455,149 @@ function formatDate(iso) {
 function buildExportFilename(ext) {
   saveCurrentMachineToState();
   const contractNo = state.contractNo || 'Contract';
-  const customer   = (state.company || '').replace(/\s+SDN\s+BHD\.?/i,'').replace(/\s+PTY\s+LTD\.?/i,'').replace(/\s+/g,' ').trim();
+  // Clean up company name — remove all common entity suffixes
+  const customer = (state.company || '')
+    .replace(/\s+SDN\s+BHD\.?/ig,'')
+    .replace(/\s+PTY\s+LTD\.?/ig,'')
+    .replace(/\s+PTE\s+LTD\.?/ig,'')
+    .replace(/\s+LTD\.?/ig,'')
+    .replace(/\s+LIMITED\.?/ig,'')
+    .replace(/\s+INC\.?/ig,'')
+    .replace(/\s+CORP\.?/ig,'')
+    .replace(/\s+CO\.?,?\s*LTD\.?/ig,'')
+    .replace(/\s+CO\.?$/ig,'')
+    .replace(/\s+L\.L\.C\.?/ig,'')
+    .replace(/\s+LLC\.?/ig,'')
+    .replace(/\s+GMBH\.?/ig,'')
+    .replace(/\s+S\.A\.?/ig,'')
+    .replace(/\s+B\.V\.?/ig,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  // Shorten each machine title — remove fluff prefixes
   const machineTitle = state.machines.map(m => {
     if (m.machineType === 'parts') return m.customTitle || 'Parts';
-    return m.customTitle || m.otherModel || shortTitle(m) || 'Machine';
+    let t = m.customTitle || m.otherModel || shortTitle(m) || 'Machine';
+    // Remove common verbose prefixes for shorter filenames
+    t = t.replace(/^100%\s+Overhauled\s+Refurbished\s+/i, 'Refurbished ');
+    t = t.replace(/^100%\s+Refurbished\s+Excellent\s+Condition\s+/i, 'Refurbished ');
+    t = t.replace(/^Refurbished\s+Excellent\s+Condition\s+/i, 'Refurbished ');
+    return t.trim();
   }).join(', ');
-  const noShort = contractNo.replace('SEN/SC/NR/','SC-NR-').replace('SEN/Q/NR/','Q-NR-').replace(/\//g,'-');
-  const raw = [noShort, customer, machineTitle].filter(Boolean).join(' - ').replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
-  const name = raw.length > 100 ? raw.substring(0, 100).trim() : raw;
+  // Convert contract no format
+  const noShort = contractNo
+    .replace('SEN/SC/','SC-')
+    .replace('SEN/Q/','Q-')
+    .replace('SEN/QT/','QT-')
+    .replace(/\//g,'-');
+  const raw = [noShort, customer, machineTitle].filter(Boolean).join(' - ')
+    .replace(/[\/\\:*?"<>|]/g,'-')  // strip illegal filename chars
+    .replace(/\s+/g,' ')
+    .trim();
+  // Increased limit to 180 chars (Windows MAX_PATH leaves room)
+  const name = raw.length > 180 ? raw.substring(0, 180).trim() : raw;
   return name + '.' + ext;
 }
 
 function doPrint() {
   saveToSheets(true);
   const fname = buildExportFilename('pdf').replace(/\.pdf$/,'');
+  
+  // Detect iPad/iPhone Safari — show filename copy dialog (since Safari ignores document.title)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  
+  if (isIOS) {
+    showFilenameDialog(fname, () => doPrintInner(fname));
+  } else {
+    doPrintInner(fname);
+  }
+}
+
+function showFilenameDialog(fname, onContinue) {
+  // Remove existing overlay if any
+  const existing = document.getElementById('fname-dialog-overlay');
+  if (existing) existing.remove();
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'fname-dialog-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  
+  const dialog = document.createElement('div');
+  dialog.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:520px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+  
+  dialog.innerHTML = `
+    <h3 style="margin:0 0 12px 0;font-size:17px;color:#1a3a5c">&#128194; iPad Filename Helper</h3>
+    <p style="margin:0 0 14px 0;font-size:13px;color:#555;line-height:1.5">
+      iPad Safari uses the URL as the default filename. Copy the suggested name below, 
+      then paste it in the iPad "Save to Files" dialog.
+    </p>
+    <div style="background:#f5f9ff;border:1px solid #c0cde0;border-radius:6px;padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;color:#666;margin-bottom:6px;font-weight:600">SUGGESTED FILENAME:</div>
+      <div id="fname-display" style="font-family:'SF Mono',Menlo,monospace;font-size:13px;line-height:1.4;color:#1a3a5c;word-break:break-word;user-select:all;-webkit-user-select:all">${fname}</div>
+    </div>
+    <p style="margin:0 0 18px 0;font-size:12px;color:#888;line-height:1.5">
+      <b>Steps:</b><br>
+      1. Tap <b>Copy Filename</b> below<br>
+      2. Tap <b>Continue to Print</b> &rarr; Save to Files<br>
+      3. In Save dialog, long-press filename field &rarr; <b>Paste</b><br>
+      4. Tap Save
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="fname-copy-btn" style="flex:1;min-width:140px;background:#1a3a5c;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">
+        &#128203; Copy Filename
+      </button>
+      <button id="fname-continue-btn" style="flex:1;min-width:140px;background:#00897b;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">
+        &#128424; Continue to Print
+      </button>
+    </div>
+    <button id="fname-cancel-btn" style="margin-top:10px;width:100%;background:transparent;color:#999;border:none;padding:8px;font-size:13px;cursor:pointer">
+      Cancel
+    </button>
+  `;
+  
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  
+  const copyBtn = document.getElementById('fname-copy-btn');
+  const continueBtn = document.getElementById('fname-continue-btn');
+  const cancelBtn = document.getElementById('fname-cancel-btn');
+  let didCopy = false;
+  
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(fname);
+      didCopy = true;
+      copyBtn.innerHTML = '&#10003; Copied! Paste in Save dialog';
+      copyBtn.style.background = '#388e3c';
+    } catch (e) {
+      // Fallback: select the text manually
+      const display = document.getElementById('fname-display');
+      if (display) {
+        const range = document.createRange();
+        range.selectNodeContents(display);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        copyBtn.innerHTML = '&#9888; Tap selected text &rarr; Copy';
+      }
+    }
+  };
+  
+  continueBtn.onclick = () => {
+    if (!didCopy) {
+      if (!confirm('You haven\'t copied the filename yet. Continue anyway?')) return;
+    }
+    overlay.remove();
+    onContinue();
+  };
+  
+  cancelBtn.onclick = () => overlay.remove();
+  
+  // Allow click on overlay to close (but not on dialog)
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+}
+
+function doPrintInner(fname) {
   const origTitle = document.title;
   const origState = history.state;
 
