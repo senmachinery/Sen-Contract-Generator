@@ -69,6 +69,131 @@
   .customer-due-badge { background: var(--warning); color: #fff; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; }
   .customer-status-pill { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; display: inline-block; margin-top: 2px; }
   
+  /* v1.6: Sales Reps */
+  .reps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .rep-card { background: #fff; padding: 14px; border-radius: var(--radius); box-shadow: var(--shadow); border-top: 3px solid var(--primary); display: flex; flex-direction: column; gap: 8px; transition: transform .15s, box-shadow .15s; }
+  .rep-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .rep-card.inactive { opacity: .55; border-top-color: var(--text-muted); }
+  .rep-header { display: flex; gap: 10px; align-items: center; }
+  .rep-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+  .rep-name { font-size: 14px; font-weight: 600; color: var(--primary); }
+  .rep-country { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .rep-notes { font-size: 11px; color: var(--text-secondary); padding: 4px 8px; background: var(--bg); border-radius: 4px; font-style: italic; }
+  .rep-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+  .rep-action-btn { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; }
+  .rep-action-btn.whatsapp { background: #25d366; color: #fff; }
+  .rep-action-btn.email { background: #ea4335; color: #fff; }
+  .rep-action-btn.call { background: var(--info); color: #fff; }
+  .rep-action-btn.copy { background: #fff; color: var(--text-secondary); border-color: var(--border); }
+  .rep-action-btn:hover { opacity: .85; transform: translateY(-1px); }
+  .rep-stats { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); padding-top: 6px; border-top: 1px dashed var(--border); }
+  
+  /* v1.6: Follow-up Packs */
+  .pack-summary-card { background: linear-gradient(135deg, var(--primary), #2c5282); color: #fff; padding: 14px; border-radius: var(--radius); display: flex; gap: 14px; flex-wrap: wrap; }
+  .pack-stat { flex: 1; min-width: 120px; }
+  .pack-stat-value { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .pack-stat-label { font-size: 11px; opacity: .85; text-transform: uppercase; letter-spacing: .3px; }
+  
+  .pack-customer-card { background: #fff; padding: 12px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px; border-left: 4px solid var(--warning); }
+  .pack-customer-card.overdue { border-left-color: var(--danger); background: #fff5f5; }
+  .pack-customer-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .pack-customer-name { font-size: 14px; font-weight: 600; color: var(--primary); }
+  .pack-customer-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .pack-followups { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .pack-followup-item { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; font-size: 12px; }
+  .pack-followup-icon { flex-shrink: 0; }
+  .pack-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  
+  @media print {
+    .tabs, .pipeline-filters, .card:first-child, button { display: none !important; }
+    .pack-customer-card { page-break-inside: avoid; box-shadow: none; border: 1px solid #ccc; margin-bottom: 14px; }
+    .pack-summary-card { background: #1a3a5c !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  /* v1.5: Tasks */
+  .task-card { background: #fff; padding: 12px; border-radius: var(--radius-sm); margin-bottom: 8px; box-shadow: var(--shadow); border-left: 4px solid var(--border); display: flex; gap: 10px; align-items: flex-start; transition: transform .1s; }
+  .task-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .task-card.overdue { border-left-color: var(--danger); background: #fff5f5; }
+  .task-card.today { border-left-color: var(--warning); background: #fffaf0; }
+  .task-card.done { opacity: .55; }
+  .task-card.done .task-title { text-decoration: line-through; color: var(--text-muted); }
+  .task-checkbox { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; margin-top: 1px; }
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { font-weight: 600; font-size: 14px; color: var(--primary); margin-bottom: 4px; }
+  .task-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .task-due { font-weight: 600; }
+  .task-due.overdue { color: var(--danger); }
+  .task-due.today { color: var(--warning); }
+  .task-due.upcoming { color: var(--text-muted); }
+  .task-customer { color: var(--info); font-weight: 500; }
+  .task-actions { display: flex; gap: 4px; align-items: flex-start; flex-shrink: 0; }
+  .task-action-btn { background: none; border: 1px solid var(--border); padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; color: var(--text-muted); }
+  .task-action-btn:hover { background: var(--bg); color: var(--primary); border-color: var(--primary); }
+  .task-priority-high { color: var(--danger); font-weight: 700; }
+  .task-priority-normal { color: var(--text-muted); }
+  .task-priority-low { color: var(--text-faint); }
+  .task-notes { font-size: 12px; color: var(--text-secondary); margin-top: 4px; padding: 6px 8px; background: var(--bg); border-radius: 4px; }
+  
+  /* v1.5: Dashboard */
+  .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: #fff; padding: 14px; border-radius: var(--radius); box-shadow: var(--shadow); border-top: 3px solid var(--primary); }
+  .stat-card.primary { border-top-color: var(--primary); }
+  .stat-card.success { border-top-color: var(--success); }
+  .stat-card.warning { border-top-color: var(--warning); }
+  .stat-card.info { border-top-color: var(--info); }
+  .stat-card.danger { border-top-color: var(--danger); }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 2px; line-height: 1.1; }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; font-weight: 600; }
+  .stat-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .stat-trend-up { color: var(--success); font-size: 11px; }
+  .stat-trend-down { color: var(--danger); font-size: 11px; }
+  
+  .dashboard-section { background: #fff; padding: 14px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 14px; }
+  .dashboard-section h3 { font-size: 14px; color: var(--primary); margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  .dashboard-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  
+  .bar-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
+  .bar-label { width: 130px; flex-shrink: 0; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 18px; background: var(--bg); border-radius: 9px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--info)); transition: width .3s; }
+  .bar-value { font-size: 11px; color: var(--text-secondary); width: 80px; text-align: right; flex-shrink: 0; font-weight: 600; }
+  
+  .machine-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .machine-table th { text-align: left; padding: 6px 4px; color: var(--text-muted); font-size: 10px; text-transform: uppercase; border-bottom: 2px solid var(--border); }
+  .machine-table td { padding: 6px 4px; border-bottom: 1px solid var(--bg); }
+  .machine-table tr:hover td { background: var(--bg); }
+  
+  .donut-container { display: flex; align-items: center; gap: 16px; }
+  .donut-svg { flex-shrink: 0; }
+  .donut-legend { flex: 1; }
+  .donut-legend-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+  .donut-legend-color { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  
+  /* v1.7: Phase 6 — Cold tags + Aging alerts + Snapshot */
+  .cold-tag { display: inline-block; padding: 2px 7px; background: #e3f2fd; color: #1565c0; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+  .cold-tag.cold { background: #e3f2fd; color: #1565c0; }
+  .cold-tag.frozen { background: #d1c4e9; color: #4527a0; }
+  
+  .aging-tag { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+  .aging-tag.warn { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
+  .aging-tag.critical { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+  
+  .snapshot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .snapshot-section { background: #fff; padding: 14px; border-radius: var(--radius); box-shadow: var(--shadow); border-top: 3px solid var(--primary); }
+  .snapshot-section.urgent { border-top-color: var(--danger); }
+  .snapshot-section.warning { border-top-color: var(--warning); }
+  .snapshot-section.success { border-top-color: var(--success); }
+  .snapshot-section.info { border-top-color: var(--info); }
+  .snapshot-section h3 { font-size: 13px; color: var(--primary); margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid var(--bg); display: flex; justify-content: space-between; align-items: center; }
+  .snapshot-section h3 .badge { background: var(--bg); color: var(--text-secondary); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .snapshot-item { padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--bg); }
+  .snapshot-item:last-child { border-bottom: none; }
+  .snapshot-item-title { font-weight: 600; color: var(--primary); font-size: 12px; }
+  .snapshot-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .snapshot-empty { color: var(--text-muted); font-size: 12px; padding: 14px 0; text-align: center; font-style: italic; }
+  .snapshot-header { background: linear-gradient(135deg, var(--primary), #2c5282); color: #fff; padding: 14px; border-radius: var(--radius); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .snapshot-greeting { font-size: 18px; font-weight: 700; }
+  .snapshot-date { font-size: 12px; opacity: .9; margin-top: 2px; }
+  
   /* v1.3: Kanban board */
   .kanban-board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 12px; }
   @media (max-width: 1200px) { .kanban-board { grid-template-columns: repeat(5, 240px); } }
@@ -185,7 +310,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v1.4</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v1.7</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -198,17 +323,30 @@
 </div>
 
 <div class="tab-bar">
+  <button class="tab" data-tab="snapshot">📸 Today</button>
   <button class="tab active" data-tab="crm">👥 CRM <span class="count" id="crm-count">—</span></button>
   <button class="tab" data-tab="pipeline">📊 Pipeline <span class="count" id="pipeline-count">—</span></button>
-  <button class="tab disabled" data-tab="tasks" title="Phase 4 — Coming Soon">✅ Tasks</button>
-  <button class="tab disabled" data-tab="dashboard" title="Phase 4 — Coming Soon">📈 Dashboard</button>
-  <button class="tab disabled" data-tab="reps" title="Phase 5 — Coming Soon">👨‍💼 Sales Reps</button>
-  <button class="tab disabled" data-tab="packs" title="Phase 5 — Coming Soon">📨 Follow-up Packs</button>
+  <button class="tab" data-tab="tasks">✅ Tasks <span class="count" id="tasks-count">—</span></button>
+  <button class="tab" data-tab="dashboard">📈 Dashboard</button>
+  <button class="tab" data-tab="reps">👨‍💼 Sales Reps <span class="count" id="reps-count">—</span></button>
+  <button class="tab" data-tab="packs">📨 Follow-up Packs</button>
 </div>
 
 <div class="content">
 
   <!-- CRM TAB -->
+  <!-- SNAPSHOT TAB (v1.7 Phase 6) -->
+  <div class="tab-content" id="tab-snapshot">
+    <div id="snapshot-header" class="snapshot-header">
+      <div>
+        <div class="snapshot-greeting" id="snapshot-greeting">📸 Today's Snapshot</div>
+        <div class="snapshot-date" id="snapshot-date"></div>
+      </div>
+      <button class="btn btn-sm" onclick="renderSnapshot()" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)">🔄 Refresh</button>
+    </div>
+    <div id="snapshot-content"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building today's snapshot...</div></div></div>
+  </div>
+
   <div class="tab-content active" id="tab-crm">
     <div id="quick-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
       <!-- Filled by updateQuickFilterCounts() -->
@@ -261,10 +399,76 @@
       <div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading pipeline...</div></div>
     </div>
   </div>
-  <div class="tab-content" id="tab-tasks"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 4 — Coming Soon</h2><p>Tasks & reminders.</p></div></div></div>
-  <div class="tab-content" id="tab-dashboard"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 4 — Coming Soon</h2><p>Performance dashboards (machine sales, win rate, etc).</p></div></div></div>
-  <div class="tab-content" id="tab-reps"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 5 — Coming Soon</h2><p>Sales Reps directory.</p></div></div></div>
-  <div class="tab-content" id="tab-packs"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 5 — Coming Soon</h2><p>Automated weekly follow-up packs.</p></div></div></div>
+  <!-- TASKS TAB (v1.5) -->
+  <div class="tab-content" id="tab-tasks">
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="qf-chip active" data-task-filter="pending" onclick="setTaskFilter('pending')">📋 Pending <span id="tf-pending">0</span></button>
+          <button class="qf-chip" data-task-filter="overdue" onclick="setTaskFilter('overdue')">🚨 Overdue <span id="tf-overdue">0</span></button>
+          <button class="qf-chip" data-task-filter="today" onclick="setTaskFilter('today')">📅 Today <span id="tf-today">0</span></button>
+          <button class="qf-chip" data-task-filter="week" onclick="setTaskFilter('week')">🗓 This Week <span id="tf-week">0</span></button>
+          <button class="qf-chip" data-task-filter="done" onclick="setTaskFilter('done')">✓ Done <span id="tf-done">0</span></button>
+          <button class="qf-chip" data-task-filter="all" onclick="setTaskFilter('all')">All</button>
+        </div>
+        <button class="btn" onclick="openNewTaskModal()" style="background:var(--accent);color:#fff">+ New Task</button>
+      </div>
+    </div>
+    <div id="tasks-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading tasks...</div></div></div>
+  </div>
+  <!-- DASHBOARD TAB (v1.5) -->
+  <div class="tab-content" id="tab-dashboard">
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-right:4px">Period:</span>
+        <button class="qf-chip" data-range="month" onclick="setTimeRange('month')">Last 30 Days</button>
+        <button class="qf-chip" data-range="quarter" onclick="setTimeRange('quarter')">Last 3 Months</button>
+        <button class="qf-chip" data-range="half" onclick="setTimeRange('half')">Last 6 Months</button>
+        <button class="qf-chip active" data-range="ytd" onclick="setTimeRange('ytd')">YTD</button>
+        <button class="qf-chip" data-range="lastyear" onclick="setTimeRange('lastyear')">Since Last Year</button>
+        <button class="qf-chip" data-range="all" onclick="setTimeRange('all')">All Time</button>
+      </div>
+    </div>
+    <div id="dashboard-content"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading dashboard...</div></div></div>
+  </div>
+  <!-- SALES REPS TAB (v1.6) -->
+  <div class="tab-content" id="tab-reps">
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-right:4px">Filter:</span>
+          <button class="qf-chip active" data-rep-filter="active" onclick="setRepFilter('active')">✅ Active <span id="rep-cnt-active">0</span></button>
+          <button class="qf-chip" data-rep-filter="all" onclick="setRepFilter('all')">All</button>
+        </div>
+        <input type="text" id="rep-search" placeholder="🔍 Search rep or country..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:200px">
+      </div>
+    </div>
+    <div id="reps-grid"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading sales reps...</div></div></div>
+  </div>
+  <!-- FOLLOW-UP PACKS TAB (v1.6) -->
+  <div class="tab-content" id="tab-packs">
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div>
+          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0">📨 Monday Follow-up Pack</h3>
+          <div style="font-size:11px;color:var(--text-muted)">Customers needing attention this week — overdue + due-soon follow-ups</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="qf-chip active" data-pack-filter="all" onclick="setPackFilter('all')">All</button>
+          <button class="qf-chip" data-pack-filter="overdue" onclick="setPackFilter('overdue')">🚨 Overdue Only</button>
+          <select id="pack-country-filter" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+            <option value="">All Countries</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="copyPackContactsToClipboard()" style="background:var(--info);color:#fff">📋 Copy Names + Tels</button>
+        <button class="btn btn-sm" onclick="printPack()" style="background:var(--primary);color:#fff">🖨 Print Pack</button>
+      </div>
+    </div>
+    <div id="pack-summary" style="margin-bottom:14px"></div>
+    <div id="pack-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building this week's pack...</div></div></div>
+  </div>
 
 </div>
 
@@ -285,7 +489,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v1.4 — Real data connection + Quick Filters + Overdue alerts
+// CRM v1.7 — Real data connection + Quick Filters + Overdue alerts
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -675,6 +879,15 @@ async function refreshData() {
     initPipelineFilters();
     renderPipeline();
     
+    // v1.5: Load tasks in background (for tab count badge)
+    loadTasks().catch(e => console.warn('Tasks load failed:', e));
+    // v1.6: Load reps in background (for tab count badge)
+    loadReps().catch(e => console.warn('Reps load failed:', e));
+    // v1.6: Pre-load ALL followups so Pack tab works without clicking each customer
+    preloadAllFollowups().catch(e => console.warn('Followups preload failed:', e));
+    // v1.7: Phase 6 — Load CRM settings (cold threshold, aging days etc)
+    loadCrmSettings().catch(e => console.warn('Settings load failed:', e));
+    
     // Handle URL parameter ?customer=xxx
     const urlParams = new URLSearchParams(window.location.search);
     const targetCustomer = urlParams.get('customer');
@@ -780,6 +993,7 @@ function renderCustomerList() {
     const displayName = getDisplayName(c.company);
     const isRenamed = displayName !== c.company;
     const showAddressWarning = !isRenamed && looksLikeAddress(c.company);
+    const coldStatus = getCustomerColdStatus(c);  // v1.7
     
     return `
       <div class="customer-item ${isActive ? 'active' : ''}" onclick="selectCustomer('${c.company.replace(/'/g, "\\'")}')">
@@ -787,6 +1001,7 @@ function renderCustomerList() {
           <span style="overflow:hidden;text-overflow:ellipsis">
             ${c.flag} ${showAddressWarning ? '<span title="Looks like an address — click to set proper name" style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}
             ${isRenamed ? '<span title="Renamed (original: ' + escapeHtml(c.company) + ')" style="font-size:9px;color:var(--info);margin-left:4px">✏️</span>' : ''}
+            ${renderColdTag(coldStatus)}
           </span>
           <span style="display:flex;gap:4px;flex-shrink:0">
             ${c.overdueFollowups > 0 ? `<span class="customer-overdue-badge" title="${c.overdueFollowups} overdue follow-up(s)">🚨 ${c.overdueFollowups}</span>` : ''}
@@ -1190,10 +1405,11 @@ function renderKanbanCard(c) {
   const flag = customer?.flag || '🌍';
   const displayName = getDisplayName(c.company);
   const showWarn = looksLikeAddress(c.company) && displayName === c.company;
+  const agingStatus = getContractAgingStatus(c);  // v1.7
   
   return `
     <div class="kanban-card ${cardClass}" onclick="openContractInGenerator('${c.contractNo}')" title="${c.contractNo} — ${escapeHtml(c.machine)}">
-      <div class="kanban-card-company">${flag} ${showWarn ? '<span style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}</div>
+      <div class="kanban-card-company">${flag} ${showWarn ? '<span style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}${renderAgingTag(agingStatus)}</div>
       <div class="kanban-card-machine">${escapeHtml(c.machine || '—')}</div>
       <div class="kanban-card-amount">${fmtMoney(c.amount, c.currency)}</div>
       <div class="kanban-card-footer">
@@ -1218,6 +1434,1293 @@ function initPipelineFilters() {
   select.innerHTML = '<option value="">All Countries</option>' +
     sortedCountries.map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
   select.value = cur;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v1.5: TASKS
+// ═══════════════════════════════════════════════════════════════════
+
+let TASKS_STATE = { tasks: [], filter: 'pending', loaded: false };
+
+async function loadTasks() {
+  try {
+    const r = await apiGet('crm_getTasks');
+    if (r && r.tasks) {
+      TASKS_STATE.tasks = r.tasks;
+      TASKS_STATE.loaded = true;
+    }
+  } catch (e) {
+    console.error('Failed to load tasks:', e);
+    TASKS_STATE.tasks = [];
+  }
+  renderTasks();
+  updateTaskCounts();
+}
+
+// Helper: convert anything to YYYY-MM-DD string (or null)
+function toIsoDate(val) {
+  const d = parseAnyDate(val);
+  if (!d) return null;
+  return d.toISOString().split('T')[0];
+}
+
+function updateTaskCounts() {
+  const tasks = TASKS_STATE.tasks || [];
+  const today = new Date().toISOString().split('T')[0];
+  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  
+  const pending = tasks.filter(t => t.status !== 'done' && t.status !== 'deleted');
+  const overdue = pending.filter(t => { const d = toIsoDate(t.dueDate); return d && d < today; });
+  const todayT = pending.filter(t => toIsoDate(t.dueDate) === today);
+  const week = pending.filter(t => { const d = toIsoDate(t.dueDate); return d && d > today && d <= weekFromNow; });
+  const done = tasks.filter(t => t.status === 'done');
+  
+  setText('tf-pending', pending.length);
+  setText('tf-overdue', overdue.length);
+  setText('tf-today', todayT.length);
+  setText('tf-week', week.length);
+  setText('tf-done', done.length);
+  setText('tasks-count', pending.length);
+}
+
+function setText(id, val) { const el = $(id); if (el) el.textContent = val; }
+
+function setTaskFilter(filter) {
+  TASKS_STATE.filter = filter;
+  // Update active chip
+  $$('[data-task-filter]').forEach(el => {
+    el.classList.toggle('active', el.dataset.taskFilter === filter);
+  });
+  renderTasks();
+}
+
+function renderTasks() {
+  const list = $('tasks-list');
+  if (!list) return;
+  
+  const today = new Date().toISOString().split('T')[0];
+  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  
+  let filtered = (TASKS_STATE.tasks || []).slice();
+  // Exclude deleted always
+  filtered = filtered.filter(t => t.status !== 'deleted');
+  
+  if (TASKS_STATE.filter === 'pending') filtered = filtered.filter(t => t.status !== 'done');
+  else if (TASKS_STATE.filter === 'done') filtered = filtered.filter(t => t.status === 'done');
+  else if (TASKS_STATE.filter === 'overdue') {
+    filtered = filtered.filter(t => { if (t.status === 'done') return false; const d = toIsoDate(t.dueDate); return d && d < today; });
+  }
+  else if (TASKS_STATE.filter === 'today') {
+    filtered = filtered.filter(t => t.status !== 'done' && toIsoDate(t.dueDate) === today);
+  }
+  else if (TASKS_STATE.filter === 'week') {
+    filtered = filtered.filter(t => { if (t.status === 'done') return false; const d = toIsoDate(t.dueDate); return d && d > today && d <= weekFromNow; });
+  }
+  // 'all' → no filter
+  
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty" style="padding:40px;text-align:center"><div style="font-size:36px;margin-bottom:8px">📭</div><div>No tasks in this view</div></div>';
+    return;
+  }
+  
+  // Sort: by due date string, then priority
+  filtered.sort((a, b) => {
+    const aDate = toIsoDate(a.dueDate) || '9999-99-99';
+    const bDate = toIsoDate(b.dueDate) || '9999-99-99';
+    if (aDate !== bDate) return aDate.localeCompare(bDate);
+    const prios = { high: 0, normal: 1, low: 2 };
+    return (prios[a.priority] || 1) - (prios[b.priority] || 1);
+  });
+  
+  list.innerHTML = filtered.map(t => renderTaskCard(t, today)).join('');
+}
+
+function renderTaskCard(t, today) {
+  const due = toIsoDate(t.dueDate);
+  let dueClass = 'upcoming';
+  let dueText = '';
+  let cardClass = '';
+  
+  if (t.status === 'done') {
+    cardClass = 'done';
+    dueText = t.completedAt ? '✓ Done ' + fmtDate(t.completedAt.split('T')[0]) : '✓ Done';
+  } else if (due) {
+    if (due < today) {
+      dueClass = 'overdue';
+      cardClass = 'overdue';
+      dueText = '🚨 ' + daysAgoText(due) + ' (' + fmtDate(due) + ')';
+    } else if (due === today) {
+      dueClass = 'today';
+      cardClass = 'today';
+      dueText = '📅 Today';
+    } else {
+      const days = Math.abs(daysAgo(due));
+      dueText = '📅 in ' + days + 'd (' + fmtDate(due) + ')';
+    }
+  } else {
+    dueText = '— no due date';
+  }
+  
+  const prioIcon = { high: '🔴', normal: '🟡', low: '⚪' }[t.priority] || '';
+  
+  return `
+    <div class="task-card ${cardClass}">
+      <input type="checkbox" class="task-checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTaskDone('${t.id}', this.checked)">
+      <div class="task-body">
+        <div class="task-title">${prioIcon} ${escapeHtml(t.title)}</div>
+        ${t.notes ? `<div class="task-notes">${escapeHtml(t.notes)}</div>` : ''}
+        <div class="task-meta">
+          <span class="task-due ${dueClass}">${dueText}</span>
+          ${t.customer ? `<span class="task-customer">👤 ${escapeHtml(t.customer)}</span>` : ''}
+          ${t.contractNo ? `<span style="color:var(--info)">📋 ${t.contractNo}</span>` : ''}
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="task-action-btn" onclick="editTask('${t.id}')" title="Edit">✏️</button>
+        <button class="task-action-btn" onclick="deleteTask('${t.id}')" title="Delete">🗑</button>
+      </div>
+    </div>
+  `;
+}
+
+function openNewTaskModal(prefillCustomer, prefillContractNo) {
+  const today = new Date().toISOString().split('T')[0];
+  const customers = (STATE.customers || []).map(c => c.company).sort();
+  
+  $('modal-title').textContent = '+ New Task';
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>Task <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="task-title" placeholder="e.g. Send updated quote to PT LABEL" style="width:100%" autofocus>
+    </div>
+    <div class="form-row">
+      <label>Due Date</label>
+      <input type="date" id="task-due" value="${today}" style="width:100%">
+    </div>
+    <div class="form-row">
+      <label>Priority</label>
+      <select id="task-priority" style="width:100%">
+        <option value="normal" selected>🟡 Normal</option>
+        <option value="high">🔴 High</option>
+        <option value="low">⚪ Low</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Customer (optional)</label>
+      <input type="text" id="task-customer" list="task-customer-list" value="${prefillCustomer || ''}" placeholder="Type to search..." style="width:100%">
+      <datalist id="task-customer-list">
+        ${customers.map(c => `<option value="${escapeHtml(c)}">`).join('')}
+      </datalist>
+    </div>
+    <div class="form-row">
+      <label>Contract No (optional)</label>
+      <input type="text" id="task-contract" value="${prefillContractNo || ''}" placeholder="e.g. SEN/SC/NR/26-2425" style="width:100%">
+    </div>
+    <div class="form-row">
+      <label>Notes (optional)</label>
+      <textarea id="task-notes" rows="2" placeholder="Additional details..." style="width:100%"></textarea>
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveNewTask()">💾 Save Task</button>
+  `;
+  $('modal-overlay').classList.add('show');
+  setTimeout(() => $('task-title')?.focus(), 100);
+}
+
+async function saveNewTask() {
+  const title = ($('task-title').value || '').trim();
+  if (!title) { showToast('Title is required', 'error'); return; }
+  const task = {
+    title,
+    dueDate: $('task-due').value,
+    priority: $('task-priority').value,
+    customer: ($('task-customer').value || '').trim(),
+    contractNo: ($('task-contract').value || '').trim(),
+    notes: ($('task-notes').value || '').trim()
+  };
+  try {
+    const r = await apiPost('crm_addTask', { task });
+    if (r && r.ok) {
+      showToast('✅ Task added', 'success');
+      closeModal();
+      await loadTasks();
+    } else {
+      showToast('Failed to add task', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function toggleTaskDone(id, checked) {
+  try {
+    await apiPost('crm_updateTask', { id, updates: { status: checked ? 'done' : 'pending' } });
+    // Update locally
+    const t = TASKS_STATE.tasks.find(x => x.id === id);
+    if (t) {
+      t.status = checked ? 'done' : 'pending';
+      if (checked) t.completedAt = new Date().toISOString();
+    }
+    renderTasks();
+    updateTaskCounts();
+    showToast(checked ? '✅ Task completed' : '↩ Reopened', 'success');
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  try {
+    // Apps Script has no crm_deleteTask, so set status to 'deleted'
+    // For real delete, we'd need to add to Apps Script. For now, mark as deleted.
+    await apiPost('crm_updateTask', { id, updates: { status: 'deleted' } });
+    TASKS_STATE.tasks = TASKS_STATE.tasks.filter(t => t.id !== id);
+    renderTasks();
+    updateTaskCounts();
+    showToast('🗑 Task deleted', 'success');
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+function editTask(id) {
+  const t = TASKS_STATE.tasks.find(x => x.id === id);
+  if (!t) return;
+  const today = new Date().toISOString().split('T')[0];
+  const customers = (STATE.customers || []).map(c => c.company).sort();
+  
+  $('modal-title').textContent = '✏️ Edit Task';
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>Task</label>
+      <input type="text" id="task-title" value="${escapeHtml(t.title)}" style="width:100%">
+    </div>
+    <div class="form-row">
+      <label>Due Date</label>
+      <input type="date" id="task-due" value="${toIsoDate(t.dueDate) || ''}" style="width:100%">
+    </div>
+    <div class="form-row">
+      <label>Priority</label>
+      <select id="task-priority" style="width:100%">
+        <option value="normal" ${t.priority==='normal'?'selected':''}>🟡 Normal</option>
+        <option value="high" ${t.priority==='high'?'selected':''}>🔴 High</option>
+        <option value="low" ${t.priority==='low'?'selected':''}>⚪ Low</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Customer</label>
+      <input type="text" id="task-customer" list="task-customer-list" value="${escapeHtml(t.customer||'')}" style="width:100%">
+      <datalist id="task-customer-list">
+        ${customers.map(c => `<option value="${escapeHtml(c)}">`).join('')}
+      </datalist>
+    </div>
+    <div class="form-row">
+      <label>Contract No</label>
+      <input type="text" id="task-contract" value="${escapeHtml(t.contractNo||'')}" style="width:100%">
+    </div>
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea id="task-notes" rows="2" style="width:100%">${escapeHtml(t.notes||'')}</textarea>
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveEditTask('${id}')">💾 Save Changes</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveEditTask(id) {
+  const updates = {
+    dueDate: $('task-due').value,
+    notes: ($('task-notes').value || '').trim()
+  };
+  // Note: Apps Script crm_updateTask only supports status/dueDate/notes
+  // For title/priority/customer/contract, would need extension
+  // For now, just update dueDate + notes
+  try {
+    await apiPost('crm_updateTask', { id, updates });
+    const t = TASKS_STATE.tasks.find(x => x.id === id);
+    if (t) {
+      t.dueDate = updates.dueDate;
+      t.notes = updates.notes;
+    }
+    closeModal();
+    showToast('💾 Task updated', 'success');
+    renderTasks();
+    updateTaskCounts();
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v1.5: DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+
+let DASHBOARD_RANGE = 'ytd';
+
+function setTimeRange(range) {
+  DASHBOARD_RANGE = range;
+  $$('[data-range]').forEach(el => el.classList.toggle('active', el.dataset.range === range));
+  renderDashboard();
+}
+
+function getCutoffDate(range) {
+  const now = new Date();
+  if (range === 'month') { const d = new Date(now); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; }
+  if (range === 'quarter') { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d.toISOString().split('T')[0]; }
+  if (range === 'half') { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; }
+  if (range === 'ytd') { return now.getFullYear() + '-01-01'; }
+  if (range === 'lastyear') { return (now.getFullYear()-1) + '-01-01'; }
+  return null; // all-time
+}
+
+function detectMachineCondition(machineName) {
+  if (!machineName) return 'Unknown';
+  const n = machineName.toLowerCase();
+  if (/\brefurbish/.test(n) || /\brebuilt\b/.test(n)) return 'Refurbished';
+  if (/\bnew\b/.test(n)) return 'New';
+  if (/\bdemo\b/.test(n)) return 'Demo';
+  // Parts heuristics
+  if (/\b(parts?|spare|sensor|inverter|controller|roller|shaft|lamp|cylinder|cnk|belt|gear|sleeve|tape|kit|knife|knives|bearing|pulley|seal)\b/.test(n)) return 'Parts';
+  return 'Other';
+}
+
+function detectMachineFamily(machineName) {
+  if (!machineName) return 'Other';
+  const n = machineName.toUpperCase();
+  // Sen Labels common families
+  if (/\bIF[-\s]?\d+/.test(n)) return 'IF Series (Flexo)';
+  if (/\bMQS?[-\s]?\d+/.test(n)) return 'MQ/MQS Series (Die Cut)';
+  if (/\bSMP[-\s]?\d+/.test(n)) return 'SMP Series (Letterpress)';
+  if (/\bSPM[-\s]?\d+/.test(n)) return 'SPM Series (Letterpress)';
+  if (/\bFX[-\s]?\d+/.test(n)) return 'FX Series (Flexo)';
+  if (/\bZB[S]?[-\s]?\d+/.test(n)) return 'ZBS Series';
+  if (/\bVRS[-\s]?\d+/.test(n)) return 'VRS Series';
+  if (/\bSEN[\s-]?350\b/.test(n)) return 'SEN 350 Series';
+  if (/\bSEN[\s-]?320\b/.test(n)) return 'SEN 320 Series';
+  if (/\bSEN[\s-]?300\b/.test(n)) return 'SEN 300 Series';
+  if (/\bSEN[\s-]?\d+/.test(n)) return 'SEN Other';
+  if (/\bLPM[-\s]?\d+/.test(n)) return 'LPM Series';
+  if (/\bSD[R]?[-\s]?\d+/.test(n)) return 'SDR Series';
+  if (/\bDOIL/.test(n)) return 'Doil (Refurbished)';
+  if (/\bIWASAKI/.test(n)) return 'Iwasaki (Refurbished)';
+  if (/\bONDA/.test(n)) return 'Onda (Refurbished)';
+  if (/\bSHIKI/.test(n)) return 'Shiki';
+  if (/\bAMSKY|CTP/.test(n)) return 'CTP / Amsky';
+  if (/\bOMRON/.test(n)) return 'Omron (Parts)';
+  if (/\bUV[-\s]?LAMP|UV LIGHT/.test(n)) return 'UV Lamps';
+  if (/\bROLLER\b/.test(n)) return 'Rollers';
+  if (/\bSENSOR\b/.test(n)) return 'Sensors';
+  if (/\bSHAFT\b/.test(n)) return 'Shafts';
+  return 'Other';
+}
+
+function renderDashboard() {
+  const el = $('dashboard-content');
+  if (!el) return;
+  if (!STATE.contracts || STATE.contracts.length === 0) {
+    el.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
+    return;
+  }
+  
+  const cutoff = getCutoffDate(DASHBOARD_RANGE);
+  const inRange = c => !cutoff || (c.date && c.date >= cutoff);
+  const filtered = STATE.contracts.filter(inRange);
+  
+  // Top stats
+  const totalContracts = filtered.length;
+  const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
+  const wonStages = ['Delivered', 'Closed (Paid)'];
+  const lostStages = ['Lost', 'Cancelled'];
+  
+  const active = filtered.filter(c => activeStages.includes(c.status));
+  const won = filtered.filter(c => wonStages.includes(c.status));
+  const lost = filtered.filter(c => lostStages.includes(c.status));
+  
+  // Pipeline value by currency
+  const pipelineByCurr = {};
+  active.forEach(c => {
+    const cur = c.currency || 'USD';
+    pipelineByCurr[cur] = (pipelineByCurr[cur] || 0) + (c.amount || 0);
+  });
+  const wonByCurr = {};
+  won.forEach(c => {
+    const cur = c.currency || 'USD';
+    wonByCurr[cur] = (wonByCurr[cur] || 0) + (c.amount || 0);
+  });
+  
+  const totalDecided = won.length + lost.length;
+  const winRate = totalDecided > 0 ? Math.round(100 * won.length / totalDecided) : 0;
+  
+  const customerCount = new Set(filtered.map(c => c.company)).size;
+  
+  el.innerHTML = `
+    <div class="dashboard-grid">
+      <div class="stat-card primary">
+        <div class="stat-value">${totalContracts}</div>
+        <div class="stat-label">Total Contracts</div>
+        <div class="stat-sublabel">${customerCount} customer${customerCount!==1?'s':''}</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-value">${active.length}</div>
+        <div class="stat-label">Active Pipeline</div>
+        <div class="stat-sublabel">${formatMultiCurrency(pipelineByCurr)}</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-value">${won.length}</div>
+        <div class="stat-label">Closed Won</div>
+        <div class="stat-sublabel">${formatMultiCurrency(wonByCurr)}</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-value">${winRate}%</div>
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-sublabel">${won.length} won · ${lost.length} lost · ${totalDecided} decided</div>
+      </div>
+    </div>
+    
+    <div class="dashboard-row">
+      <div class="dashboard-section">
+        <h3>🏆 Best Selling Machine Families</h3>
+        ${renderMachineRanking(filtered)}
+      </div>
+      <div class="dashboard-section">
+        <h3>♻️ New vs Refurbished Mix</h3>
+        ${renderConditionMix(filtered)}
+      </div>
+    </div>
+    
+    <div class="dashboard-row">
+      <div class="dashboard-section">
+        <h3>🌍 By Country (Won Revenue)</h3>
+        ${renderCountryRevenue(filtered, won)}
+      </div>
+      <div class="dashboard-section">
+        <h3>📊 Status Breakdown</h3>
+        ${renderStatusBreakdown(filtered)}
+      </div>
+    </div>
+  `;
+}
+
+function formatMultiCurrency(byCurr) {
+  const entries = Object.entries(byCurr).filter(([_, v]) => v > 0).sort((a,b) => b[1] - a[1]);
+  if (entries.length === 0) return '—';
+  return entries.map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US', {maximumFractionDigits: 0})}`).join(' · ');
+}
+
+function renderMachineRanking(contracts) {
+  const families = {};
+  contracts.forEach(c => {
+    const fam = detectMachineFamily(c.machine);
+    if (!families[fam]) families[fam] = { name: fam, count: 0, won: 0, wonValue: 0, currencies: {} };
+    families[fam].count++;
+    if (['Delivered', 'Closed (Paid)'].includes(c.status)) {
+      families[fam].won++;
+      families[fam].wonValue += (c.amount || 0);
+      const cur = c.currency || 'USD';
+      families[fam].currencies[cur] = (families[fam].currencies[cur] || 0) + (c.amount || 0);
+    }
+  });
+  
+  const sorted = Object.values(families).sort((a,b) => b.count - a.count).slice(0, 10);
+  if (sorted.length === 0) return '<div style="color:var(--text-muted);font-size:12px;padding:14px;text-align:center">No machine data</div>';
+  
+  const maxCount = sorted[0].count;
+  
+  return `
+    <table class="machine-table">
+      <thead>
+        <tr><th>Family</th><th style="text-align:center">Total</th><th style="text-align:center">Won</th><th style="text-align:right">Won Value</th></tr>
+      </thead>
+      <tbody>
+        ${sorted.map(f => `
+          <tr>
+            <td style="font-weight:600;color:var(--primary)">${escapeHtml(f.name)}</td>
+            <td style="text-align:center">${f.count}</td>
+            <td style="text-align:center;color:var(--success);font-weight:600">${f.won}</td>
+            <td style="text-align:right;font-weight:600">${formatMultiCurrency(f.currencies) || '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderConditionMix(contracts) {
+  const counts = { New: 0, Refurbished: 0, Demo: 0, Parts: 0, Other: 0, Unknown: 0 };
+  const values = { New: 0, Refurbished: 0, Demo: 0, Parts: 0, Other: 0, Unknown: 0 };
+  
+  contracts.forEach(c => {
+    const cond = detectMachineCondition(c.machine);
+    counts[cond] = (counts[cond] || 0) + 1;
+    if (['Delivered', 'Closed (Paid)'].includes(c.status)) {
+      values[cond] = (values[cond] || 0) + (c.amount || 0);
+    }
+  });
+  
+  const total = Object.values(counts).reduce((s,v) => s+v, 0);
+  if (total === 0) return '<div style="color:var(--text-muted);font-size:12px;padding:14px;text-align:center">No data</div>';
+  
+  const colors = { New: '#38a169', Refurbished: '#dd6b20', Demo: '#805ad5', Parts: '#3182ce', Other: '#718096', Unknown: '#cbd5e0' };
+  
+  return Object.entries(counts).filter(([_, v]) => v > 0).map(([cond, count]) => {
+    const pct = Math.round(100 * count / total);
+    return `
+      <div class="bar-row">
+        <div class="bar-label" style="color:${colors[cond]}">${cond}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colors[cond]}"></div></div>
+        <div class="bar-value">${count} (${pct}%)</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCountryRevenue(allContracts, wonContracts) {
+  const byCountry = {};
+  wonContracts.forEach(c => {
+    const cust = STATE.customers.find(x => x.company === c.company);
+    const country = cust?.country || 'Unknown';
+    if (!byCountry[country]) byCountry[country] = { count: 0, currencies: {} };
+    byCountry[country].count++;
+    const cur = c.currency || 'USD';
+    byCountry[country].currencies[cur] = (byCountry[country].currencies[cur] || 0) + (c.amount || 0);
+  });
+  
+  const sorted = Object.entries(byCountry).sort((a,b) => b[1].count - a[1].count);
+  if (sorted.length === 0) return '<div style="color:var(--text-muted);font-size:12px;padding:14px;text-align:center">No won deals yet in this period</div>';
+  
+  const maxCount = sorted[0][1].count || 1;
+  return sorted.slice(0, 10).map(([country, data]) => `
+    <div class="bar-row">
+      <div class="bar-label">${flagFor(country)} ${country}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(100*data.count/maxCount)}%"></div></div>
+      <div class="bar-value">${data.count} · ${formatMultiCurrency(data.currencies)}</div>
+    </div>
+  `).join('');
+}
+
+function renderStatusBreakdown(contracts) {
+  const counts = {};
+  contracts.forEach(c => {
+    const s = c.status || 'Unknown';
+    counts[s] = (counts[s] || 0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  if (sorted.length === 0) return '<div style="color:var(--text-muted);font-size:12px">No data</div>';
+  
+  const total = sorted.reduce((s, [_, n]) => s + n, 0);
+  const colors = {
+    'Quotation Sent': '#3182ce',
+    'Following Up': '#d69e2e',
+    'Negotiating': '#d69e2e',
+    'Confirmed': '#805ad5',
+    'Deposit Received': '#805ad5',
+    'In Production': '#dd6b20',
+    'Ready to Ship': '#dd6b20',
+    'Awaiting Payment': '#dd6b20',
+    'Delivered': '#38a169',
+    'Closed (Paid)': '#38a169',
+    'Lost': '#718096',
+    'Cancelled': '#718096',
+    'On Hold': '#a0aec0'
+  };
+  
+  return sorted.map(([status, count]) => {
+    const pct = Math.round(100 * count / total);
+    const color = colors[status] || '#cbd5e0';
+    return `
+      <div class="bar-row">
+        <div class="bar-label" style="color:${color};font-weight:600">${escapeHtml(status)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="bar-value">${count} (${pct}%)</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v1.6: SALES REPS
+// ═══════════════════════════════════════════════════════════════════
+
+let REPS_STATE = { reps: [], filter: 'active', search: '', loaded: false };
+
+async function loadReps() {
+  try {
+    const r = await apiGet('crm_getReps');
+    if (r && r.reps) {
+      REPS_STATE.reps = r.reps;
+      REPS_STATE.loaded = true;
+    }
+  } catch (e) {
+    console.error('Failed to load reps:', e);
+    REPS_STATE.reps = [];
+  }
+  renderReps();
+}
+
+function setRepFilter(filter) {
+  REPS_STATE.filter = filter;
+  $$('[data-rep-filter]').forEach(el => el.classList.toggle('active', el.dataset.repFilter === filter));
+  renderReps();
+}
+
+function renderReps() {
+  const grid = $('reps-grid');
+  if (!grid) return;
+  
+  const reps = REPS_STATE.reps || [];
+  const search = (REPS_STATE.search || '').toLowerCase();
+  
+  let filtered = reps.filter(r => {
+    if (REPS_STATE.filter === 'active' && !r.isActive) return false;
+    if (search) {
+      const txt = ((r.name || '') + ' ' + (r.country || '') + ' ' + (r.notes || '')).toLowerCase();
+      if (!txt.includes(search)) return false;
+    }
+    return true;
+  });
+  
+  // Active count
+  const activeCount = reps.filter(r => r.isActive).length;
+  setText('rep-cnt-active', activeCount);
+  setText('reps-count', activeCount);
+  
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty" style="padding:40px;text-align:center;grid-column:1/-1"><div style="font-size:36px;margin-bottom:8px">👥</div><div>No reps match this filter</div></div>';
+    grid.className = '';
+    return;
+  }
+  
+  grid.className = 'reps-grid';
+  grid.innerHTML = filtered.map(r => renderRepCard(r)).join('');
+}
+
+function renderRepCard(r) {
+  // Compute initials for avatar
+  const name = r.name || '';
+  let initials = name.replace(/\([^)]*\)/g, '').trim().split(/\s+/);
+  let init = '';
+  if (initials.length >= 2) init = initials[0][0] + initials[initials.length-1][0];
+  else if (initials.length === 1) init = initials[0].substring(0, 2);
+  init = init.toUpperCase();
+  
+  const inactive = !r.isActive;
+  const wa = (r.whatsapp || '').toString().replace(/\D/g, '');
+  const email = (r.email || '').trim();
+  
+  // Compute customers in same country (approximate match)
+  const repCountries = (r.country || '').split(/[,\/]/).map(c => c.trim().toLowerCase());
+  const matchingCustomers = (STATE.customers || []).filter(c => {
+    const cc = (c.country || '').toLowerCase();
+    return repCountries.some(rc => rc && (rc.includes(cc) || cc.includes(rc)));
+  });
+  const matchingContracts = (STATE.contracts || []).filter(c => {
+    const cust = STATE.customers.find(cu => cu.company === c.company);
+    if (!cust) return false;
+    const cc = (cust.country || '').toLowerCase();
+    return repCountries.some(rc => rc && (rc.includes(cc) || cc.includes(rc)));
+  });
+  
+  // Multi-currency total of won deals
+  const wonByCurr = {};
+  matchingContracts.forEach(c => {
+    if (['Delivered', 'Closed (Paid)'].includes(c.status)) {
+      const cur = c.currency || 'USD';
+      wonByCurr[cur] = (wonByCurr[cur] || 0) + (c.amount || 0);
+    }
+  });
+  const wonTotal = Object.entries(wonByCurr).sort((a,b) => b[1]-a[1])
+    .map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US',{maximumFractionDigits:0})}`).join(' · ') || '—';
+  
+  // WhatsApp link (no auto-message, just open chat)
+  const waLink = wa ? `https://wa.me/${wa}` : '';
+  const emailLink = email ? `mailto:${email}` : '';
+  
+  return `
+    <div class="rep-card ${inactive ? 'inactive' : ''}">
+      <div class="rep-header">
+        <div class="rep-avatar">${escapeHtml(init)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="rep-name">${escapeHtml(name)}${inactive ? ' <span style="font-size:10px;color:var(--text-muted)">(inactive)</span>' : ''}</div>
+          <div class="rep-country">🌍 ${escapeHtml(r.country || 'No region')}</div>
+        </div>
+      </div>
+      ${r.notes ? `<div class="rep-notes">📝 ${escapeHtml(r.notes)}</div>` : ''}
+      <div class="rep-stats">
+        <span>👥 ${matchingCustomers.length} customers</span>
+        <span>📋 ${matchingContracts.length} contracts</span>
+        <span style="margin-left:auto;color:var(--accent);font-weight:600">${wonTotal}</span>
+      </div>
+      <div class="rep-actions">
+        ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="Open WhatsApp">💬 WhatsApp</a>` : ''}
+        ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Send email">📧 Email</a>` : ''}
+        ${wa ? `<button class="rep-action-btn copy" onclick="copyText('${wa}', 'Phone copied')" title="Copy phone">📋 ${wa}</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function copyText(text, msg) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast(msg || 'Copied!', 'success'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast(msg || 'Copied!', 'success'); }
+    catch(e) { showToast('Copy failed', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// v1.7: PHASE 6 — Auto-Cold, Aging Alerts, Today's Snapshot
+// ═══════════════════════════════════════════════════════════════════
+
+// Settings (loaded from CRM_Settings, with defaults)
+let CRM_SETTINGS = {
+  cold_threshold_days: 30,
+  stuck_threshold_days: 14,
+  aging_warning_days: 30,
+  aging_critical_days: 90,
+  default_followup_days: 7
+};
+
+async function loadCrmSettings() {
+  try {
+    const r = await apiGet('crm_getSettings');
+    if (r && r.settings) {
+      Object.keys(r.settings).forEach(k => {
+        const v = parseInt(r.settings[k], 10);
+        if (!isNaN(v)) CRM_SETTINGS[k] = v;
+      });
+    }
+  } catch (e) {
+    console.warn('Settings load failed (using defaults):', e);
+  }
+}
+
+// ─── COLD DETECTION ───────────────────────────────────────────
+// A customer is "Cold" if their most-recent active contract has no activity for > cold_threshold_days
+// Activity = latest contract savedAt date OR latest followup date
+function getCustomerColdStatus(customer) {
+  const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed',
+                        'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
+  const contracts = customer.contracts || [];
+  const activeContracts = contracts.filter(c => activeStages.includes(c.status));
+  if (activeContracts.length === 0) return null; // No active deal — can't be cold
+  
+  // Find latest activity across contracts + followups
+  let latestActivity = null;
+  for (const c of activeContracts) {
+    const dates = [toIsoDate(c.savedAt), toIsoDate(c.date)].filter(Boolean);
+    for (const d of dates) {
+      if (!latestActivity || d > latestActivity) latestActivity = d;
+    }
+  }
+  // Also check followups
+  const fups = STATE.followups[customer.company] || [];
+  for (const f of fups) {
+    const d = toIsoDate(f.loggedAt) || toIsoDate(f.date);
+    if (d && (!latestActivity || d > latestActivity)) latestActivity = d;
+  }
+  if (!latestActivity) return null;
+  
+  const daysInactive = daysAgo(latestActivity);
+  if (daysInactive === null || daysInactive < 0) return null;
+  
+  const coldDays = CRM_SETTINGS.cold_threshold_days || 30;
+  const frozenDays = coldDays * 3; // Frozen = 3x cold threshold
+  
+  if (daysInactive >= frozenDays) return { level: 'frozen', days: daysInactive };
+  if (daysInactive >= coldDays)   return { level: 'cold',   days: daysInactive };
+  return null;
+}
+
+function renderColdTag(coldStatus) {
+  if (!coldStatus) return '';
+  const icon = coldStatus.level === 'frozen' ? '🧊' : '🥶';
+  const label = coldStatus.level === 'frozen' ? 'Frozen' : 'Cold';
+  return `<span class="cold-tag ${coldStatus.level}" title="No activity for ${coldStatus.days} days">${icon} ${label} ${coldStatus.days}d</span>`;
+}
+
+// ─── AGING DETECTION (Awaiting Payment) ───────────────────────
+function getContractAgingStatus(contract) {
+  if (contract.status !== 'Awaiting Payment') return null;
+  const startDate = toIsoDate(contract.savedAt) || toIsoDate(contract.date);
+  if (!startDate) return null;
+  const days = daysAgo(startDate);
+  if (days === null || days < 0) return null;
+  
+  const warnDays = CRM_SETTINGS.aging_warning_days || 30;
+  const critDays = CRM_SETTINGS.aging_critical_days || 90;
+  
+  if (days >= critDays) return { level: 'critical', days: days };
+  if (days >= warnDays) return { level: 'warn', days: days };
+  return null;
+}
+
+function renderAgingTag(agingStatus) {
+  if (!agingStatus) return '';
+  const icon = agingStatus.level === 'critical' ? '🚨' : '⚠';
+  const label = agingStatus.level === 'critical' ? 'Critical' : 'Warning';
+  return `<span class="aging-tag ${agingStatus.level}" title="Awaiting Payment for ${agingStatus.days} days">${icon} Aging ${agingStatus.days}d</span>`;
+}
+
+// ─── TODAY'S SNAPSHOT ─────────────────────────────────────────
+function renderSnapshot() {
+  const greetingEl = $('snapshot-greeting');
+  const dateEl = $('snapshot-date');
+  const content = $('snapshot-content');
+  if (!content) return;
+  
+  // Time-based greeting
+  const now = new Date();
+  const hour = now.getHours();
+  let greeting = '📸 Good day';
+  if (hour < 12) greeting = '☀️ Good morning';
+  else if (hour < 18) greeting = '🌤 Good afternoon';
+  else greeting = '🌙 Good evening';
+  if (greetingEl) greetingEl.textContent = greeting + ", Max!";
+  
+  if (dateEl) {
+    dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  
+  if (!STATE.customers || STATE.customers.length === 0) {
+    content.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
+    return;
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
+  
+  // 1. Today's tasks
+  const tasksToday = (TASKS_STATE.tasks || []).filter(t => 
+    t.status !== 'done' && t.status !== 'deleted' && toIsoDate(t.dueDate) === today
+  );
+  
+  // 2. Overdue tasks
+  const tasksOverdue = (TASKS_STATE.tasks || []).filter(t => {
+    if (t.status === 'done' || t.status === 'deleted') return false;
+    const d = toIsoDate(t.dueDate);
+    return d && d < today;
+  });
+  
+  // 3. Overdue follow-ups (across all customers)
+  const overdueFollowups = [];
+  for (const cust of STATE.customers) {
+    const fups = STATE.followups[cust.company] || [];
+    for (const f of fups) {
+      const d = toIsoDate(f.nextFollowupDate);
+      if (d && d < today && f.status !== 'completed') {
+        overdueFollowups.push({ customer: cust, followup: f });
+      }
+    }
+  }
+  
+  // 4. Recently won deals (last 7 days)
+  const wonStages = ['Delivered', 'Closed (Paid)'];
+  const recentlyWon = (STATE.contracts || []).filter(c => {
+    if (!wonStages.includes(c.status)) return false;
+    const d = toIsoDate(c.savedAt) || toIsoDate(c.date);
+    return d && d >= weekAgo;
+  });
+  
+  // 5. Hot deals — warmed up in last 7 days (any active deal with recent activity)
+  const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed',
+                        'Deposit Received', 'In Production', 'Ready to Ship'];
+  const hotDeals = (STATE.contracts || []).filter(c => {
+    if (!activeStages.includes(c.status)) return false;
+    const d = toIsoDate(c.savedAt) || toIsoDate(c.date);
+    return d && d >= weekAgo;
+  });
+  
+  // 6. Cold customers
+  const coldCustomers = [];
+  for (const cust of STATE.customers) {
+    const cold = getCustomerColdStatus(cust);
+    if (cold) coldCustomers.push({ customer: cust, cold });
+  }
+  
+  // 7. Aging payments
+  const agingPayments = [];
+  for (const c of (STATE.contracts || [])) {
+    const aging = getContractAgingStatus(c);
+    if (aging) agingPayments.push({ contract: c, aging });
+  }
+  
+  // Quick stats
+  const allActive = (STATE.contracts || []).filter(c => activeStages.includes(c.status));
+  const pipelineByCurr = {};
+  allActive.forEach(c => {
+    const cur = c.currency || 'USD';
+    pipelineByCurr[cur] = (pipelineByCurr[cur] || 0) + (c.amount || 0);
+  });
+  const pipelineStr = Object.entries(pipelineByCurr).sort((a,b)=>b[1]-a[1])
+    .map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US',{maximumFractionDigits:0})}`).join(' · ') || '—';
+  
+  content.innerHTML = `
+    <!-- Quick stats row -->
+    <div class="dashboard-grid" style="margin-bottom:14px">
+      <div class="stat-card primary">
+        <div class="stat-value">${tasksToday.length + tasksOverdue.length}</div>
+        <div class="stat-label">Tasks to Tackle</div>
+        <div class="stat-sublabel">${tasksOverdue.length} overdue · ${tasksToday.length} due today</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-value">${overdueFollowups.length}</div>
+        <div class="stat-label">Overdue Follow-ups</div>
+        <div class="stat-sublabel">${new Set(overdueFollowups.map(x => x.customer.company)).size} customers waiting</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-value">${allActive.length}</div>
+        <div class="stat-label">Active Pipeline</div>
+        <div class="stat-sublabel">${pipelineStr}</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-value">${coldCustomers.length}</div>
+        <div class="stat-label">Cold Customers 🥶</div>
+        <div class="stat-sublabel">${coldCustomers.filter(x => x.cold.level === 'frozen').length} frozen, ${coldCustomers.filter(x => x.cold.level === 'cold').length} cold</div>
+      </div>
+    </div>
+    
+    <div class="snapshot-grid">
+      <!-- Today's tasks -->
+      <div class="snapshot-section ${tasksToday.length > 0 ? 'warning' : ''}">
+        <h3>📅 Today's Tasks <span class="badge">${tasksToday.length}</span></h3>
+        ${tasksToday.length === 0 ? '<div class="snapshot-empty">No tasks due today 🎉</div>' :
+          tasksToday.slice(0, 8).map(t => `
+            <div class="snapshot-item">
+              <div class="snapshot-item-title">${t.priority === 'high' ? '🔴 ' : ''}${escapeHtml(t.title)}</div>
+              ${t.customer ? `<div class="snapshot-item-meta">👤 ${escapeHtml(t.customer)}${t.contractNo ? ' · 📋 ' + t.contractNo : ''}</div>` : ''}
+            </div>
+          `).join('')
+        }
+        ${tasksToday.length > 8 ? `<div class="snapshot-item-meta" style="text-align:center;margin-top:6px">... +${tasksToday.length - 8} more</div>` : ''}
+      </div>
+      
+      <!-- Overdue Tasks -->
+      <div class="snapshot-section ${tasksOverdue.length > 0 ? 'urgent' : ''}">
+        <h3>🚨 Overdue Tasks <span class="badge">${tasksOverdue.length}</span></h3>
+        ${tasksOverdue.length === 0 ? '<div class="snapshot-empty">Nothing overdue ✅</div>' :
+          tasksOverdue.slice(0, 8).map(t => {
+            const days = Math.abs(daysAgo(toIsoDate(t.dueDate)));
+            return `
+              <div class="snapshot-item">
+                <div class="snapshot-item-title" style="color:var(--danger)">${escapeHtml(t.title)}</div>
+                <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} overdue${t.customer ? ' · 👤 ' + escapeHtml(t.customer) : ''}</div>
+              </div>
+            `;
+          }).join('')
+        }
+        ${tasksOverdue.length > 8 ? `<div class="snapshot-item-meta" style="text-align:center;margin-top:6px">... +${tasksOverdue.length - 8} more</div>` : ''}
+      </div>
+      
+      <!-- Overdue Follow-ups -->
+      <div class="snapshot-section ${overdueFollowups.length > 0 ? 'urgent' : ''}">
+        <h3>📨 Overdue Follow-ups <span class="badge">${overdueFollowups.length}</span></h3>
+        ${overdueFollowups.length === 0 ? '<div class="snapshot-empty">All follow-ups on track ✅</div>' :
+          overdueFollowups.slice(0, 8).map(x => {
+            const days = Math.abs(daysAgo(toIsoDate(x.followup.nextFollowupDate)));
+            const dispName = getDisplayName(x.customer.company);
+            return `
+              <div class="snapshot-item">
+                <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(dispName)}</div>
+                <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
+              </div>
+            `;
+          }).join('')
+        }
+        ${overdueFollowups.length > 8 ? `<div class="snapshot-item-meta" style="text-align:center;margin-top:6px">... +${overdueFollowups.length - 8} more</div>` : ''}
+      </div>
+      
+      <!-- Hot Deals (recent activity) -->
+      <div class="snapshot-section ${hotDeals.length > 0 ? 'success' : 'info'}">
+        <h3>🔥 Hot Deals (last 7 days) <span class="badge">${hotDeals.length}</span></h3>
+        ${hotDeals.length === 0 ? '<div class="snapshot-empty">No recent activity</div>' :
+          hotDeals.slice(0, 8).map(c => `
+            <div class="snapshot-item">
+              <div class="snapshot-item-title">${escapeHtml(getDisplayName(c.company))}</div>
+              <div class="snapshot-item-meta">${escapeHtml(c.status)} · ${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machineTitle||'').substring(0,50))}</div>
+            </div>
+          `).join('')
+        }
+      </div>
+      
+      <!-- Recently Won -->
+      <div class="snapshot-section ${recentlyWon.length > 0 ? 'success' : 'info'}">
+        <h3>🏆 Recently Won (last 7 days) <span class="badge">${recentlyWon.length}</span></h3>
+        ${recentlyWon.length === 0 ? '<div class="snapshot-empty">No wins this week yet</div>' :
+          recentlyWon.slice(0, 8).map(c => `
+            <div class="snapshot-item">
+              <div class="snapshot-item-title">${escapeHtml(getDisplayName(c.company))}</div>
+              <div class="snapshot-item-meta">${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machineTitle||'').substring(0,50))}</div>
+            </div>
+          `).join('')
+        }
+      </div>
+      
+      <!-- Aging Payments -->
+      <div class="snapshot-section ${agingPayments.length > 0 ? 'urgent' : 'info'}">
+        <h3>💰 Aging Payments <span class="badge">${agingPayments.length}</span></h3>
+        ${agingPayments.length === 0 ? '<div class="snapshot-empty">No aging payments ✅</div>' :
+          agingPayments.slice(0, 8).map(x => `
+            <div class="snapshot-item">
+              <div class="snapshot-item-title">${escapeHtml(getDisplayName(x.contract.company))} ${renderAgingTag(x.aging)}</div>
+              <div class="snapshot-item-meta">${x.contract.contractNo} · ${x.contract.currency} ${(x.contract.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+            </div>
+          `).join('')
+        }
+      </div>
+      
+      <!-- Cold Customers -->
+      <div class="snapshot-section ${coldCustomers.length > 0 ? 'warning' : 'info'}">
+        <h3>🥶 Cold Customers <span class="badge">${coldCustomers.length}</span></h3>
+        ${coldCustomers.length === 0 ? '<div class="snapshot-empty">No cold customers ✅</div>' :
+          coldCustomers.sort((a,b) => b.cold.days - a.cold.days).slice(0, 8).map(x => `
+            <div class="snapshot-item">
+              <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(getDisplayName(x.customer.company))} ${renderColdTag(x.cold)}</div>
+              <div class="snapshot-item-meta">Active deals stuck for ${x.cold.days} days</div>
+            </div>
+          `).join('')
+        }
+        ${coldCustomers.length > 8 ? `<div class="snapshot-item-meta" style="text-align:center;margin-top:6px">... +${coldCustomers.length - 8} more</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// v1.6: FOLLOW-UP PACKS (Monday morning view)
+// ═══════════════════════════════════════════════════════════════════
+
+let PACK_STATE = { filter: 'all', country: '' };
+
+async function preloadAllFollowups() {
+  // Get all followups in one call (no customer filter)
+  try {
+    const r = await apiGet('crm_getFollowups');
+    if (r && r.followups) {
+      // Group by customer
+      const grouped = {};
+      r.followups.forEach(f => {
+        const key = f.customer || '';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(f);
+      });
+      // Merge with existing (don't overwrite recently loaded individual customer data)
+      Object.keys(grouped).forEach(co => {
+        if (!STATE.followups[co]) STATE.followups[co] = grouped[co];
+      });
+    }
+  } catch (e) {
+    console.warn('preloadAllFollowups failed:', e);
+  }
+}
+
+function setPackFilter(filter) {
+  PACK_STATE.filter = filter;
+  $$('[data-pack-filter]').forEach(el => el.classList.toggle('active', el.dataset.packFilter === filter));
+  renderPack();
+}
+
+function initPackCountryFilter() {
+  const sel = $('pack-country-filter');
+  if (!sel) return;
+  const counts = {};
+  (STATE.customers || []).forEach(c => { counts[c.country] = (counts[c.country]||0)+1; });
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Countries</option>' +
+    Object.keys(counts).sort((a,b) => counts[b]-counts[a]).map(c => 
+      `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+  sel.value = cur;
+}
+
+function renderPack() {
+  const list = $('pack-list');
+  const summary = $('pack-summary');
+  if (!list || !summary) return;
+  
+  if (!STATE.customers || STATE.customers.length === 0) {
+    list.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
+    summary.innerHTML = '';
+    return;
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  
+  // Build list of customers needing attention
+  const customersNeedingAttention = [];
+  
+  for (const customer of STATE.customers) {
+    const fups = STATE.followups[customer.company] || [];
+    
+    // Find overdue + due-this-week
+    const overdueFups = fups.filter(f => {
+      const d = toIsoDate(f.nextFollowupDate);
+      return d && d < today && f.status !== 'completed';
+    });
+    const dueThisWeekFups = fups.filter(f => {
+      const d = toIsoDate(f.nextFollowupDate);
+      return d && d >= today && d <= weekFromNow && f.status !== 'completed';
+    });
+    
+    // Apply filters
+    if (PACK_STATE.filter === 'overdue' && overdueFups.length === 0) continue;
+    if (PACK_STATE.country && customer.country !== PACK_STATE.country) continue;
+    
+    if (overdueFups.length > 0 || dueThisWeekFups.length > 0) {
+      customersNeedingAttention.push({
+        customer,
+        overdue: overdueFups,
+        dueThisWeek: dueThisWeekFups
+      });
+    }
+  }
+  
+  // Sort: most overdue first
+  customersNeedingAttention.sort((a, b) => {
+    if (a.overdue.length !== b.overdue.length) return b.overdue.length - a.overdue.length;
+    return a.customer.company.localeCompare(b.customer.company);
+  });
+  
+  // Summary
+  const totalOverdue = customersNeedingAttention.reduce((s, x) => s + x.overdue.length, 0);
+  const totalDueWeek = customersNeedingAttention.reduce((s, x) => s + x.dueThisWeek.length, 0);
+  const totalCustomers = customersNeedingAttention.length;
+  
+  summary.innerHTML = `
+    <div class="pack-summary-card">
+      <div class="pack-stat">
+        <div class="pack-stat-value">${totalCustomers}</div>
+        <div class="pack-stat-label">Customers to Contact</div>
+      </div>
+      <div class="pack-stat">
+        <div class="pack-stat-value">🚨 ${totalOverdue}</div>
+        <div class="pack-stat-label">Overdue Follow-ups</div>
+      </div>
+      <div class="pack-stat">
+        <div class="pack-stat-value">📅 ${totalDueWeek}</div>
+        <div class="pack-stat-label">Due This Week</div>
+      </div>
+    </div>
+  `;
+  
+  if (customersNeedingAttention.length === 0) {
+    list.innerHTML = `
+      <div class="empty" style="padding:40px;text-align:center;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow)">
+        <div style="font-size:42px;margin-bottom:8px">🎉</div>
+        <div style="color:var(--success);font-weight:600;font-size:14px">All caught up!</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">No overdue or due-soon follow-ups in this filter</div>
+      </div>
+    `;
+    return;
+  }
+  
+  list.innerHTML = customersNeedingAttention.map(x => renderPackCustomerCard(x, today)).join('');
+}
+
+function renderPackCustomerCard(x, today) {
+  const c = x.customer;
+  const isOverdue = x.overdue.length > 0;
+  
+  // Get tel/email from customer master data (fetched via customerDB if available)
+  const tel = c.tel || '';
+  const email = c.email || '';
+  const wa = (tel || '').replace(/\D/g, '');
+  
+  // Get latest contract for "Open in Generator" link
+  const latest = (c.contracts || []).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+  
+  const waLink = wa && wa.length >= 8 ? `https://wa.me/${wa}` : '';
+  const emailLink = email ? `mailto:${email}` : '';
+  
+  // Encoded URL for "Open Generator"
+  const generatorUrl = latest ? 
+    `index.html?contract=${encodeURIComponent(latest.contractNo)}&load=true` :
+    `index.html?customer=${encodeURIComponent(c.company)}&autofill=true`;
+  
+  const displayName = getDisplayName(c.company);
+  
+  return `
+    <div class="pack-customer-card ${isOverdue ? 'overdue' : ''}">
+      <div class="pack-customer-header">
+        <div style="flex:1;min-width:0">
+          <div class="pack-customer-name">${c.flag} ${escapeHtml(displayName)}</div>
+          <div class="pack-customer-meta">
+            ${c.country}
+            ${tel ? ` · 📞 ${escapeHtml(tel)}` : ''}
+            ${email ? ` · 📧 ${escapeHtml(email)}` : ''}
+          </div>
+          ${latest ? `<div class="pack-customer-meta" style="margin-top:2px">📋 Latest: <strong>${latest.contractNo}</strong> — ${escapeHtml((latest.machine||'').substring(0,60))}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+          ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="WhatsApp ${tel}">💬 WhatsApp</a>` : ''}
+          ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Email ${email}">📧 Email</a>` : ''}
+          <a href="${generatorUrl}" class="rep-action-btn call" style="background:var(--primary)">📋 Open</a>
+        </div>
+      </div>
+      
+      <div class="pack-followups">
+        ${x.overdue.map(f => `
+          <div class="pack-followup-item">
+            <span class="pack-followup-icon">🚨</span>
+            <span style="color:var(--danger);font-weight:600">${daysAgoText(f.nextFollowupDate)} (${fmtDate(f.nextFollowupDate)})</span>
+            <span style="color:var(--text-secondary)">— ${escapeHtml((f.description || 'follow-up').substring(0, 100))}</span>
+          </div>
+        `).join('')}
+        ${x.dueThisWeek.map(f => `
+          <div class="pack-followup-item">
+            <span class="pack-followup-icon">📅</span>
+            <span style="color:var(--warning);font-weight:600">${toIsoDate(f.nextFollowupDate) === today ? 'Today' : 'in ' + Math.abs(daysAgo(toIsoDate(f.nextFollowupDate))) + 'd'} (${fmtDate(f.nextFollowupDate)})</span>
+            <span style="color:var(--text-secondary)">— ${escapeHtml((f.description || 'follow-up').substring(0, 100))}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function copyPackContactsToClipboard() {
+  const today = new Date().toISOString().split('T')[0];
+  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  
+  const lines = [];
+  lines.push('Sen Labels — Follow-up List ' + new Date().toLocaleDateString());
+  lines.push('=' .repeat(50));
+  
+  for (const customer of STATE.customers) {
+    const fups = STATE.followups[customer.company] || [];
+    const overdueFups = fups.filter(f => {
+      const d = toIsoDate(f.nextFollowupDate);
+      return d && d < today && f.status !== 'completed';
+    });
+    const dueThisWeekFups = fups.filter(f => {
+      const d = toIsoDate(f.nextFollowupDate);
+      return d && d >= today && d <= weekFromNow && f.status !== 'completed';
+    });
+    if (PACK_STATE.filter === 'overdue' && overdueFups.length === 0) continue;
+    if (PACK_STATE.country && customer.country !== PACK_STATE.country) continue;
+    if (overdueFups.length === 0 && dueThisWeekFups.length === 0) continue;
+    
+    const tel = customer.tel || '';
+    const flag = overdueFups.length > 0 ? '🚨' : '📅';
+    const displayName = getDisplayName(customer.company);
+    lines.push(`${flag} ${displayName}${tel ? ' — ' + tel : ''}`);
+  }
+  
+  const text = lines.join('\n');
+  copyText(text, `📋 Copied ${lines.length - 2} contacts to clipboard`);
+}
+
+function printPack() {
+  window.print();
 }
 
 // ─── Add Follow-up Modal ───────────────────────────────────────
@@ -1315,11 +2818,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('show-closed').addEventListener('change', renderPipeline);
   $('show-lost').addEventListener('change', renderPipeline);
   
+  // v1.6: Reps search + Packs country filter
+  const repSearch = $('rep-search');
+  if (repSearch) repSearch.addEventListener('input', (e) => {
+    REPS_STATE.search = e.target.value;
+    renderReps();
+  });
+  const packCountry = $('pack-country-filter');
+  if (packCountry) packCountry.addEventListener('change', (e) => {
+    PACK_STATE.country = e.target.value;
+    renderPack();
+  });
+  
   $$('.tab:not(.disabled)').forEach(t => t.addEventListener('click', () => {
     $$('.tab').forEach(x => x.classList.toggle('active', x === t));
     $$('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + t.dataset.tab));
     // Re-render pipeline when switching to it (in case data changed)
     if (t.dataset.tab === 'pipeline') renderPipeline();
+    // v1.5: Load tasks/dashboard on switch
+    if (t.dataset.tab === 'tasks' && !TASKS_STATE.loaded) loadTasks();
+    if (t.dataset.tab === 'tasks') { renderTasks(); updateTaskCounts(); }
+    if (t.dataset.tab === 'dashboard') renderDashboard();
+    // v1.6: Sales Reps + Packs
+    if (t.dataset.tab === 'reps' && !REPS_STATE.loaded) loadReps();
+    if (t.dataset.tab === 'reps') renderReps();
+    if (t.dataset.tab === 'packs') { initPackCountryFilter(); renderPack(); }
+    // v1.7: Phase 6 Today's Snapshot
+    if (t.dataset.tab === 'snapshot') renderSnapshot();
   }));
   
   // v1.2: ESC closes modal
