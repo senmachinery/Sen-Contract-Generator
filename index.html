@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.55</title>
+<title>Sen Labels — Contract Generator v10.56</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.55</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.56</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5695,12 +5695,14 @@ function getAppsScriptCode() {
     "  if (action === 'crm_getStages')    return crmGetStages();",
     "  if (action === 'crm_getSettings')  return crmGetSettings();",
     "  if (action === 'crm_getCustomerHistory') return crmGetCustomerHistory(params.customer);",
+    "  if (action === 'crm_getAllContracts') return crmGetAllContracts();",
     "  return { error: 'Unknown CRM action: ' + action };",
     "}",
     "",
     "// ──── POST handlers (dispatcher for crm_* POST actions) ────",
     "function handleCrmPost(action, data) {",
     "  if (action === 'crm_addFollowup')     return crmAddFollowup(data.followup);",
+    "  if (action === 'crm_deleteFollowup')  return crmDeleteFollowup(data.id);",
     "  if (action === 'crm_addTask')         return crmAddTask(data.task);",
     "  if (action === 'crm_updateTask')      return crmUpdateTask(data.id, data.updates);",
     "  if (action === 'crm_updateStage')     return crmUpdateStage(data.contractNo, data.stage, data.notes);",
@@ -5744,6 +5746,21 @@ function getAppsScriptCode() {
     "  }",
     "  crmAudit('add_followup', fu.customer + '|' + (fu.contractNo||''), '', fu.description, fu.type);",
     "  return { ok: true, id: id };",
+    "}",
+    "",
+    "// ──── DELETE FOLLOWUP ────",
+    "function crmDeleteFollowup(id) {",
+    "  const sheet = getOrCreateCrmSheet(CRM_FOLLOWUPS);",
+    "  const data = sheet.getDataRange().getValues();",
+    "  for (let i = 1; i < data.length; i++) {",
+    "    if (String(data[i][0]) === String(id)) {",
+    "      archiveRow(sheet, data[i], 'crm_delete_followup');",
+    "      sheet.deleteRow(i + 1);",
+    "      crmAudit('delete_followup', id, JSON.stringify(data[i]), '', '');",
+    "      return { ok: true };",
+    "    }",
+    "  }",
+    "  return { error: 'Follow-up not found' };",
     "}",
     "",
     "// ──── TASKS ────",
@@ -5872,6 +5889,26 @@ function getAppsScriptCode() {
     "    settings[data[i][0]] = data[i][1];",
     "  }",
     "  return { ok: true, settings: settings };",
+    "}",
+    "",
+    "// ──── ALL CONTRACTS (no limit, used by CRM for full customer view) ────",
+    "function crmGetAllContracts() {",
+    "  const allContracts = [];",
+    "  [SC_SHEET, Q_SHEET].forEach(function(name) {",
+    "    const sheet = getOrCreateSheet(name);",
+    "    const data = sheet.getDataRange().getValues();",
+    "    for (let i = 1; i < data.length; i++) {",
+    "      allContracts.push({",
+    "        contractNo: data[i][0], date: data[i][1], company: data[i][2],",
+    "        machineTitle: data[i][3], currency: data[i][4], amount: data[i][5],",
+    "        status: data[i][6], admin: data[i][7], port: data[i][8],",
+    "        savedAt: data[i][10]",
+    "      });",
+    "    }",
+    "  });",
+    "  // Sort newest first by date",
+    "  allContracts.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });",
+    "  return { ok: true, contracts: allContracts, total: allContracts.length };",
     "}",
     "",
     "// ──── CUSTOMER HISTORY (combines contracts + followups + tasks) ────",
