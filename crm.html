@@ -132,7 +132,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v1.0</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v1.1</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -209,7 +209,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v1.0 — Real data connection to Apps Script
+// CRM v1.1 — Real data connection to Apps Script
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -244,49 +244,82 @@ function fmtMoney(amt, currency) {
 
 function fmtDate(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
+  const d = parseAnyDate(iso);
+  if (!d || isNaN(d)) return String(iso);
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function daysAgo(iso) {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (isNaN(d)) return null;
+  const d = parseAnyDate(iso);
+  if (!d || isNaN(d)) return null;
   return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+// Parse any date format coming from Google Sheets (ISO string, Excel date object, plain string)
+function parseAnyDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  const s = String(val).trim();
+  // Try ISO 8601 first
+  let d = new Date(s);
+  if (!isNaN(d)) return d;
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m) {
+    let y = parseInt(m[3]);
+    if (y < 100) y += 2000;
+    d = new Date(y, parseInt(m[2])-1, parseInt(m[1]));
+    if (!isNaN(d)) return d;
+  }
+  return null;
 }
 
 function daysAgoText(iso) {
   const d = daysAgo(iso);
-  if (d === null) return '';
+  if (d === null) return 'date unknown';
+  if (d < 0) return 'future date';  // future date — likely data issue, show neutral
   if (d === 0) return 'today';
   if (d === 1) return '1 day ago';
   if (d < 30) return d + ' days ago';
   if (d < 60) return '1 month ago';
-  return Math.floor(d/30) + ' months ago';
+  if (d < 365) return Math.floor(d/30) + ' months ago';
+  return Math.floor(d/365) + ' year' + (Math.floor(d/365) > 1 ? 's' : '') + ' ago';
 }
 
 // Detect country from address or company name (basic heuristic)
 function detectCountry(addr, company) {
   const text = ((addr || '') + ' ' + (company || '')).toLowerCase();
-  const map = {
-    'indonesia': 'Indonesia', 'jakarta': 'Indonesia', 'surabaya': 'Indonesia', 'bandung': 'Indonesia',
-    'malaysia': 'Malaysia', 'selangor': 'Malaysia', 'penang': 'Malaysia', 'johor': 'Malaysia', 'klang': 'Malaysia', '(m) sdn bhd': 'Malaysia', 'sdn bhd': 'Malaysia',
-    'singapore': 'Singapore', 'pte ltd': 'Singapore',
-    'korea': 'Korea', 'seoul': 'Korea', 'busan': 'Korea', 'incheon': 'Korea',
-    'japan': 'Japan', 'tokyo': 'Japan', 'osaka': 'Japan',
-    'vietnam': 'Vietnam', 'hanoi': 'Vietnam', 'saigon': 'Vietnam', 'ho chi minh': 'Vietnam',
-    'thailand': 'Thailand', 'bangkok': 'Thailand',
-    'philippines': 'Philippines', 'manila': 'Philippines',
-    'india': 'India', 'mumbai': 'India', 'maharashtra': 'India', 'thane': 'India', 'chennai': 'India',
-    'bangladesh': 'Bangladesh', 'dhaka': 'Bangladesh',
-    'pakistan': 'Pakistan',
-    'australia': 'Australia',
-    'europe': 'Europe', 'germany': 'Europe', 'italy': 'Europe', 'france': 'Europe',
-    'china': 'China', 'shanghai': 'China'
-  };
-  for (const [kw, country] of Object.entries(map)) {
-    if (text.includes(kw)) return country;
+  // Order matters: more specific first
+  const map = [
+    // Indonesia
+    [['indonesia','jakarta','surabaya','bandung','tangerang','semarang','medan','batam','bali','pt. ',' pt ','pt label','indo ','indo,'], 'Indonesia'],
+    // Malaysia (very common patterns)
+    [['malaysia','selangor','penang','johor','klang','kuala lumpur','sdn bhd','sdn. bhd','jalan ','jln ','jln. ','jl. ','taman ','damansara','petaling','seri ','sri '], 'Malaysia'],
+    // Singapore
+    [['singapore','pte ltd','pte. ltd'], 'Singapore'],
+    // Korea (catch SONGSEON-RO, BEON-GIL, POCHEON-SI, etc — Korean address patterns)
+    [['korea','seoul','busan','incheon','pocheon','goyang','suwon','daegu','-si,','-gun,','-ro','-gil','-dong','korean','south korea','sungdo','sunrise','shinghung'], 'Korea'],
+    // Japan
+    [['japan','tokyo','osaka','kyoto','yokohama','japan,','japanese','dksh','wingup','abe kouki'], 'Japan'],
+    // Vietnam
+    [['vietnam','hanoi','saigon','ho chi minh','phong chau','khang viet','k.l service'], 'Vietnam'],
+    // Thailand
+    [['thailand','bangkok','thai ','cct'], 'Thailand'],
+    // Philippines (the user's word: "PHILS")
+    [['philippines','manila','phils inc','phils.','filipino','cebu','quezon'], 'Philippines'],
+    // India
+    [['india','mumbai','maharashtra','thane','chennai','delhi','bangalore','pune','khushi'], 'India'],
+    [['bangladesh','dhaka'], 'Bangladesh'],
+    [['pakistan','karachi','lahore'], 'Pakistan'],
+    [['australia','sydney','melbourne'], 'Australia'],
+    [['ragraf','slovenia','germany','italy','france','spain',' s.a.',' s.r.l',' gmbh',' b.v.'], 'Europe'],
+    [['china',' shanghai',' guangzhou',' beijing',' shenzhen'], 'China'],
+  ];
+  for (const [keywords, country] of map) {
+    for (const kw of keywords) {
+      if (text.includes(kw)) return country;
+    }
   }
   return 'Other';
 }
@@ -297,6 +330,23 @@ const COUNTRY_FLAGS = {
   Pakistan: '🇵🇰', Australia: '🇦🇺', Europe: '🇪🇺', China: '🇨🇳', Other: '🌍'
 };
 function flagFor(country) { return COUNTRY_FLAGS[country] || '🌍'; }
+
+// User can manually override country for any customer (stored in localStorage)
+const COUNTRY_OVERRIDE_KEY = 'sen_crm_country_overrides';
+function getCountryOverrides() {
+  try { return JSON.parse(localStorage.getItem(COUNTRY_OVERRIDE_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function setCountryOverride(company, country) {
+  const o = getCountryOverrides();
+  if (country) o[company] = country; else delete o[company];
+  localStorage.setItem(COUNTRY_OVERRIDE_KEY, JSON.stringify(o));
+}
+function getCustomerCountry(company) {
+  const overrides = getCountryOverrides();
+  if (overrides[company]) return overrides[company];
+  return detectCountry('', company);
+}
 
 function statusColor(status) {
   const s = String(status || '');
@@ -406,7 +456,7 @@ async function refreshData() {
       currency: r.currency || 'USD',
       amount: parseFloat(r.amount) || 0,
       status: r.status || 'Quotation Sent',
-      country: detectCountry('', r.company)
+      country: getCustomerCountry(r.company)
     }));
     
     // Group by customer (unique companies)
@@ -529,8 +579,14 @@ function renderCustomerDetail(c, followups) {
   $('customer-detail').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div>
-        <h2>${c.flag} ${c.company}</h2>
-        <div class="meta-row">${c.country} · ${c.contracts.length} total contract(s)</div>
+        <h2>
+          <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer" title="Click to change country">${c.flag}</span>
+          ${c.company}
+        </h2>
+        <div class="meta-row">
+          ${c.country} · ${c.contracts.length} total contract(s)
+          <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change</span>
+        </div>
       </div>
       <div style="text-align:right">
         <div style="font-size:11px;color:var(--text-muted)">Total Spent</div>
@@ -595,6 +651,59 @@ function renderCustomerDetail(c, followups) {
 function typeIcon(type) {
   const icons = { 'Call':'📞', 'Email':'✉', 'WhatsApp':'💬', 'Meeting':'🤝', 'Quote Sent':'📤' };
   return icons[type] || '📝';
+}
+
+// Manually change country for a customer (override auto-detection)
+function openCountryEditor(company) {
+  const currentCountry = getCustomerCountry(company);
+  const allCountries = Object.keys(COUNTRY_FLAGS);
+  
+  $('modal-title').textContent = `Change Country — ${company}`;
+  $('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+      Currently: <strong>${flagFor(currentCountry)} ${currentCountry}</strong> (auto-detected)
+    </div>
+    <div class="form-row">
+      <label>Set Country</label>
+      <select id="country-select" style="width:100%">
+        ${allCountries.map(c => `<option value="${c}" ${c === currentCountry ? 'selected' : ''}>${flagFor(c)} ${c}</option>`).join('')}
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding:8px;background:var(--bg);border-radius:var(--radius-sm)">
+      💡 Override is saved on this device only (browser storage). Useful when auto-detection gets it wrong.
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveCountry('${company.replace(/'/g, "\\'")}')">💾 Save</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+function saveCountry(company) {
+  const country = $('country-select').value;
+  setCountryOverride(company, country);
+  closeModal();
+  showToast(`Country set: ${flagFor(country)} ${country}`, 'success');
+  // Re-process customer data with new country
+  STATE.customers.forEach(c => {
+    if (c.company === company) {
+      c.country = country;
+      c.flag = flagFor(country);
+    }
+  });
+  // Re-populate country dropdown
+  STATE.countries.clear();
+  STATE.customers.forEach(c => STATE.countries.add(c.country));
+  const select = $('crm-country');
+  const cur = select.value;
+  select.innerHTML = '<option value="">All Countries</option>' +
+    Array.from(STATE.countries).sort().map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+  select.value = cur;
+  renderCustomerList();
+  // Re-render customer detail
+  const c = STATE.customers.find(x => x.company === company);
+  if (c) renderCustomerDetail(c, STATE.followups[company] || []);
 }
 
 function escapeHtml(s) {
