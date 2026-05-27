@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.54</title>
+<title>Sen Labels — Contract Generator v10.55</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.54</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.55</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -341,6 +341,7 @@ function mobileTab(tab) {
     <button class="btn btn-outline btn-sm" onclick="openSettings()">&#9881; Settings</button>
     <button class="btn btn-success btn-sm" onclick="saveToSheets()">&#128190; Save Record</button>
     <button class="btn btn-sm" onclick="openLibrary()" style="background:#6a1b9a;color:#fff">&#128218; Library</button>
+    <a href="crm.html" target="_self" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM">&#128101; CRM</a>
     <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff">&#128295; Machine DB</button>
     <button class="btn btn-orange btn-sm" onclick="doPrint()">&#128424; Print / PDF</button>
     <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true)" style="background:#217346">&#128196; Export Excel</button>
@@ -1015,7 +1016,44 @@ document.addEventListener('DOMContentLoaded', () => {
   updatePreview();
   if (window.innerWidth <= 900) { mobileTab('form'); }
   setTimeout(loadHistory, 500);
+  
+  // ─── v10.55: Handle URL params from CRM ───
+  setTimeout(handleCrmUrlParams, 800);
 });
+
+// v10.55: Handle ?customer=XXX or ?contract=YYY from CRM
+function handleCrmUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const customer = params.get('customer');
+  const contractNo = params.get('contract');
+  const autofill = params.get('autofill') === 'true';
+  const loadFlag = params.get('load') === 'true';
+  
+  if (customer && autofill) {
+    // Pre-fill customer name
+    document.getElementById('f-company').value = customer;
+    state.company = customer;
+    // Try to load full customer info from customer DB
+    if (typeof gsUrl !== 'undefined' && gsUrl && typeof loadCustomerFromDB === 'function') {
+      setTimeout(() => loadCustomerFromDB(customer), 500);
+    }
+    updatePreview();
+    // Clean URL so refresh won't re-trigger
+    history.replaceState(null, '', window.location.pathname);
+    setTimeout(() => alert('✅ New quote for: ' + customer + '\n\nCustomer info pre-filled. You can now add machines, pricing, and save.'), 300);
+  } else if (contractNo && loadFlag) {
+    // Load existing contract from Library
+    if (typeof openLibrary === 'function') {
+      setTimeout(() => {
+        openLibrary();
+        // Optionally pre-search for this contract
+        const searchEl = document.getElementById('lib-search');
+        if (searchEl) { searchEl.value = contractNo; searchEl.dispatchEvent(new Event('input')); }
+      }, 300);
+    }
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
 
 // ============================================================
 // MULTI-MACHINE MANAGEMENT
