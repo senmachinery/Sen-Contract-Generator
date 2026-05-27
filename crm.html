@@ -185,7 +185,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v1.3</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v1.4</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -285,7 +285,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v1.3 — Real data connection + Quick Filters + Overdue alerts
+// CRM v1.4 — Real data connection + Quick Filters + Overdue alerts
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -424,6 +424,45 @@ function getCustomerCountry(company) {
   const overrides = getCountryOverrides();
   if (overrides[company]) return overrides[company];
   return detectCountry('', company);
+}
+
+// v1.4: User can rename a customer (store override locally, doesn't change Google Sheet)
+const NAME_OVERRIDE_KEY = 'sen_crm_name_overrides';
+function getNameOverrides() {
+  try { return JSON.parse(localStorage.getItem(NAME_OVERRIDE_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function setNameOverride(originalName, newName) {
+  const o = getNameOverrides();
+  if (newName && newName !== originalName) o[originalName] = newName; else delete o[originalName];
+  localStorage.setItem(NAME_OVERRIDE_KEY, JSON.stringify(o));
+}
+function getDisplayName(originalName) {
+  const overrides = getNameOverrides();
+  return overrides[originalName] || originalName;
+}
+
+// v1.4: Detect if a "company name" actually looks like an address
+function looksLikeAddress(name) {
+  if (!name) return false;
+  const n = name.trim();
+  // Starts with a number (e.g. "22, JALAN..." or "No. 35...")
+  if (/^(no\.?\s*)?\d+[\s,\.\-]/i.test(n)) return true;
+  // Contains street/address keywords
+  const addressKeywords = [
+    /\bjalan\b/i, /\bjln\.?\b/i, /\bjl\.?\b/i,  // Malaysia/Indonesia
+    /\bstreet\b/i, /\broad\b/i, /\bavenue\b/i, /\bave\.?\b/i,
+    /\boff\s+(jalan|jln|road)\b/i,
+    /\btaman\b/i,  // MY/ID neighborhoods (but careful, "Taman Mount Austin" is part of address)
+    /\bblock\s+\w+\b/i, /\blot\s+\d+\b/i,
+    /\bunit\s+\d+/i, /\bsuite\s+\d+/i, /\b\d+(st|nd|rd|th)\s+floor\b/i,
+    /\bdistrict\b/i, /\bvillage\b/i
+  ];
+  // Only flag if it ALSO doesn't contain company keywords
+  const companyKeywords = /\b(sdn\s*bhd|pte\.?\s*ltd|pvt\.?\s*ltd|p\.?\s*ltd|inc\.?|corp\.?|co\.?\s*ltd|ltd\.?|gmbh|s\.?a\.?|s\.?r\.?l|b\.?v\.?|llp|llc)\b|\bPT\b|\bCV\b|\bUD\b/i;
+  const hasCompany = companyKeywords.test(n);
+  const hasAddress = addressKeywords.some(re => re.test(n));
+  return hasAddress && !hasCompany;
 }
 
 function statusColor(status) {
@@ -706,7 +745,11 @@ function renderCustomerList() {
   const COLD_DAYS = 30;
   
   const filtered = STATE.customers.filter(c => {
-    if (q && !c.company.toLowerCase().includes(q)) return false;
+    if (q) {
+      const displayName = getDisplayName(c.company);
+      // Match against original OR display name
+      if (!c.company.toLowerCase().includes(q) && !displayName.toLowerCase().includes(q)) return false;
+    }
     if (country && c.country !== country) return false;
     
     // Quick filter
@@ -734,11 +777,17 @@ function renderCustomerList() {
   ` + filtered.map(c => {
     const isActive = c.company === STATE.activeCustomer;
     const statusClass = statusColor(c.latestStatus);
+    const displayName = getDisplayName(c.company);
+    const isRenamed = displayName !== c.company;
+    const showAddressWarning = !isRenamed && looksLikeAddress(c.company);
     
     return `
       <div class="customer-item ${isActive ? 'active' : ''}" onclick="selectCustomer('${c.company.replace(/'/g, "\\'")}')">
         <div class="customer-item-name">
-          <span style="overflow:hidden;text-overflow:ellipsis">${c.flag} ${c.company}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis">
+            ${c.flag} ${showAddressWarning ? '<span title="Looks like an address — click to set proper name" style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}
+            ${isRenamed ? '<span title="Renamed (original: ' + escapeHtml(c.company) + ')" style="font-size:9px;color:var(--info);margin-left:4px">✏️</span>' : ''}
+          </span>
           <span style="display:flex;gap:4px;flex-shrink:0">
             ${c.overdueFollowups > 0 ? `<span class="customer-overdue-badge" title="${c.overdueFollowups} overdue follow-up(s)">🚨 ${c.overdueFollowups}</span>` : ''}
             ${c.nextDueDate && c.overdueFollowups === 0 ? `<span class="customer-due-badge" title="Next follow-up: ${c.nextDueDate}">📅 ${daysAgoText(c.nextDueDate).replace(' ago','')}</span>` : ''}
@@ -783,6 +832,11 @@ function renderCustomerDetail(c, followups) {
   const newQuoteUrl = `index.html?customer=${encodeURIComponent(c.company)}&autofill=true`;
   const today = new Date().toISOString().split('T')[0];
   
+  // v1.4: Get display name (may be overridden)
+  const displayName = getDisplayName(c.company);
+  const isRenamed = displayName !== c.company;
+  const showAddressWarning = !isRenamed && looksLikeAddress(c.company);
+  
   // Compute overdue / upcoming follow-ups
   const overdueFollowups = followups.filter(f => f.nextFollowupDate && f.nextFollowupDate < today);
   const upcomingFollowups = followups.filter(f => f.nextFollowupDate && f.nextFollowupDate >= today);
@@ -792,11 +846,13 @@ function renderCustomerDetail(c, followups) {
       <div>
         <h2>
           <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer" title="Click to change country">${c.flag}</span>
-          ${c.company}
+          ${escapeHtml(displayName)}
+          <span onclick="openRenameModal('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:13px;margin-left:6px" title="Rename customer (override only — does not change Google Sheet)">✏️</span>
         </h2>
         <div class="meta-row">
           ${c.country} · ${c.contracts.length} total contract(s)
-          <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change</span>
+          <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change country</span>
+          ${isRenamed ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Original name (in Google Sheet): ${escapeHtml(c.company)}</div>` : ''}
         </div>
       </div>
       <div style="text-align:right">
@@ -805,6 +861,13 @@ function renderCustomerDetail(c, followups) {
         ${c.totalConfirmed > c.totalSpent ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">+${fmtMoney(c.totalConfirmed - c.totalSpent)} in pipeline</div>` : ''}
       </div>
     </div>
+    
+    ${showAddressWarning ? `
+      <div style="background:#fef3c7;border:1px solid #fbbf24;color:#78350f;padding:10px 12px;border-radius:var(--radius);margin:12px 0;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span><strong>⚠ Looks like an address, not a company name.</strong><br><span style="font-size:11px">"${escapeHtml(c.company)}" looks like an address. Click Rename to set the proper company name.</span></span>
+        <button class="btn btn-sm" onclick="openRenameModal('${c.company.replace(/'/g, "\\'")}')">✏️ Rename</button>
+      </div>
+    ` : ''}
     
     ${overdueFollowups.length > 0 ? `
       <div style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;padding:10px 12px;border-radius:var(--radius);margin:12px 0;font-size:13px">
@@ -963,6 +1026,59 @@ function saveCountry(company) {
   if (c) renderCustomerDetail(c, STATE.followups[company] || []);
 }
 
+// v1.4: Rename customer (override only — does not change Google Sheet)
+function openRenameModal(originalName) {
+  const currentName = getDisplayName(originalName);
+  const isAlreadyRenamed = currentName !== originalName;
+  
+  $('modal-title').textContent = `Rename Customer`;
+  $('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+      <strong>Original (in Google Sheet):</strong><br>
+      <span style="font-family:monospace;font-size:12px;background:var(--bg);padding:3px 6px;border-radius:3px;display:inline-block;margin-top:4px">${escapeHtml(originalName)}</span>
+    </div>
+    <div class="form-row">
+      <label>Display Name (in CRM only)</label>
+      <input type="text" id="rename-input" value="${escapeHtml(currentName)}" placeholder="e.g. FASTROLL LABELS (M) SDN BHD" style="width:100%">
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);padding:8px;background:var(--bg);border-radius:var(--radius-sm)">
+      💡 This rename is saved on <strong>your device only</strong> (browser storage).<br>
+      💡 The original name in Google Sheet is <strong>NOT changed</strong>.<br>
+      💡 New quotes / contracts will still use the original name unless you change it in Generator.<br>
+      ${isAlreadyRenamed ? '<br><strong>⚠ This customer is already renamed.</strong> You can change it again or reset to original.' : ''}
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    ${isAlreadyRenamed ? `<button class="btn btn-outline" onclick="resetCustomerName('${originalName.replace(/'/g, "\\'")}')">↺ Reset to Original</button>` : ''}
+    <button class="btn" onclick="saveCustomerName('${originalName.replace(/'/g, "\\'")}')">💾 Save</button>
+  `;
+  $('modal-overlay').classList.add('show');
+  // Focus the input for quick editing
+  setTimeout(() => $('rename-input')?.focus(), 100);
+}
+
+function saveCustomerName(originalName) {
+  const newName = ($('rename-input').value || '').trim();
+  if (!newName) { showToast('Name cannot be empty', 'error'); return; }
+  setNameOverride(originalName, newName);
+  closeModal();
+  showToast(`✅ Renamed to: ${newName}`, 'success');
+  renderCustomerList();
+  // Re-render detail
+  const c = STATE.customers.find(x => x.company === originalName);
+  if (c) renderCustomerDetail(c, STATE.followups[originalName] || []);
+}
+
+function resetCustomerName(originalName) {
+  setNameOverride(originalName, null);
+  closeModal();
+  showToast('Reset to original name', 'success');
+  renderCustomerList();
+  const c = STATE.customers.find(x => x.company === originalName);
+  if (c) renderCustomerDetail(c, STATE.followups[originalName] || []);
+}
+
 function escapeHtml(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1072,10 +1188,12 @@ function renderKanbanCard(c) {
   
   const customer = STATE.customers.find(cu => cu.company === c.company);
   const flag = customer?.flag || '🌍';
+  const displayName = getDisplayName(c.company);
+  const showWarn = looksLikeAddress(c.company) && displayName === c.company;
   
   return `
     <div class="kanban-card ${cardClass}" onclick="openContractInGenerator('${c.contractNo}')" title="${c.contractNo} — ${escapeHtml(c.machine)}">
-      <div class="kanban-card-company">${flag} ${escapeHtml(c.company)}</div>
+      <div class="kanban-card-company">${flag} ${showWarn ? '<span style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}</div>
       <div class="kanban-card-machine">${escapeHtml(c.machine || '—')}</div>
       <div class="kanban-card-amount">${fmtMoney(c.amount, c.currency)}</div>
       <div class="kanban-card-footer">
