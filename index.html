@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.52</title>
+<title>Sen Labels — Contract Generator v10.53</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.52</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.53</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -400,10 +400,27 @@ function mobileTab(tab) {
     <div class="field-group">
       <label>Contract Status</label>
       <select id="f-status" onchange="state.status=this.value;toggleSignedPDFSection(this.value);updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
-        <option value="Quotation Sent">📤 Quotation Sent</option>
-        <option value="Confirmed">✅ Confirmed</option>
-        <option value="Delivered">🚚 Delivered</option>
-        <option value="Cancelled">❌ Cancelled</option>
+        <optgroup label="📋 Active Quote">
+          <option value="Quotation Sent">📤 Quotation Sent</option>
+          <option value="Following Up">👀 Following Up</option>
+          <option value="Negotiating">💬 Negotiating</option>
+        </optgroup>
+        <optgroup label="✅ Confirmed">
+          <option value="Confirmed">✅ Confirmed (Signed)</option>
+          <option value="Deposit Received">💰 Deposit Received</option>
+          <option value="In Production">🏭 In Production</option>
+          <option value="Ready to Ship">📦 Ready to Ship</option>
+          <option value="Awaiting Payment">⏳ Awaiting Final Payment</option>
+        </optgroup>
+        <optgroup label="🎉 Closed">
+          <option value="Delivered">🚚 Delivered</option>
+          <option value="Closed (Paid)">🎉 Closed (Fully Paid)</option>
+        </optgroup>
+        <optgroup label="❌ Not Won">
+          <option value="On Hold">⏸ On Hold</option>
+          <option value="Lost">❌ Lost</option>
+          <option value="Cancelled">🚫 Cancelled</option>
+        </optgroup>
       </select>
     </div>
     <div class="field-group" id="signed-pdf-section" style="display:none">
@@ -3626,7 +3643,9 @@ function doPrintInner(fname) {
 
 function toggleSignedPDFSection(status) {
   const sec = document.getElementById('signed-pdf-section');
-  if (sec) sec.style.display = (status === 'Confirmed' || status === 'Delivered') ? '' : 'none';
+  // Show upload section for any status from Confirmed onwards
+  const showStatuses = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)'];
+  if (sec) sec.style.display = showStatuses.includes(status) ? '' : 'none';
 }
 
 async function uploadSignedPDF() {
