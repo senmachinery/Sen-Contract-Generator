@@ -53,6 +53,59 @@
   .filter-bar select, .filter-bar input { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; background: #fff; min-width: 120px; }
   .filter-bar .grow { flex: 1; min-width: 180px; }
   
+  /* v1.2: Quick filter chips */
+  .qf-chip { background: #fff; border: 1px solid var(--border); padding: 6px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 4px; }
+  .qf-chip:hover { border-color: var(--primary); }
+  .qf-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .qf-chip .qf-count { background: rgba(0,0,0,.1); padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .qf-chip.active .qf-count { background: rgba(255,255,255,.25); }
+  .qf-chip.qf-overdue { border-color: var(--danger); color: var(--danger); }
+  .qf-chip.qf-overdue.active { background: var(--danger); color: #fff; }
+  .qf-chip.qf-hot { border-color: var(--warning); color: var(--warning); }
+  .qf-chip.qf-hot.active { background: var(--warning); color: #fff; }
+  
+  /* v1.2: Customer item enhancements */
+  .customer-overdue-badge { background: var(--danger); color: #fff; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .customer-due-badge { background: var(--warning); color: #fff; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .customer-status-pill { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; display: inline-block; margin-top: 2px; }
+  
+  /* v1.3: Kanban board */
+  .kanban-board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 12px; }
+  @media (max-width: 1200px) { .kanban-board { grid-template-columns: repeat(5, 240px); } }
+  @media (max-width: 700px) { .kanban-board { grid-template-columns: repeat(5, 220px); } }
+  
+  .kanban-col { background: #f7fafc; border-radius: var(--radius); padding: 10px; min-height: 200px; }
+  .kanban-col-header { padding: 8px 4px 12px 4px; border-bottom: 2px solid; margin-bottom: 10px; }
+  .kanban-col-title { font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .kanban-col-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; display: flex; justify-content: space-between; }
+  .kanban-count { background: rgba(0,0,0,.08); padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  
+  .kanban-card { background: #fff; padding: 10px; border-radius: var(--radius-sm); margin-bottom: 8px; box-shadow: var(--shadow); cursor: pointer; border-left: 3px solid transparent; transition: transform .1s, box-shadow .15s; }
+  .kanban-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .kanban-card.stuck { border-left-color: var(--danger); background: #fff5f5; }
+  .kanban-card.warm { border-left-color: var(--warning); }
+  .kanban-card-company { font-weight: 600; font-size: 12px; line-height: 1.3; color: var(--primary); margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .kanban-card-machine { font-size: 11px; color: var(--text-muted); line-height: 1.3; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .kanban-card-amount { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .kanban-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 10px; color: var(--text-muted); }
+  .kanban-card-stuck-tag { background: var(--danger); color: #fff; padding: 1px 6px; border-radius: 8px; font-weight: 600; font-size: 9px; }
+  
+  /* Column color themes */
+  .col-quote .kanban-col-header { border-bottom-color: #3182ce; }
+  .col-quote .kanban-col-title { color: #3182ce; }
+  .col-progress .kanban-col-header { border-bottom-color: #d69e2e; }
+  .col-progress .kanban-col-title { color: #d69e2e; }
+  .col-confirmed .kanban-col-header { border-bottom-color: #805ad5; }
+  .col-confirmed .kanban-col-title { color: #805ad5; }
+  .col-fulfilling .kanban-col-header { border-bottom-color: #dd6b20; }
+  .col-fulfilling .kanban-col-title { color: #dd6b20; }
+  .col-closed .kanban-col-header { border-bottom-color: #38a169; }
+  .col-closed .kanban-col-title { color: #38a169; }
+  .col-lost .kanban-col-header { border-bottom-color: #718096; }
+  .col-lost .kanban-col-title { color: #718096; }
+  
+  .empty-col { text-align: center; color: var(--text-faint); font-size: 11px; padding: 20px 8px; font-style: italic; }
+  
   .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
   .pill-success { background: #c6f6d5; color: #22543d; }
   .pill-warning { background: #fefcbf; color: #744210; }
@@ -132,7 +185,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v1.1</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v1.3</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -146,7 +199,7 @@
 
 <div class="tab-bar">
   <button class="tab active" data-tab="crm">👥 CRM <span class="count" id="crm-count">—</span></button>
-  <button class="tab disabled" data-tab="pipeline" title="Phase 3 — Coming Soon">📊 Pipeline</button>
+  <button class="tab" data-tab="pipeline">📊 Pipeline <span class="count" id="pipeline-count">—</span></button>
   <button class="tab disabled" data-tab="tasks" title="Phase 4 — Coming Soon">✅ Tasks</button>
   <button class="tab disabled" data-tab="dashboard" title="Phase 4 — Coming Soon">📈 Dashboard</button>
   <button class="tab disabled" data-tab="reps" title="Phase 5 — Coming Soon">👨‍💼 Sales Reps</button>
@@ -157,6 +210,9 @@
 
   <!-- CRM TAB -->
   <div class="tab-content active" id="tab-crm">
+    <div id="quick-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <!-- Filled by updateQuickFilterCounts() -->
+    </div>
     <div class="filter-bar">
       <div class="grow">
         <label>Search</label>
@@ -168,7 +224,7 @@
           <option value="">All Countries</option>
         </select>
       </div>
-      <button class="btn btn-sm btn-outline" onclick="refreshData()">🔄 Refresh</button>
+      <button class="btn btn-sm btn-outline" id="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
     </div>
     
     <div class="crm-layout">
@@ -184,7 +240,27 @@
   </div>
 
   <!-- OTHER TABS (placeholders) -->
-  <div class="tab-content" id="tab-pipeline"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 3 — Coming Soon</h2><p>Pipeline Kanban board will show all your active deals by stage.</p></div></div></div>
+  <!-- PIPELINE TAB (v1.3 Kanban) -->
+  <div class="tab-content" id="tab-pipeline">
+    <div class="pipeline-filters" style="background:#fff;padding:10px 12px;border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px">
+      <strong style="color:var(--primary)">📊 Pipeline</strong>
+      <div style="flex:1"></div>
+      <select id="pipeline-country-filter" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        <option value="">All Countries</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="show-closed" style="margin:0"> Show Closed
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="show-lost" style="margin:0"> Show Lost
+      </label>
+      <button class="btn btn-sm btn-outline" onclick="refreshData()" title="Reload from Sheets">🔄</button>
+    </div>
+    
+    <div class="kanban-board" id="kanban-board">
+      <div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading pipeline...</div></div>
+    </div>
+  </div>
   <div class="tab-content" id="tab-tasks"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 4 — Coming Soon</h2><p>Tasks & reminders.</p></div></div></div>
   <div class="tab-content" id="tab-dashboard"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 4 — Coming Soon</h2><p>Performance dashboards (machine sales, win rate, etc).</p></div></div></div>
   <div class="tab-content" id="tab-reps"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 5 — Coming Soon</h2><p>Sales Reps directory.</p></div></div></div>
@@ -209,7 +285,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v1.1 — Real data connection to Apps Script
+// CRM v1.3 — Real data connection + Quick Filters + Overdue alerts
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -218,10 +294,12 @@ const STATE = {
   customers: [],      // unique customer list (derived from contracts)
   contracts: [],      // all contracts (SC + Q)
   followups: {},      // { customerName: [followups...] }
+  allFollowups: [],   // flat list of all followups (loaded once for "overdue" check)
   salesReps: [],      // sales reps from CRM_SalesReps
   countries: new Set(),
   activeCustomer: null,
-  loading: false
+  loading: false,
+  quickFilter: 'all'  // 'all' | 'hot' | 'active' | 'overdue' | 'cold' | 'closed'
 };
 
 const URL_STORAGE_KEY = 'sen_crm_apps_script_url';
@@ -444,54 +522,119 @@ async function refreshData() {
   if (!STATE.appsScriptUrl) { openSettings(); return; }
   
   $('customer-list').innerHTML = '<div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading data...</div></div>';
+  $('refresh-btn').disabled = true;
+  $('refresh-btn').innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> Loading...';
   
   try {
-    // Load contracts (history) — gives us customers + contracts in one call
-    const histRes = await apiGet('history');
-    STATE.contracts = (histRes.records || []).map(r => ({
+    // v1.2: Use new crm_getAllContracts API to get ALL contracts (not just 20)
+    let contractsRes;
+    try {
+      contractsRes = await apiGet('crm_getAllContracts');
+      if (!contractsRes.ok) throw new Error('fallback');
+    } catch (e) {
+      // Fallback to old history API if Apps Script isn't updated
+      console.warn('crm_getAllContracts not available, using history (limited to 20)');
+      contractsRes = await apiGet('history');
+      contractsRes.contracts = contractsRes.records;
+    }
+    
+    const allContracts = contractsRes.contracts || contractsRes.records || [];
+    
+    STATE.contracts = allContracts.map(r => ({
       contractNo: r.contractNo || '',
       date: r.date || '',
-      company: r.company || '',
+      company: (r.company || '').trim(),
       machine: r.machineTitle || r.machine || '',
       currency: r.currency || 'USD',
       amount: parseFloat(r.amount) || 0,
       status: r.status || 'Quotation Sent',
-      country: getCustomerCountry(r.company)
-    }));
+      country: getCustomerCountry(r.company || '')
+    })).filter(c => c.company);  // Filter out empty company names
+    
+    // Load all follow-ups across all customers (for "overdue" detection)
+    let allFollowups = [];
+    try {
+      const fuRes = await apiGet('crm_getFollowups');
+      allFollowups = fuRes.followups || [];
+    } catch (e) {
+      console.warn('Could not load all followups', e);
+    }
+    STATE.allFollowups = allFollowups;
     
     // Group by customer (unique companies)
     const custMap = {};
     STATE.contracts.forEach(c => {
-      const key = c.company.trim();
+      const key = c.company;
       if (!key) return;
       if (!custMap[key]) {
         custMap[key] = {
           company: key, contracts: [], country: c.country,
-          flag: flagFor(c.country), totalSpent: 0,
-          lastDate: null
+          flag: flagFor(c.country), totalSpent: 0, totalConfirmed: 0,
+          lastDate: null, latestContract: null, latestStatus: '',
+          latestMachine: '', overdueFollowups: 0, nextDueDate: null,
+          activeContracts: 0
         };
       }
-      custMap[key].contracts.push(c);
-      if (c.status.includes('Closed') || c.status === 'Delivered') {
-        custMap[key].totalSpent += c.amount;
+      const cust = custMap[key];
+      cust.contracts.push(c);
+      
+      // v1.2: Total Spent — include all signed deals
+      const signedStatuses = ['Closed (Paid)', 'Delivered', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
+      if (signedStatuses.includes(c.status)) cust.totalConfirmed += c.amount;
+      // Strict "Total Spent" = actually paid
+      if (c.status === 'Closed (Paid)' || c.status === 'Delivered') cust.totalSpent += c.amount;
+      
+      // Active = not closed and not lost
+      if (!['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled'].includes(c.status)) cust.activeContracts++;
+      
+      // Latest contract by date
+      if (!cust.lastDate || c.date > cust.lastDate) {
+        cust.lastDate = c.date;
+        cust.latestContract = c;
+        cust.latestStatus = c.status;
+        cust.latestMachine = c.machine;
       }
-      if (!custMap[key].lastDate || c.date > custMap[key].lastDate) custMap[key].lastDate = c.date;
     });
+    
+    // Apply followups: compute overdueFollowups + nextDueDate per customer
+    const today = new Date().toISOString().split('T')[0];
+    allFollowups.forEach(f => {
+      const cust = custMap[f.customer];
+      if (!cust) return;
+      if (f.nextFollowupDate && f.nextFollowupDate < today) {
+        cust.overdueFollowups++;
+      }
+      // Track soonest upcoming
+      if (f.nextFollowupDate && f.nextFollowupDate >= today) {
+        if (!cust.nextDueDate || f.nextFollowupDate < cust.nextDueDate) {
+          cust.nextDueDate = f.nextFollowupDate;
+        }
+      }
+    });
+    
     STATE.customers = Object.values(custMap).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||''));
     
-    // Populate country dropdown
+    // Populate country dropdown (sorted by count desc, then name)
     STATE.countries.clear();
-    STATE.customers.forEach(c => STATE.countries.add(c.country));
+    const countryCounts = {};
+    STATE.customers.forEach(c => {
+      STATE.countries.add(c.country);
+      countryCounts[c.country] = (countryCounts[c.country]||0) + 1;
+    });
     const select = $('crm-country');
     const cur = select.value;
-    select.innerHTML = '<option value="">All Countries</option>' +
-      Array.from(STATE.countries).sort().map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+    const sortedCountries = Array.from(STATE.countries).sort((a,b) => countryCounts[b] - countryCounts[a] || a.localeCompare(b));
+    select.innerHTML = `<option value="">All Countries (${STATE.customers.length})</option>` +
+      sortedCountries.map(c => `<option value="${c}">${flagFor(c)} ${c} (${countryCounts[c]})</option>`).join('');
     select.value = cur;
     
     // Update tab count
     $('crm-count').textContent = STATE.customers.length;
+    updateQuickFilterCounts();
     
     renderCustomerList();
+    initPipelineFilters();
+    renderPipeline();
     
     // Handle URL parameter ?customer=xxx
     const urlParams = new URLSearchParams(window.location.search);
@@ -505,17 +648,75 @@ async function refreshData() {
   } catch (e) {
     $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${e.message}</div>`;
     showToast('Failed to load data: ' + e.message, 'error');
+  } finally {
+    $('refresh-btn').disabled = false;
+    $('refresh-btn').innerHTML = '🔄 Refresh';
   }
 }
 
-// ─── Customer List ─────────────────────────────────────────────
+// v1.2: Quick filter logic
+function updateQuickFilterCounts() {
+  const today = new Date().toISOString().split('T')[0];
+  const COLD_DAYS = 30;
+  
+  let countAll = STATE.customers.length;
+  let countHot = 0;     // active deals with recent followup (≤7 days)
+  let countActive = 0;  // has active contracts
+  let countOverdue = 0; // has overdue followups
+  let countCold = 0;    // no activity > 30 days
+  let countClosed = 0;  // only closed deals
+  
+  STATE.customers.forEach(c => {
+    const daysSince = daysAgo(c.lastDate);
+    if (c.overdueFollowups > 0) countOverdue++;
+    if (c.activeContracts > 0) countActive++;
+    if (c.activeContracts > 0 && daysSince !== null && daysSince <= 7) countHot++;
+    if (daysSince !== null && daysSince > COLD_DAYS && c.activeContracts > 0) countCold++;
+    if (c.activeContracts === 0 && c.totalSpent > 0) countClosed++;
+  });
+  
+  const chips = [
+    { id: 'all', icon: '👥', label: 'All', count: countAll, extraClass: '' },
+    { id: 'overdue', icon: '🚨', label: 'Overdue', count: countOverdue, extraClass: 'qf-overdue' },
+    { id: 'hot', icon: '🔥', label: 'Hot', count: countHot, extraClass: 'qf-hot' },
+    { id: 'active', icon: '⏳', label: 'Active', count: countActive, extraClass: '' },
+    { id: 'cold', icon: '❄', label: 'Cold', count: countCold, extraClass: '' },
+    { id: 'closed', icon: '✅', label: 'Closed', count: countClosed, extraClass: '' }
+  ];
+  
+  $('quick-filters').innerHTML = chips.map(ch => `
+    <button class="qf-chip ${ch.extraClass} ${STATE.quickFilter === ch.id ? 'active' : ''}" 
+            onclick="setQuickFilter('${ch.id}')">
+      ${ch.icon} ${ch.label} <span class="qf-count">${ch.count}</span>
+    </button>
+  `).join('');
+}
+
+function setQuickFilter(filter) {
+  STATE.quickFilter = filter;
+  updateQuickFilterCounts();
+  renderCustomerList();
+}
+
+// ─── Customer List (v1.2: with status, overdue, latest machine) ────
 function renderCustomerList() {
   const q = ($('crm-search').value || '').toLowerCase().trim();
   const country = $('crm-country').value;
+  const today = new Date().toISOString().split('T')[0];
+  const COLD_DAYS = 30;
   
   const filtered = STATE.customers.filter(c => {
     if (q && !c.company.toLowerCase().includes(q)) return false;
     if (country && c.country !== country) return false;
+    
+    // Quick filter
+    const daysSince = daysAgo(c.lastDate);
+    if (STATE.quickFilter === 'overdue' && c.overdueFollowups === 0) return false;
+    if (STATE.quickFilter === 'hot' && !(c.activeContracts > 0 && daysSince !== null && daysSince <= 7)) return false;
+    if (STATE.quickFilter === 'active' && c.activeContracts === 0) return false;
+    if (STATE.quickFilter === 'cold' && !(daysSince !== null && daysSince > COLD_DAYS && c.activeContracts > 0)) return false;
+    if (STATE.quickFilter === 'closed' && !(c.activeContracts === 0 && c.totalSpent > 0)) return false;
+    
     return true;
   });
   
@@ -532,17 +733,22 @@ function renderCustomerList() {
     <div class="customer-list-header">Customers (${filtered.length})</div>
   ` + filtered.map(c => {
     const isActive = c.company === STATE.activeCustomer;
-    const activeCount = c.contracts.filter(ct => 
-      !ct.status.includes('Closed') && ct.status !== 'Lost' && ct.status !== 'Cancelled'
-    ).length;
+    const statusClass = statusColor(c.latestStatus);
+    
     return `
       <div class="customer-item ${isActive ? 'active' : ''}" onclick="selectCustomer('${c.company.replace(/'/g, "\\'")}')">
         <div class="customer-item-name">
-          <span>${c.flag} ${c.company}</span>
-          ${activeCount > 0 ? `<span class="pill pill-info">${activeCount}</span>` : ''}
+          <span style="overflow:hidden;text-overflow:ellipsis">${c.flag} ${c.company}</span>
+          <span style="display:flex;gap:4px;flex-shrink:0">
+            ${c.overdueFollowups > 0 ? `<span class="customer-overdue-badge" title="${c.overdueFollowups} overdue follow-up(s)">🚨 ${c.overdueFollowups}</span>` : ''}
+            ${c.nextDueDate && c.overdueFollowups === 0 ? `<span class="customer-due-badge" title="Next follow-up: ${c.nextDueDate}">📅 ${daysAgoText(c.nextDueDate).replace(' ago','')}</span>` : ''}
+            ${c.activeContracts > 0 ? `<span class="pill pill-info" style="margin:0">${c.activeContracts}</span>` : ''}
+          </span>
         </div>
-        <div class="customer-item-meta">
-          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · last: ${daysAgoText(c.lastDate)}
+        ${c.latestStatus ? `<div style="margin-top:3px"><span class="customer-status-pill ${statusClass}">${c.latestStatus}</span></div>` : ''}
+        ${c.latestMachine ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.latestMachine}</div>` : ''}
+        <div class="customer-item-meta" style="margin-top:3px">
+          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}
         </div>
       </div>
     `;
@@ -575,6 +781,11 @@ async function selectCustomer(companyName) {
 function renderCustomerDetail(c, followups) {
   // Build encoded URL for "New Quote" button
   const newQuoteUrl = `index.html?customer=${encodeURIComponent(c.company)}&autofill=true`;
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Compute overdue / upcoming follow-ups
+  const overdueFollowups = followups.filter(f => f.nextFollowupDate && f.nextFollowupDate < today);
+  const upcomingFollowups = followups.filter(f => f.nextFollowupDate && f.nextFollowupDate >= today);
   
   $('customer-detail').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
@@ -589,10 +800,29 @@ function renderCustomerDetail(c, followups) {
         </div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:11px;color:var(--text-muted)">Total Spent</div>
+        <div style="font-size:11px;color:var(--text-muted)">Lifetime Value</div>
         <div style="font-size:18px;font-weight:700;color:var(--accent)">${fmtMoney(c.totalSpent)}</div>
+        ${c.totalConfirmed > c.totalSpent ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">+${fmtMoney(c.totalConfirmed - c.totalSpent)} in pipeline</div>` : ''}
       </div>
     </div>
+    
+    ${overdueFollowups.length > 0 ? `
+      <div style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;padding:10px 12px;border-radius:var(--radius);margin:12px 0;font-size:13px">
+        <strong>🚨 ${overdueFollowups.length} Overdue Follow-up${overdueFollowups.length > 1 ? 's' : ''}</strong>
+        ${overdueFollowups.slice(0, 2).map(f => `
+          <div style="margin-top:6px;font-size:12px">
+            • ${fmtDate(f.nextFollowupDate)} (${daysAgoText(f.nextFollowupDate)}) — ${escapeHtml(f.description).substring(0, 80)}${f.description.length > 80 ? '...' : ''}
+          </div>
+        `).join('')}
+        ${overdueFollowups.length > 2 ? `<div style="font-size:11px;margin-top:4px">+ ${overdueFollowups.length - 2} more</div>` : ''}
+      </div>
+    ` : ''}
+    
+    ${upcomingFollowups.length > 0 && overdueFollowups.length === 0 ? `
+      <div style="background:#fef3c7;border:1px solid #fbbf24;color:#78350f;padding:10px 12px;border-radius:var(--radius);margin:12px 0;font-size:13px">
+        <strong>📅 Next follow-up:</strong> ${fmtDate(upcomingFollowups[0].nextFollowupDate)} (in ${Math.abs(daysAgo(upcomingFollowups[0].nextFollowupDate))} days)
+      </div>
+    ` : ''}
     
     <div style="background:linear-gradient(135deg,#1a3a5c,#2c5282);color:#fff;padding:12px;border-radius:var(--radius);margin:14px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div>
@@ -628,24 +858,51 @@ function renderCustomerDetail(c, followups) {
       <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')">+ Add Follow-up</button>
     </div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
-      followups.map(f => `
-        <div class="followup-row">
+      followups.map(f => {
+        const isOverdue = f.nextFollowupDate && f.nextFollowupDate < today;
+        return `
+        <div class="followup-row" ${isOverdue ? 'style="background:#fff5f5;border-left:3px solid var(--danger)"' : ''}>
           <div class="followup-info">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span class="followup-type">${typeIcon(f.type)} ${f.type}</span>
-              <span class="followup-date">${fmtDate(f.date)} (${daysAgoText(f.date)})</span>
+              <span style="display:flex;gap:6px;align-items:center">
+                <span class="followup-date">${fmtDate(f.date)} (${daysAgoText(f.date)})</span>
+                <button onclick="deleteFollowup('${f.id}','${c.company.replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:14px" title="Delete">🗑</button>
+              </span>
             </div>
             <div class="followup-desc">${escapeHtml(f.description)}</div>
             <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">
               ${f.contractNo ? `📋 ${f.contractNo}` : ''}
-              ${f.nextFollowupDate ? ` · Next: ${fmtDate(f.nextFollowupDate)}` : ''}
+              ${f.nextFollowupDate ? ` · Next: <strong style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${fmtDate(f.nextFollowupDate)}${isOverdue ? ' ⚠ OVERDUE' : ''}</strong>` : ''}
               ${f.outcome ? ` · <span class="pill pill-${f.outcome==='Positive'?'success':f.outcome==='Negative'?'danger':'gray'}">${f.outcome}</span>` : ''}
             </div>
           </div>
         </div>
-      `).join('')
+      `}).join('')
     }
   `;
+}
+
+// v1.2: Delete follow-up (uses Apps Script API)
+async function deleteFollowup(id, customer) {
+  if (!confirm('Delete this follow-up?')) return;
+  try {
+    // Note: Apps Script needs a crm_deleteFollowup endpoint
+    // For now, we just remove from local state and warn
+    const r = await apiPost('crm_deleteFollowup', { id: id });
+    if (!r.ok && !r.error?.includes('Unknown')) throw new Error(r.error || 'Delete failed');
+    
+    if (r.error && r.error.includes('Unknown')) {
+      // Apps Script doesn't support delete yet
+      showToast('⚠ Delete not yet supported by Apps Script. Edit in Google Sheets directly.', 'error');
+      return;
+    }
+    
+    showToast('✅ Follow-up deleted', 'success');
+    await selectCustomer(customer);  // Refresh
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
 }
 
 function typeIcon(type) {
@@ -713,6 +970,136 @@ function escapeHtml(s) {
 
 function openContractInGenerator(contractNo) {
   window.location.href = `index.html?contract=${encodeURIComponent(contractNo)}&load=true`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v1.3: PIPELINE KANBAN
+// ═══════════════════════════════════════════════════════════════════
+
+// Map detailed statuses to 5 main pipeline columns
+const STAGE_GROUPS = [
+  { id: 'quote',      title: '🆕 New Quote',     statuses: ['Quotation Sent'],                                       cssClass: 'col-quote' },
+  { id: 'progress',   title: '👀 In Progress',   statuses: ['Following Up', 'Negotiating'],                          cssClass: 'col-progress' },
+  { id: 'confirmed',  title: '💰 Confirmed',     statuses: ['Confirmed', 'Deposit Received'],                        cssClass: 'col-confirmed' },
+  { id: 'fulfilling', title: '🏭 Fulfilling',    statuses: ['In Production', 'Ready to Ship', 'Awaiting Payment'],   cssClass: 'col-fulfilling' },
+  { id: 'closed',     title: '✅ Closed Won',    statuses: ['Delivered', 'Closed (Paid)'],                           cssClass: 'col-closed' },
+  { id: 'lost',       title: '❌ Lost',          statuses: ['Lost', 'Cancelled', 'On Hold'],                         cssClass: 'col-lost' }
+];
+
+const STUCK_DAYS_THRESHOLD = 14;
+const WARM_DAYS_THRESHOLD = 7;
+
+function renderPipeline() {
+  const board = $('kanban-board');
+  if (!STATE.contracts || STATE.contracts.length === 0) {
+    board.innerHTML = '<div class="empty" style="grid-column:1/-1">No contracts to display</div>';
+    return;
+  }
+  
+  // Filters
+  const country = $('pipeline-country-filter').value;
+  const showClosed = $('show-closed').checked;
+  const showLost = $('show-lost').checked;
+  
+  // Filter contracts
+  const filtered = STATE.contracts.filter(c => {
+    if (country && c.country !== country) return false;
+    return true;
+  });
+  
+  // Group by stage
+  const byStage = {};
+  STAGE_GROUPS.forEach(g => byStage[g.id] = []);
+  filtered.forEach(c => {
+    const group = STAGE_GROUPS.find(g => g.statuses.includes(c.status));
+    if (group) byStage[group.id].push(c);
+    else byStage.quote.push(c);  // Default to "New Quote" if status unknown
+  });
+  
+  // Build columns
+  const cols = STAGE_GROUPS
+    .filter(g => {
+      if (g.id === 'closed' && !showClosed) return false;
+      if (g.id === 'lost' && !showLost) return false;
+      return true;
+    })
+    .map(group => {
+      const contracts = byStage[group.id];
+      // Group totals by currency
+      const totalByCurrency = {};
+      contracts.forEach(c => {
+        const cur = c.currency || 'USD';
+        totalByCurrency[cur] = (totalByCurrency[cur] || 0) + (c.amount || 0);
+      });
+      // Format as multi-line if multiple currencies
+      const totalText = Object.entries(totalByCurrency)
+        .sort((a,b) => b[1] - a[1])  // largest first
+        .map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US', {maximumFractionDigits: 0})}`)
+        .join(' · ');
+      
+      return `
+        <div class="kanban-col ${group.cssClass}">
+          <div class="kanban-col-header">
+            <div class="kanban-col-title">
+              <span>${group.title}</span>
+              <span class="kanban-count">${contracts.length}</span>
+            </div>
+            <div class="kanban-col-meta">
+              <span>${totalText || '—'}</span>
+            </div>
+          </div>
+          ${contracts.length === 0 ? '<div class="empty-col">No deals here</div>' :
+            contracts.map(c => renderKanbanCard(c)).join('')}
+        </div>
+      `;
+    }).join('');
+  
+  board.innerHTML = cols;
+  
+  // Update tab count (count active = not closed, not lost)
+  const activeCount = STATE.contracts.filter(c => {
+    const g = STAGE_GROUPS.find(g => g.statuses.includes(c.status));
+    return g && g.id !== 'closed' && g.id !== 'lost';
+  }).length;
+  $('pipeline-count').textContent = activeCount;
+}
+
+function renderKanbanCard(c) {
+  const days = daysAgo(c.date);
+  const isStuck = days !== null && days > STUCK_DAYS_THRESHOLD;
+  const isWarm = days !== null && days <= WARM_DAYS_THRESHOLD;
+  const cardClass = isStuck ? 'stuck' : (isWarm ? 'warm' : '');
+  
+  const customer = STATE.customers.find(cu => cu.company === c.company);
+  const flag = customer?.flag || '🌍';
+  
+  return `
+    <div class="kanban-card ${cardClass}" onclick="openContractInGenerator('${c.contractNo}')" title="${c.contractNo} — ${escapeHtml(c.machine)}">
+      <div class="kanban-card-company">${flag} ${escapeHtml(c.company)}</div>
+      <div class="kanban-card-machine">${escapeHtml(c.machine || '—')}</div>
+      <div class="kanban-card-amount">${fmtMoney(c.amount, c.currency)}</div>
+      <div class="kanban-card-footer">
+        <span>${c.contractNo.split('-').pop()}</span>
+        ${isStuck ? `<span class="kanban-card-stuck-tag">⚠ ${days}d STUCK</span>` :
+          (days !== null ? `<span>${daysAgoText(c.date)}</span>` : '<span>—</span>')}
+      </div>
+    </div>
+  `;
+}
+
+function initPipelineFilters() {
+  // Populate country filter (same options as CRM tab)
+  const select = $('pipeline-country-filter');
+  if (!select) return;
+  const countryCounts = {};
+  STATE.customers.forEach(c => {
+    countryCounts[c.country] = (countryCounts[c.country]||0) + 1;
+  });
+  const cur = select.value;
+  const sortedCountries = Object.keys(countryCounts).sort((a,b) => countryCounts[b] - countryCounts[a] || a.localeCompare(b));
+  select.innerHTML = '<option value="">All Countries</option>' +
+    sortedCountries.map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+  select.value = cur;
 }
 
 // ─── Add Follow-up Modal ───────────────────────────────────────
@@ -804,10 +1191,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Listeners
   $('crm-search').addEventListener('input', renderCustomerList);
   $('crm-country').addEventListener('change', renderCustomerList);
+  
+  // v1.3: Pipeline filters
+  $('pipeline-country-filter').addEventListener('change', renderPipeline);
+  $('show-closed').addEventListener('change', renderPipeline);
+  $('show-lost').addEventListener('change', renderPipeline);
+  
   $$('.tab:not(.disabled)').forEach(t => t.addEventListener('click', () => {
     $$('.tab').forEach(x => x.classList.toggle('active', x === t));
     $$('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + t.dataset.tab));
+    // Re-render pipeline when switching to it (in case data changed)
+    if (t.dataset.tab === 'pipeline') renderPipeline();
   }));
+  
+  // v1.2: ESC closes modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('modal-overlay').classList.contains('show')) closeModal();
+  });
+  
+  // Init quick filter UI
+  updateQuickFilterCounts();
   
   // Connection test
   if (STATE.appsScriptUrl) {
