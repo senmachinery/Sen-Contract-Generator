@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sen Labels — CRM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1a3a5c; --primary-light: #2c5282; --accent: #00897b;
+    --bg: #f5f7fa; --card: #ffffff; --border: #e1e8ed;
+    --text: #2d3748; --text-muted: #718096; --text-faint: #a0aec0;
+    --success: #38a169; --warning: #d69e2e; --danger: #e53e3e;
+    --info: #3182ce; --purple: #805ad5;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.08), 0 2px 4px -1px rgba(0,0,0,.04);
+    --radius: 8px; --radius-sm: 4px;
+  }
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  
+  .topbar { background: var(--primary); color: #fff; padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: var(--shadow-md); position: sticky; top: 0; z-index: 100; }
+  .topbar h1 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .topbar h1 .version { font-size: 10px; font-weight: 400; opacity: .7; }
+  .topbar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .topbar-btn { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.2); padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; text-decoration: none; }
+  .topbar-btn:hover { background: rgba(255,255,255,.25); }
+  .topbar-btn.primary { background: #ffd54f; color: #1a3a5c; font-weight: 600; }
+  
+  .tab-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 18px; display: flex; gap: 4px; overflow-x: auto; position: sticky; top: 44px; z-index: 90; box-shadow: var(--shadow); }
+  .tab-bar::-webkit-scrollbar { height: 0; }
+  .tab { background: transparent; border: none; padding: 14px 16px; cursor: pointer; font-size: 13px; color: var(--text-muted); font-weight: 500; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab:hover { color: var(--primary); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .tab .count { background: var(--bg); color: var(--text-muted); padding: 1px 6px; border-radius: 10px; font-size: 10px; margin-left: 4px; font-weight: 500; }
+  .tab.active .count { background: var(--primary); color: #fff; }
+  .tab.disabled { opacity: .4; cursor: not-allowed; }
+  
+  .content { padding: 18px; max-width: 1400px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  
+  .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  
+  .btn { background: var(--primary); color: #fff; border: none; padding: 8px 14px; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { opacity: .9; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+  .btn-success { background: var(--success); }
+  .btn-whatsapp { background: #25d366; }
+  
+  .filter-bar { background: #fff; padding: 12px; border-radius: var(--radius); margin-bottom: 16px; box-shadow: var(--shadow); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .filter-bar label { font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px; font-weight: 600; text-transform: uppercase; }
+  .filter-bar select, .filter-bar input { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; background: #fff; min-width: 120px; }
+  .filter-bar .grow { flex: 1; min-width: 180px; }
+  
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .pill-success { background: #c6f6d5; color: #22543d; }
+  .pill-warning { background: #fefcbf; color: #744210; }
+  .pill-danger { background: #fed7d7; color: #742a2a; }
+  .pill-info { background: #bee3f8; color: #2a4365; }
+  .pill-purple { background: #e9d8fd; color: #44337a; }
+  .pill-gray { background: #e2e8f0; color: #4a5568; }
+  .pill-orange { background: #feebc8; color: #7c2d12; }
+  
+  .crm-layout { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+  @media (max-width: 900px) { .crm-layout { grid-template-columns: 1fr; } }
+  
+  .customer-list { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); max-height: 75vh; overflow-y: auto; }
+  .customer-list-header { padding: 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 5; font-size: 13px; font-weight: 600; }
+  .customer-item { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .customer-item:hover { background: var(--bg); }
+  .customer-item.active { background: #ebf5ff; border-left: 3px solid var(--primary); }
+  .customer-item-name { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  .customer-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  
+  .customer-detail { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+  .customer-detail h2 { font-size: 18px; color: var(--primary); margin-bottom: 4px; }
+  .customer-detail .meta-row { color: var(--text-muted); font-size: 12px; margin-bottom: 12px; }
+  
+  .contact-block { background: var(--bg); padding: 12px; border-radius: var(--radius-sm); margin: 12px 0; font-size: 13px; }
+  .contact-block .row { display: flex; gap: 12px; margin: 4px 0; }
+  .contact-block .row .lbl { color: var(--text-muted); width: 70px; }
+  
+  .section-title { font-size: 13px; font-weight: 600; color: var(--primary); margin: 16px 0 8px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  
+  .contract-row, .followup-row { padding: 10px; border-radius: var(--radius-sm); background: var(--bg); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; font-size: 12px; }
+  .contract-row:hover, .followup-row:hover { background: #edf2f7; }
+  .contract-info, .followup-info { flex: 1; }
+  .contract-no { font-weight: 600; color: var(--primary); font-size: 13px; }
+  .contract-machine { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+  .contract-amount { font-weight: 600; color: var(--accent); font-size: 13px; white-space: nowrap; }
+  
+  .followup-date { font-size: 11px; color: var(--text-muted); }
+  .followup-type { font-weight: 600; color: var(--primary); font-size: 11px; }
+  .followup-desc { font-size: 13px; margin-top: 3px; }
+  
+  .empty { color: var(--text-muted); font-size: 12px; padding: 14px; text-align: center; background: var(--bg); border-radius: var(--radius-sm); }
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: var(--radius); max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .modal-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 16px; font-weight: 600; color: var(--primary); }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
+  .modal-body { padding: 16px; }
+  .modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+  .form-row input, .form-row textarea, .form-row select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; }
+  .form-row textarea { min-height: 70px; resize: vertical; }
+  
+  .setup-banner { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px 16px; margin: 12px 18px 0; border-radius: var(--radius); font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--primary); color: #fff; padding: 12px 18px; border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 2000; opacity: 0; transition: opacity .3s; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: var(--danger); }
+  .toast.success { background: var(--success); }
+  
+  @media (max-width: 700px) {
+    .topbar { padding: 8px 12px; }
+    .topbar h1 { font-size: 14px; }
+    .content { padding: 10px; }
+    .filter-bar { padding: 10px; }
+    .filter-bar select, .filter-bar input { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>👥 Sen Labels CRM <span class="version">v1.0</span></h1>
+  <div class="topbar-right">
+    <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
+    <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
+  </div>
+</div>
+
+<div id="setup-banner" class="setup-banner" style="display:none">
+  <span><strong>⚠ Not configured.</strong> Please set up Apps Script URL.</span>
+  <button class="btn btn-sm" onclick="openSettings()">⚙ Settings</button>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" data-tab="crm">👥 CRM <span class="count" id="crm-count">—</span></button>
+  <button class="tab disabled" data-tab="pipeline" title="Phase 3 — Coming Soon">📊 Pipeline</button>
+  <button class="tab disabled" data-tab="tasks" title="Phase 4 — Coming Soon">✅ Tasks</button>
+  <button class="tab disabled" data-tab="dashboard" title="Phase 4 — Coming Soon">📈 Dashboard</button>
+  <button class="tab disabled" data-tab="reps" title="Phase 5 — Coming Soon">👨‍💼 Sales Reps</button>
+  <button class="tab disabled" data-tab="packs" title="Phase 5 — Coming Soon">📨 Follow-up Packs</button>
+</div>
+
+<div class="content">
+
+  <!-- CRM TAB -->
+  <div class="tab-content active" id="tab-crm">
+    <div class="filter-bar">
+      <div class="grow">
+        <label>Search</label>
+        <input type="text" id="crm-search" placeholder="🔍 Search customer name..." style="width:100%">
+      </div>
+      <div>
+        <label>Country</label>
+        <select id="crm-country">
+          <option value="">All Countries</option>
+        </select>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="refreshData()">🔄 Refresh</button>
+    </div>
+    
+    <div class="crm-layout">
+      <div class="customer-list" id="customer-list">
+        <div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading customers...</div></div>
+      </div>
+      <div class="customer-detail" id="customer-detail">
+        <div style="color:var(--text-muted);text-align:center;padding:40px">
+          Select a customer from the list to see details.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OTHER TABS (placeholders) -->
+  <div class="tab-content" id="tab-pipeline"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 3 — Coming Soon</h2><p>Pipeline Kanban board will show all your active deals by stage.</p></div></div></div>
+  <div class="tab-content" id="tab-tasks"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 4 — Coming Soon</h2><p>Tasks & reminders.</p></div></div></div>
+  <div class="tab-content" id="tab-dashboard"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 4 — Coming Soon</h2><p>Performance dashboards (machine sales, win rate, etc).</p></div></div></div>
+  <div class="tab-content" id="tab-reps"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 5 — Coming Soon</h2><p>Sales Reps directory.</p></div></div></div>
+  <div class="tab-content" id="tab-packs"><div class="card"><div style="text-align:center;padding:60px;color:var(--text-muted)"><div style="font-size:48px">🚧</div><h2 style="color:var(--primary);margin:14px 0">Phase 5 — Coming Soon</h2><p>Automated weekly follow-up packs.</p></div></div></div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Modal Title</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+// ═══════════════════════════════════════════════════════════════════
+// CRM v1.0 — Real data connection to Apps Script
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── State ─────────────────────────────────────────────────────
+const STATE = {
+  appsScriptUrl: '',
+  customers: [],      // unique customer list (derived from contracts)
+  contracts: [],      // all contracts (SC + Q)
+  followups: {},      // { customerName: [followups...] }
+  salesReps: [],      // sales reps from CRM_SalesReps
+  countries: new Set(),
+  activeCustomer: null,
+  loading: false
+};
+
+const URL_STORAGE_KEY = 'sen_crm_apps_script_url';
+const $ = (id) => document.getElementById(id);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+// ─── Utilities ─────────────────────────────────────────────────
+function showToast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function fmtMoney(amt, currency) {
+  currency = currency || 'USD';
+  if (typeof amt === 'string') amt = parseFloat(amt) || 0;
+  return currency + ' ' + (amt || 0).toLocaleString('en-US', {maximumFractionDigits: 2});
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function daysAgo(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+function daysAgoText(iso) {
+  const d = daysAgo(iso);
+  if (d === null) return '';
+  if (d === 0) return 'today';
+  if (d === 1) return '1 day ago';
+  if (d < 30) return d + ' days ago';
+  if (d < 60) return '1 month ago';
+  return Math.floor(d/30) + ' months ago';
+}
+
+// Detect country from address or company name (basic heuristic)
+function detectCountry(addr, company) {
+  const text = ((addr || '') + ' ' + (company || '')).toLowerCase();
+  const map = {
+    'indonesia': 'Indonesia', 'jakarta': 'Indonesia', 'surabaya': 'Indonesia', 'bandung': 'Indonesia',
+    'malaysia': 'Malaysia', 'selangor': 'Malaysia', 'penang': 'Malaysia', 'johor': 'Malaysia', 'klang': 'Malaysia', '(m) sdn bhd': 'Malaysia', 'sdn bhd': 'Malaysia',
+    'singapore': 'Singapore', 'pte ltd': 'Singapore',
+    'korea': 'Korea', 'seoul': 'Korea', 'busan': 'Korea', 'incheon': 'Korea',
+    'japan': 'Japan', 'tokyo': 'Japan', 'osaka': 'Japan',
+    'vietnam': 'Vietnam', 'hanoi': 'Vietnam', 'saigon': 'Vietnam', 'ho chi minh': 'Vietnam',
+    'thailand': 'Thailand', 'bangkok': 'Thailand',
+    'philippines': 'Philippines', 'manila': 'Philippines',
+    'india': 'India', 'mumbai': 'India', 'maharashtra': 'India', 'thane': 'India', 'chennai': 'India',
+    'bangladesh': 'Bangladesh', 'dhaka': 'Bangladesh',
+    'pakistan': 'Pakistan',
+    'australia': 'Australia',
+    'europe': 'Europe', 'germany': 'Europe', 'italy': 'Europe', 'france': 'Europe',
+    'china': 'China', 'shanghai': 'China'
+  };
+  for (const [kw, country] of Object.entries(map)) {
+    if (text.includes(kw)) return country;
+  }
+  return 'Other';
+}
+
+const COUNTRY_FLAGS = {
+  Indonesia: '🇮🇩', Malaysia: '🇲🇾', Singapore: '🇸🇬', Korea: '🇰🇷', Japan: '🇯🇵',
+  Vietnam: '🇻🇳', Thailand: '🇹🇭', Philippines: '🇵🇭', India: '🇮🇳', Bangladesh: '🇧🇩',
+  Pakistan: '🇵🇰', Australia: '🇦🇺', Europe: '🇪🇺', China: '🇨🇳', Other: '🌍'
+};
+function flagFor(country) { return COUNTRY_FLAGS[country] || '🌍'; }
+
+function statusColor(status) {
+  const s = String(status || '');
+  if (s.includes('Closed') || s === 'Delivered') return 'pill-success';
+  if (s.includes('Lost') || s === 'Cancelled') return 'pill-gray';
+  if (s.includes('Awaiting') || s.includes('On Hold')) return 'pill-warning';
+  if (s.includes('Production') || s.includes('Ship') || s.includes('Deposit')) return 'pill-orange';
+  if (s === 'Confirmed') return 'pill-purple';
+  if (s.includes('Negotiat')) return 'pill-warning';
+  return 'pill-info';
+}
+
+// ─── API Layer ─────────────────────────────────────────────────
+async function apiGet(action, params) {
+  if (!STATE.appsScriptUrl) throw new Error('Apps Script URL not configured');
+  const qs = new URLSearchParams({ action, ...(params || {}) }).toString();
+  const r = await fetch(STATE.appsScriptUrl + '?' + qs);
+  return r.json();
+}
+
+async function apiPost(action, data) {
+  if (!STATE.appsScriptUrl) throw new Error('Apps Script URL not configured');
+  const r = await fetch(STATE.appsScriptUrl, {
+    method: 'POST',
+    body: JSON.stringify({ action, ...data }),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
+  return r.json();
+}
+
+// ─── Connection & Setup ────────────────────────────────────────
+function loadSavedUrl() {
+  STATE.appsScriptUrl = localStorage.getItem(URL_STORAGE_KEY) || '';
+}
+
+function saveUrl(url) {
+  STATE.appsScriptUrl = url;
+  localStorage.setItem(URL_STORAGE_KEY, url);
+}
+
+async function testConnection() {
+  $('conn-status').innerHTML = '⏳ Connecting...';
+  try {
+    const r = await apiGet('crm_ping');
+    if (r.ok) {
+      $('conn-status').innerHTML = '✅ Connected v' + r.version;
+      $('conn-status').style.background = 'rgba(76,175,80,.3)';
+      $('setup-banner').style.display = 'none';
+      return true;
+    } else {
+      throw new Error(r.error || 'Connection failed');
+    }
+  } catch (e) {
+    $('conn-status').innerHTML = '❌ Not connected';
+    $('conn-status').style.background = 'rgba(244,67,54,.3)';
+    $('setup-banner').style.display = 'flex';
+    return false;
+  }
+}
+
+function openSettings() {
+  $('modal-title').textContent = 'CRM Settings';
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>Apps Script Web App URL</label>
+      <input type="text" id="settings-url" value="${STATE.appsScriptUrl}" placeholder="https://script.google.com/macros/s/.../exec">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+        💡 This is the same URL you set in Generator. Copy from Generator Settings.
+      </div>
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveAndTestSettings()">💾 Save & Test</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveAndTestSettings() {
+  const url = $('settings-url').value.trim();
+  if (!url) { showToast('URL required', 'error'); return; }
+  saveUrl(url);
+  closeModal();
+  const ok = await testConnection();
+  if (ok) {
+    showToast('Connected! Loading data...', 'success');
+    await refreshData();
+  } else {
+    showToast('Connection failed. Check URL.', 'error');
+  }
+}
+
+// ─── Data Loading ──────────────────────────────────────────────
+async function refreshData() {
+  if (!STATE.appsScriptUrl) { openSettings(); return; }
+  
+  $('customer-list').innerHTML = '<div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading data...</div></div>';
+  
+  try {
+    // Load contracts (history) — gives us customers + contracts in one call
+    const histRes = await apiGet('history');
+    STATE.contracts = (histRes.records || []).map(r => ({
+      contractNo: r.contractNo || '',
+      date: r.date || '',
+      company: r.company || '',
+      machine: r.machineTitle || r.machine || '',
+      currency: r.currency || 'USD',
+      amount: parseFloat(r.amount) || 0,
+      status: r.status || 'Quotation Sent',
+      country: detectCountry('', r.company)
+    }));
+    
+    // Group by customer (unique companies)
+    const custMap = {};
+    STATE.contracts.forEach(c => {
+      const key = c.company.trim();
+      if (!key) return;
+      if (!custMap[key]) {
+        custMap[key] = {
+          company: key, contracts: [], country: c.country,
+          flag: flagFor(c.country), totalSpent: 0,
+          lastDate: null
+        };
+      }
+      custMap[key].contracts.push(c);
+      if (c.status.includes('Closed') || c.status === 'Delivered') {
+        custMap[key].totalSpent += c.amount;
+      }
+      if (!custMap[key].lastDate || c.date > custMap[key].lastDate) custMap[key].lastDate = c.date;
+    });
+    STATE.customers = Object.values(custMap).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||''));
+    
+    // Populate country dropdown
+    STATE.countries.clear();
+    STATE.customers.forEach(c => STATE.countries.add(c.country));
+    const select = $('crm-country');
+    const cur = select.value;
+    select.innerHTML = '<option value="">All Countries</option>' +
+      Array.from(STATE.countries).sort().map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+    select.value = cur;
+    
+    // Update tab count
+    $('crm-count').textContent = STATE.customers.length;
+    
+    renderCustomerList();
+    
+    // Handle URL parameter ?customer=xxx
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetCustomer = urlParams.get('customer');
+    if (targetCustomer) {
+      const found = STATE.customers.find(c => c.company.toLowerCase().includes(targetCustomer.toLowerCase()));
+      if (found) selectCustomer(found.company);
+    }
+    
+    showToast(`Loaded ${STATE.customers.length} customers, ${STATE.contracts.length} contracts`, 'success');
+  } catch (e) {
+    $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${e.message}</div>`;
+    showToast('Failed to load data: ' + e.message, 'error');
+  }
+}
+
+// ─── Customer List ─────────────────────────────────────────────
+function renderCustomerList() {
+  const q = ($('crm-search').value || '').toLowerCase().trim();
+  const country = $('crm-country').value;
+  
+  const filtered = STATE.customers.filter(c => {
+    if (q && !c.company.toLowerCase().includes(q)) return false;
+    if (country && c.country !== country) return false;
+    return true;
+  });
+  
+  const list = $('customer-list');
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="customer-list-header">Customers (0)</div>
+      <div class="empty">No customers match the filters</div>
+    `;
+    return;
+  }
+  
+  list.innerHTML = `
+    <div class="customer-list-header">Customers (${filtered.length})</div>
+  ` + filtered.map(c => {
+    const isActive = c.company === STATE.activeCustomer;
+    const activeCount = c.contracts.filter(ct => 
+      !ct.status.includes('Closed') && ct.status !== 'Lost' && ct.status !== 'Cancelled'
+    ).length;
+    return `
+      <div class="customer-item ${isActive ? 'active' : ''}" onclick="selectCustomer('${c.company.replace(/'/g, "\\'")}')">
+        <div class="customer-item-name">
+          <span>${c.flag} ${c.company}</span>
+          ${activeCount > 0 ? `<span class="pill pill-info">${activeCount}</span>` : ''}
+        </div>
+        <div class="customer-item-meta">
+          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · last: ${daysAgoText(c.lastDate)}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Customer Detail ───────────────────────────────────────────
+async function selectCustomer(companyName) {
+  STATE.activeCustomer = companyName;
+  renderCustomerList();
+  
+  const c = STATE.customers.find(x => x.company === companyName);
+  if (!c) return;
+  
+  // Load followups for this customer
+  $('customer-detail').innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+  
+  let followups = [];
+  try {
+    const r = await apiGet('crm_getFollowups', { customer: companyName });
+    followups = r.followups || [];
+  } catch (e) {
+    console.error('Failed to load followups', e);
+  }
+  STATE.followups[companyName] = followups;
+  
+  renderCustomerDetail(c, followups);
+}
+
+function renderCustomerDetail(c, followups) {
+  // Build encoded URL for "New Quote" button
+  const newQuoteUrl = `index.html?customer=${encodeURIComponent(c.company)}&autofill=true`;
+  
+  $('customer-detail').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2>${c.flag} ${c.company}</h2>
+        <div class="meta-row">${c.country} · ${c.contracts.length} total contract(s)</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--text-muted)">Total Spent</div>
+        <div style="font-size:18px;font-weight:700;color:var(--accent)">${fmtMoney(c.totalSpent)}</div>
+      </div>
+    </div>
+    
+    <div style="background:linear-gradient(135deg,#1a3a5c,#2c5282);color:#fff;padding:12px;border-radius:var(--radius);margin:14px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:13px;font-weight:600">Make a new quote for this customer?</div>
+        <div style="font-size:11px;opacity:.8;margin-top:2px">Opens Generator with customer info ready</div>
+      </div>
+      <a href="${newQuoteUrl}" class="btn btn-success" style="background:#ffd54f;color:#1a3a5c;text-decoration:none">
+        📋 New Quote
+      </a>
+    </div>
+    
+    <div class="section-title">
+      📋 Contracts (${c.contracts.length})
+    </div>
+    ${c.contracts.length === 0 ? '<div class="empty">No contracts yet</div>' :
+      c.contracts.map(ct => `
+        <div class="contract-row" onclick="openContractInGenerator('${ct.contractNo}')">
+          <div class="contract-info">
+            <div class="contract-no">${ct.contractNo}</div>
+            <div class="contract-machine">${ct.machine}</div>
+            <div style="margin-top:4px">
+              <span class="pill ${statusColor(ct.status)}">${ct.status}</span>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
+            </div>
+          </div>
+          <div class="contract-amount">${fmtMoney(ct.amount, ct.currency)}</div>
+        </div>
+      `).join('')
+    }
+    
+    <div class="section-title">
+      💬 Follow-ups (${followups.length})
+      <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')">+ Add Follow-up</button>
+    </div>
+    ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
+      followups.map(f => `
+        <div class="followup-row">
+          <div class="followup-info">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="followup-type">${typeIcon(f.type)} ${f.type}</span>
+              <span class="followup-date">${fmtDate(f.date)} (${daysAgoText(f.date)})</span>
+            </div>
+            <div class="followup-desc">${escapeHtml(f.description)}</div>
+            <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">
+              ${f.contractNo ? `📋 ${f.contractNo}` : ''}
+              ${f.nextFollowupDate ? ` · Next: ${fmtDate(f.nextFollowupDate)}` : ''}
+              ${f.outcome ? ` · <span class="pill pill-${f.outcome==='Positive'?'success':f.outcome==='Negative'?'danger':'gray'}">${f.outcome}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')
+    }
+  `;
+}
+
+function typeIcon(type) {
+  const icons = { 'Call':'📞', 'Email':'✉', 'WhatsApp':'💬', 'Meeting':'🤝', 'Quote Sent':'📤' };
+  return icons[type] || '📝';
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openContractInGenerator(contractNo) {
+  window.location.href = `index.html?contract=${encodeURIComponent(contractNo)}&load=true`;
+}
+
+// ─── Add Follow-up Modal ───────────────────────────────────────
+function openFollowupModal(customer) {
+  const c = STATE.customers.find(x => x.company === customer);
+  const today = new Date().toISOString().split('T')[0];
+  const opts = c ? c.contracts.map(ct => `<option value="${ct.contractNo}">${ct.contractNo} — ${ct.machine.substring(0,40)}</option>`).join('') : '';
+  
+  $('modal-title').textContent = `Add Follow-up — ${customer}`;
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>Date</label>
+      <input type="date" id="fu-date" value="${today}">
+    </div>
+    <div class="form-row">
+      <label>Type</label>
+      <select id="fu-type">
+        <option>WhatsApp</option><option>Call</option><option>Email</option>
+        <option>Meeting</option><option>Quote Sent</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Related Contract (optional)</label>
+      <select id="fu-contract">
+        <option value="">— None —</option>
+        ${opts}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Description *</label>
+      <textarea id="fu-desc" placeholder="What did you discuss?"></textarea>
+    </div>
+    <div class="form-row">
+      <label>Outcome</label>
+      <select id="fu-outcome">
+        <option value="">— Select —</option>
+        <option>Positive</option><option>Neutral</option><option>Negative</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Next follow-up date (optional)</label>
+      <input type="date" id="fu-next">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">💡 Auto-creates a task on this date</div>
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveFollowup('${customer.replace(/'/g, "\\'")}')">💾 Save Follow-up</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveFollowup(customer) {
+  const desc = $('fu-desc').value.trim();
+  if (!desc) { showToast('Description is required', 'error'); return; }
+  
+  const fu = {
+    customer,
+    date: $('fu-date').value || new Date().toISOString().split('T')[0],
+    type: $('fu-type').value,
+    contractNo: $('fu-contract').value || '',
+    description: desc,
+    outcome: $('fu-outcome').value || '',
+    nextFollowupDate: $('fu-next').value || ''
+  };
+  
+  const btn = $('modal-footer').querySelector('.btn:last-child');
+  btn.disabled = true; btn.textContent = '⏳ Saving...';
+  
+  try {
+    const r = await apiPost('crm_addFollowup', { followup: fu });
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    closeModal();
+    showToast('✅ Follow-up saved', 'success');
+    // Refresh customer detail to show new follow-up
+    await selectCustomer(customer);
+  } catch (e) {
+    btn.disabled = false; btn.innerHTML = '💾 Save Follow-up';
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+function closeModal() { $('modal-overlay').classList.remove('show'); }
+
+// ─── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  loadSavedUrl();
+  
+  // Listeners
+  $('crm-search').addEventListener('input', renderCustomerList);
+  $('crm-country').addEventListener('change', renderCustomerList);
+  $$('.tab:not(.disabled)').forEach(t => t.addEventListener('click', () => {
+    $$('.tab').forEach(x => x.classList.toggle('active', x === t));
+    $$('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + t.dataset.tab));
+  }));
+  
+  // Connection test
+  if (STATE.appsScriptUrl) {
+    const ok = await testConnection();
+    if (ok) await refreshData();
+  } else {
+    $('setup-banner').style.display = 'flex';
+    $('conn-status').innerHTML = '⚠ Not configured';
+    $('customer-list').innerHTML = '<div class="empty">⚠ Please configure Apps Script URL in Settings</div>';
+  }
+});
+
+</script>
+</body>
+</html>
