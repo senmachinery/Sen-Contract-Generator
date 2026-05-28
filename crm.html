@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.1</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.2</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -545,7 +545,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v2.1 — Real data connection + Quick Filters + Overdue alerts
+// CRM v2.2 — Real data connection + Quick Filters + Overdue alerts
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -959,6 +959,24 @@ async function refreshData() {
       status: r.status || 'Quotation Sent',
       country: getCustomerCountry((r.company || '').trim())
     })).filter(c => c.company);  // Filter out empty company names
+    
+    // v2.2: Defensive de-dup — if the sheet has duplicate rows with the same contractNo
+    // (e.g. saved twice before the Apps Script fix), keep only the LAST one (most recent).
+    // This prevents double-counting in Dashboard totals and double cards in Pipeline.
+    (function dedupeContracts() {
+      const seen = {};
+      // Walk forward; later rows overwrite earlier ones for the same contractNo
+      STATE.contracts.forEach(c => {
+        const key = (c.contractNo || '').trim();
+        if (!key) { return; } // keep blank-contractNo rows as-is (handled below)
+        seen[key] = c;
+      });
+      const blanks = STATE.contracts.filter(c => !(c.contractNo || '').trim());
+      const deduped = Object.values(seen).concat(blanks);
+      const removed = STATE.contracts.length - deduped.length;
+      if (removed > 0) console.info('CRM: de-duped ' + removed + ' duplicate contract row(s)');
+      STATE.contracts = deduped;
+    })();
     
     // Load all follow-ups across all customers (for "overdue" detection)
     let allFollowups = [];
