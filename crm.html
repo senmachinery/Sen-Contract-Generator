@@ -189,6 +189,9 @@
   .inquiry-priority-dot { font-size: 13px; }
   
   /* Smart Paste */
+  .jsonpaste-zone { border: 2px dashed var(--accent); border-radius: var(--radius-sm); padding: 12px; background: #fdf6ec; margin-bottom: 8px; }
+  .jsonpaste-zone textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-size: 12px; min-height: 90px; resize: vertical; font-family: monospace; }
+  .jsonpaste-hint { font-size: 11px; color: var(--accent); margin-bottom: 6px; font-weight: 600; }
   .smartpaste-zone { border: 2px dashed var(--info); border-radius: var(--radius-sm); padding: 12px; background: #f0f7ff; margin-bottom: 8px; }
   .smartpaste-zone textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-size: 13px; min-height: 80px; resize: vertical; font-family: inherit; }
   .smartpaste-hint { font-size: 11px; color: var(--info); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
@@ -342,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v1.9</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.1</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -542,7 +545,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v1.9 — Real data connection + Quick Filters + Overdue alerts
+// CRM v2.1 — Real data connection + Quick Filters + Overdue alerts
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -685,6 +688,13 @@ const COUNTRY_META_CONTRACT = '_META_COUNTRY';  // special task that holds synce
 let COUNTRY_OVERRIDES = {};
 // Address text blob per company (from CustomerDB) for accurate country detection
 let CUSTOMER_ADDR_BLOB = {};
+// v2.1: set of lowercase company names that exist in Customer DB (for new/existing detection)
+let CUSTOMER_DB_NAMES = new Set();
+// Helper: is this company already in the Customer DB? (exact, case-insensitive)
+function isExistingCustomer(company) {
+  if (!company) return false;
+  return CUSTOMER_DB_NAMES.has(company.trim().toLowerCase());
+}
 
 function getLocalCountryOverrides() {
   try { return JSON.parse(localStorage.getItem(COUNTRY_OVERRIDE_KEY) || '{}'); }
@@ -917,6 +927,7 @@ async function refreshData() {
     // v1.9: Fetch CustomerDB (for address-based country detection) + tasks (for synced overrides)
     // Build CUSTOMER_ADDR_BLOB: company → concatenated text of all fields (robust to column order)
     CUSTOMER_ADDR_BLOB = {};
+    CUSTOMER_DB_NAMES = new Set();  // v2.1: lowercase company names that exist in Customer DB
     try {
       const custRes = await apiGet('customerDB');
       const custList = (custRes && custRes.customers) ? custRes.customers : [];
@@ -925,6 +936,7 @@ async function refreshData() {
         // Concat every field — so "Malaysia" anywhere (addr/attn/notes) is caught regardless of column mapping
         const blob = [c.addr, c.address, c.attn, c.notes, c.port, c.tel].filter(Boolean).join(' ');
         CUSTOMER_ADDR_BLOB[c.company.trim()] = blob;
+        CUSTOMER_DB_NAMES.add(c.company.trim().toLowerCase());  // v2.1
       });
     } catch (e) { console.warn('CustomerDB fetch failed (country detection will use names only):', e); }
     
@@ -2396,6 +2408,7 @@ function rebuildInquiriesFromTasks() {
       tempNo: t.contractNo,
       customer: t.customer || data.customer || '',
       machine: t.title || data.machine || '',
+      quantity: data.quantity || '',
       inquiryDate: toIsoDate(t.createdAt) || toIsoDate(t.dueDate) || '',
       dueDate: t.dueDate,
       priority: t.priority || 'normal',
@@ -2529,7 +2542,7 @@ function renderInquiryCard(inq) {
       <div class="inquiry-header">
         <div style="flex:1;min-width:0">
           <div class="inquiry-customer">${prioDot} ${flag} ${escapeHtml(inq.customer || 'Unknown customer')}</div>
-          <div class="inquiry-machine">🔧 ${escapeHtml(inq.machine || '(machine not specified)')}</div>
+          <div class="inquiry-machine">🔧 ${escapeHtml(inq.machine || '(machine not specified)')}${inq.quantity ? ' <span style="color:var(--text-muted);font-weight:normal">× ' + escapeHtml(inq.quantity) + '</span>' : ''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           ${statusBadge}
@@ -2734,6 +2747,145 @@ function smartParseContact(text) {
   return result;
 }
 
+// ─── JSON PASTE (single fill OR batch import) ─────────────────
+// Accepts a single inquiry object {…} → fills the form
+// OR an array [{…},{…}] → batch-imports all directly to CRM_Tasks
+const INQUIRY_FIELDS = ['customer','machine','quantity','tel','email','attn','address','country','budget','source','detail','priority'];
+
+function normalizeInquiryObj(obj) {
+  const out = {};
+  const aliases = {
+    company: 'customer', name: 'customer',
+    product: 'machine', equipment: 'machine', model: 'machine',
+    qty: 'quantity', units: 'quantity',
+    phone: 'tel', mobile: 'tel', contact_no: 'tel', 'h/p': 'tel', hp: 'tel',
+    mail: 'email', 'e-mail': 'email',
+    contact: 'attn', person: 'attn', pic: 'attn', contact_person: 'attn',
+    addr: 'address', location: 'address',
+    notes: 'detail', note: 'detail', remarks: 'detail', requirements: 'detail', requirement: 'detail', details: 'detail',
+    from: 'source', channel: 'source'
+  };
+  for (const k of Object.keys(obj || {})) {
+    const lk = k.toLowerCase().trim();
+    const mapped = INQUIRY_FIELDS.includes(lk) ? lk : (aliases[lk] || null);
+    if (mapped) {
+      let v = obj[k];
+      if (v === null || v === undefined) v = '';
+      out[mapped] = String(v).trim();
+    }
+  }
+  return out;
+}
+
+function runJsonPaste() {
+  const ta = $('jsonpaste-input');
+  const resultEl = $('jsonpaste-result');
+  if (!ta) return;
+  const raw = (ta.value || '').trim();
+  if (!raw) { if(resultEl){resultEl.textContent='⚠ Paste JSON first'; resultEl.classList.add('show');} return; }
+  // Strip markdown code fences (```json ... ```)
+  let cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  let parsed;
+  try { parsed = JSON.parse(cleaned); }
+  catch (e) {
+    if (resultEl) { resultEl.textContent = '❌ Invalid JSON — check format or re-copy from Claude'; resultEl.classList.add('show'); resultEl.style.background='#ffebee'; resultEl.style.color='#c62828'; }
+    return;
+  }
+  if (Array.isArray(parsed)) {
+    batchImportInquiries(parsed);
+  } else if (parsed && typeof parsed === 'object') {
+    const obj = normalizeInquiryObj(parsed);
+    fillInquiryForm(obj);
+    if (resultEl) {
+      const filled = Object.keys(obj).filter(k => obj[k]);
+      resultEl.textContent = `✅ Filled ${filled.length} fields — verify below, then Save`;
+      resultEl.classList.add('show'); resultEl.style.background=''; resultEl.style.color='';
+    }
+  } else {
+    if (resultEl) { resultEl.textContent = '❌ JSON must be an object {…} or array [{…}]'; resultEl.classList.add('show'); }
+  }
+}
+
+function fillInquiryForm(obj) {
+  const setVal = (id, v) => { const el = $(id); if (el && v) el.value = v; };
+  setVal('inq-customer', obj.customer);
+  setVal('inq-machine', obj.machine);
+  setVal('inq-quantity', obj.quantity);
+  setVal('inq-tel', obj.tel);
+  setVal('inq-email', obj.email);
+  setVal('inq-attn', obj.attn);
+  setVal('inq-address', obj.address);
+  setVal('inq-country', obj.country);
+  setVal('inq-budget', obj.budget);
+  setVal('inq-source', obj.source);
+  setVal('inq-detail', obj.detail);
+  if (obj.priority && $('inq-priority')) {
+    const p = obj.priority.toLowerCase();
+    if (['high','normal','low'].includes(p)) $('inq-priority').value = p;
+  }
+  if (typeof updateCustomerStatus === 'function') updateCustomerStatus();  // v2.1
+}
+
+async function batchImportInquiries(arr) {
+  const resultEl = $('jsonpaste-result');
+  const valid = arr.map(normalizeInquiryObj).filter(o => o.customer && o.machine);
+  const skipped = arr.length - valid.length;
+  if (valid.length === 0) {
+    if (resultEl) { resultEl.textContent = '❌ No valid entries (each needs customer + machine)'; resultEl.classList.add('show'); }
+    return;
+  }
+  if (!confirm(`Import ${valid.length} inquir${valid.length>1?'ies':'y'}?${skipped>0 ? '\n('+skipped+' skipped — missing customer or machine)' : ''}\n\nThis will create them directly in your CRM.`)) return;
+  if (resultEl) { resultEl.textContent = `⏳ Importing ${valid.length}...`; resultEl.classList.add('show'); }
+  let ok = 0, failed = 0, newCustomers = 0;
+  rebuildInquiriesFromTasks();
+  for (const obj of valid) {
+    const tempNo = nextInquiryNo();
+    const inquiryData = {
+      customer: obj.customer, machine: obj.machine, quantity: obj.quantity || '',
+      tel: obj.tel || '', email: obj.email || '', address: obj.address || '',
+      attn: obj.attn || '', country: obj.country || '', budget: obj.budget || '',
+      source: obj.source || '', detail: obj.detail || ''
+    };
+    const task = {
+      title: obj.machine, customer: obj.customer, contractNo: tempNo,
+      dueDate: new Date().toISOString().split('T')[0],
+      priority: (['high','normal','low'].includes((obj.priority||'').toLowerCase()) ? obj.priority.toLowerCase() : 'normal'),
+      notes: JSON.stringify(inquiryData)
+    };
+    try {
+      const r = await apiPost('crm_addTask', { task });
+      if (r && r.ok) {
+        ok++;
+        TASKS_STATE.tasks.push({ id: r.id || ('tmp_'+Date.now()+'_'+ok), title: task.title,
+          customer: task.customer, contractNo: tempNo, dueDate: task.dueDate,
+          priority: task.priority, status: 'pending', notes: task.notes, createdAt: new Date().toISOString() });
+        rebuildInquiriesFromTasks();
+        // v2.1: auto-save NEW customers to DB (never overwrite existing)
+        if (!isExistingCustomer(obj.customer)) {
+          try {
+            await apiPost('saveCustomer', { customer: {
+              company: obj.customer, attn: obj.attn||'', tel: obj.tel||'',
+              email: obj.email||'', address: obj.address||'', port: '', fax: '',
+              notes: 'Added via inquiry ' + tempNo
+            }});
+            CUSTOMER_DB_NAMES.add(obj.customer.trim().toLowerCase());
+            newCustomers++;
+          } catch(e) { console.warn('Batch customer save failed:', e); }
+        }
+      } else failed++;
+    } catch(e) { failed++; }
+  }
+  if (resultEl) {
+    resultEl.textContent = `✅ Imported ${ok}${newCustomers>0 ? ' ('+newCustomers+' new customers saved)' : ''}${failed>0 ? ', '+failed+' failed' : ''}${skipped>0 ? ', '+skipped+' skipped' : ''}`;
+    resultEl.classList.add('show');
+  }
+  showToast(`✅ Imported ${ok} inquiries`, 'success');
+  await loadTasks();
+  rebuildInquiriesFromTasks();
+  renderInquiries();
+  setTimeout(() => closeModal(), 1200);
+}
+
 function runSmartPaste() {
   const ta = $('smartpaste-input');
   if (!ta) return;
@@ -2760,6 +2912,7 @@ function runSmartPaste() {
     resultEl.textContent = found.length ? `✅ Parsed: ${found.join(', ')} — please verify below` : '⚠ Couldn\'t detect fields — please fill manually';
     resultEl.classList.add('show');
   }
+  if (typeof updateCustomerStatus === 'function') updateCustomerStatus();  // v2.1
 }
 
 function openNewInquiryModal(prefill) {
@@ -2769,8 +2922,14 @@ function openNewInquiryModal(prefill) {
   
   $('modal-title').textContent = '📞 New Inquiry';
   $('modal-body').innerHTML = `
+    <div class="jsonpaste-zone">
+      <div class="jsonpaste-hint">🤖 Paste Inquiry JSON — from Claude (handles screenshots, name cards, descriptions). Single {…} or batch [{…},{…}]</div>
+      <textarea id="jsonpaste-input" placeholder='Paste JSON from Claude, e.g.:\n{\n  "customer": "ABC Label Sdn Bhd",\n  "machine": "SEN MQS 320 Die Cutter",\n  "quantity": "1 unit",\n  "tel": "07-352 1234",\n  "email": "sales@abclabel.com.my",\n  "country": "Malaysia",\n  "priority": "high",\n  "detail": "Needs delivery by July"\n}'></textarea>
+      <button class="btn btn-sm" onclick="runJsonPaste()" style="background:var(--accent);color:#fff;margin-top:6px">🤖 Paste JSON → Fill / Import</button>
+      <div class="smartpaste-result" id="jsonpaste-result"></div>
+    </div>
     <div class="smartpaste-zone">
-      <div class="smartpaste-hint">✨ Smart Paste — paste a business card text, email signature, or WhatsApp intro</div>
+      <div class="smartpaste-hint">✨ Or Smart Paste — paste raw business card / email signature text (contact info only)</div>
       <textarea id="smartpaste-input" placeholder="Paste contact info here, e.g.:\nABC Label Sdn Bhd\nMr. Tan, Sales Manager\n012-345 6789\ntan@abclabel.com\nNo. 5, Jalan Industri, 81100 Johor Bahru"></textarea>
       <button class="btn btn-sm" onclick="runSmartPaste()" style="background:var(--info);color:#fff;margin-top:6px">✨ Smart Paste → Auto-fill</button>
       <div class="smartpaste-result" id="smartpaste-result"></div>
@@ -2781,9 +2940,15 @@ function openNewInquiryModal(prefill) {
       <input type="text" id="inq-customer" list="inq-customer-list" value="${escapeHtml(prefill.customer||'')}" placeholder="Company name" style="width:100%" autofocus>
       <datalist id="inq-customer-list">${customers.map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>
     </div>
-    <div class="form-row">
-      <label>Machine / Product they want <span style="color:var(--danger)">*</span></label>
-      <input type="text" id="inq-machine" value="${escapeHtml(prefill.machine||'')}" placeholder="e.g. SEN MQS 320 Die Cutter" style="width:100%">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="form-row" style="flex:2;min-width:160px">
+        <label>Machine / Product they want <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="inq-machine" value="${escapeHtml(prefill.machine||'')}" placeholder="e.g. SEN MQS 320 Die Cutter" style="width:100%">
+      </div>
+      <div class="form-row" style="flex:1;min-width:90px">
+        <label>Quantity</label>
+        <input type="text" id="inq-quantity" value="${escapeHtml(prefill.quantity||'')}" placeholder="e.g. 1 unit" style="width:100%">
+      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div class="form-row" style="flex:1;min-width:140px">
@@ -2835,11 +3000,8 @@ function openNewInquiryModal(prefill) {
       <label>Details / Notes</label>
       <textarea id="inq-detail" rows="2" placeholder="What exactly do they need? Any special requirements?" style="width:100%">${escapeHtml(prefill.detail||'')}</textarea>
     </div>
-    <div class="form-row" style="background:var(--bg);padding:8px;border-radius:6px">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
-        <input type="checkbox" id="inq-save-customer" checked style="width:auto">
-        <span>💾 Also save this customer to Customer DB (so it auto-fills when you quote later)</span>
-      </label>
+    <div class="form-row" id="customer-status-row" style="background:var(--bg);padding:8px 10px;border-radius:6px;font-size:12px">
+      <span id="customer-status-indicator" style="color:var(--text-muted)">👤 Enter a customer name above…</span>
     </div>
   `;
   $('modal-footer').innerHTML = `
@@ -2847,7 +3009,36 @@ function openNewInquiryModal(prefill) {
     <button class="btn" onclick="saveNewInquiry()" style="background:var(--accent);color:#fff">💾 Save Inquiry</button>
   `;
   $('modal-overlay').classList.add('show');
-  setTimeout(() => $('smartpaste-input')?.focus(), 100);
+  setTimeout(() => {
+    $('smartpaste-input')?.focus();
+    // v2.1: live new/existing customer detection
+    const custInput = $('inq-customer');
+    if (custInput) {
+      custInput.addEventListener('input', updateCustomerStatus);
+      custInput.addEventListener('change', updateCustomerStatus);
+      updateCustomerStatus();  // initial check (in case prefilled)
+    }
+  }, 100);
+}
+
+// v2.1: Show whether the typed customer is new (will be saved) or existing (won't be touched)
+function updateCustomerStatus() {
+  const el = $('customer-status-indicator');
+  const input = $('inq-customer');
+  if (!el || !input) return;
+  const name = (input.value || '').trim();
+  if (!name) {
+    el.innerHTML = '👤 Enter a customer name above…';
+    el.style.color = 'var(--text-muted)';
+    return;
+  }
+  if (isExistingCustomer(name)) {
+    el.innerHTML = '✓ <strong>Existing customer</strong> — their Customer DB record will NOT be changed. (Select from the list to load their info when quoting.)';
+    el.style.color = 'var(--info)';
+  } else {
+    el.innerHTML = '+ <strong>New customer</strong> — will be saved to Customer DB so it auto-fills when you quote later.';
+    el.style.color = 'var(--success)';
+  }
 }
 
 async function saveNewInquiry() {
@@ -2860,6 +3051,7 @@ async function saveNewInquiry() {
   const inquiryData = {
     customer,
     machine,
+    quantity: ($('inq-quantity') ? $('inq-quantity').value : '').trim(),
     tel: ($('inq-tel').value || '').trim(),
     email: ($('inq-email').value || '').trim(),
     address: ($('inq-address').value || '').trim(),
@@ -2880,14 +3072,16 @@ async function saveNewInquiry() {
     notes: JSON.stringify(inquiryData)
   };
   
-  const saveCustomerToo = $('inq-save-customer').checked;
+  // v2.1: Auto-detect — only save to Customer DB if this is a NEW customer.
+  // Existing customers are NEVER overwritten (protects their full DB record).
+  const isNew = !isExistingCustomer(customer);
   
   try {
     const r = await apiPost('crm_addTask', { task });
     if (!r || !r.ok) { showToast('Failed to save inquiry', 'error'); return; }
     
-    // Optionally save customer to Customer DB
-    if (saveCustomerToo) {
+    // Only save NEW customers (never overwrite existing)
+    if (isNew) {
       try {
         await apiPost('saveCustomer', { customer: {
           company: customer,
@@ -2899,10 +3093,13 @@ async function saveNewInquiry() {
           fax: '',
           notes: 'Added via inquiry ' + tempNo
         }});
+        // Register locally so it's recognized as existing from now on
+        CUSTOMER_DB_NAMES.add(customer.trim().toLowerCase());
+        CUSTOMER_ADDR_BLOB[customer.trim()] = [inquiryData.address, inquiryData.attn, inquiryData.tel].filter(Boolean).join(' ');
       } catch(e) { console.warn('Customer save failed (inquiry still saved):', e); }
     }
     
-    showToast('✅ Inquiry saved: ' + tempNo, 'success');
+    showToast(isNew ? '✅ Inquiry saved + new customer added: ' + tempNo : '✅ Inquiry saved: ' + tempNo, 'success');
     closeModal();
     // Reload tasks → rebuild inquiries
     await loadTasks();
@@ -2918,7 +3115,7 @@ function editInquiry(id) {
   if (!inq) return;
   // Reuse the modal with prefilled data, but override save to update
   openNewInquiryModal({
-    customer: inq.customer, machine: inq.machine, tel: inq.tel, email: inq.email,
+    customer: inq.customer, machine: inq.machine, quantity: inq.quantity, tel: inq.tel, email: inq.email,
     address: inq.address, attn: inq.attn, country: inq.country, budget: inq.budget,
     source: inq.source, detail: inq.detail
   });
@@ -2944,6 +3141,7 @@ async function saveEditInquiry(id) {
   
   const inquiryData = {
     customer, machine,
+    quantity: ($('inq-quantity') ? $('inq-quantity').value : '').trim(),
     tel: ($('inq-tel').value || '').trim(),
     email: ($('inq-email').value || '').trim(),
     address: ($('inq-address').value || '').trim(),
