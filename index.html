@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.57</title>
+<title>Sen Labels — Contract Generator v10.58</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.57</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.58</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3875,6 +3875,16 @@ async function saveToSheets(silent=false) {
       body: JSON.stringify({ action:'save', record }) });
     fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ action:'saveState', contractNo: state.contractNo, state: cleanState }) });
+    // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo,
+    // so repeated saves / Print / Export won't create duplicates).
+    if (state.contractNo && state.company) {
+      const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
+      fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ action:'crm_autoFollowupFromQuote', followup: {
+          customer: state.company, contractNo: state.contractNo, date: state.date,
+          currency: state.currency, amount: totalAmt, nextFollowupDate: fuDate
+        } }) });
+    }
     if (!silent) {
       setBtn('✅ Saved!', '#2e7d32');
       setTimeout(()=>{ setBtn('💾 Save Record',''); }, 2000);
@@ -5563,9 +5573,9 @@ function getAppsScriptCode() {
     "  let s = ss.getSheetByName(CUSTOMER_DB_SHEET);",
     "  if (!s) {",
     "    s = ss.insertSheet(CUSTOMER_DB_SHEET);",
-    "    s.appendRow(['Company','Attn','Tel','Email','Address','Port','Notes','SavedAt']);",
+    "    s.appendRow(['Company','Attn','Tel','Email','Address','Fax','Port','Notes','SavedAt']);",
     "    s.setFrozenRows(1);",
-    "    s.getRange(1,1,1,8).setBackground('#6a1b9a').setFontColor('#ffffff').setFontWeight('bold');",
+    "    s.getRange(1,1,1,9).setBackground('#6a1b9a').setFontColor('#ffffff').setFontWeight('bold');",
     "  }",
     "  return s;",
     "}",
@@ -5578,7 +5588,7 @@ function getAppsScriptCode() {
     "    const row = data[i];",
     "    const matchText = (row[0]+' '+row[1]+' '+row[4]).toLowerCase();",
     "    if (query && matchText.indexOf(query) === -1) continue;",
-    "    customers.push({ company: row[0], attn: row[1], tel: row[2], email: row[3], address: row[4], port: row[5], notes: row[6] });",
+    "    customers.push({ company: row[0], attn: row[1], tel: row[2], email: row[3], addr: row[4], fax: row[5], port: row[6], notes: row[7] });",
     "  }",
     "  customers.sort(function(a,b){ return String(a.company).localeCompare(String(b.company)); });",
     "  return { customers: customers };",
@@ -5586,15 +5596,17 @@ function getAppsScriptCode() {
     "function saveCustomer(c) {",
     "  const s = getCustomerDBSheet();",
     "  const data = s.getDataRange().getValues();",
+    "  // Support both old and new field names",
+    "  const addr = c.addr || c.address || '';",
     "  // Update if exists",
     "  for (let i = 1; i < data.length; i++) {",
     "    if (String(data[i][0] || '').toLowerCase() === String(c.company || '').toLowerCase()) {",
     "      archiveRow(s, data[i], 'customer_update');",
-    "      s.getRange(i+1, 1, 1, 8).setValues([[c.company, c.attn||'', c.tel||'', c.email||'', c.address||'', c.port||'', c.notes||'', new Date().toISOString()]]);",
+    "      s.getRange(i+1, 1, 1, 9).setValues([[c.company, c.attn||'', c.tel||'', c.email||'', addr, c.fax||'', c.port||'', c.notes||'', new Date().toISOString()]]);",
     "      return { ok: true, updated: true };",
     "    }",
     "  }",
-    "  s.appendRow([c.company, c.attn||'', c.tel||'', c.email||'', c.address||'', c.port||'', c.notes||'', new Date().toISOString()]);",
+    "  s.appendRow([c.company, c.attn||'', c.tel||'', c.email||'', addr, c.fax||'', c.port||'', c.notes||'', new Date().toISOString()]);",
     "  return { ok: true, created: true };",
     "}",
     "",
@@ -5622,22 +5634,35 @@ function getAppsScriptCode() {
     "    if (query && matchText.indexOf(query) === -1) continue;",
     "    let dataObj = {};",
     "    try { dataObj = JSON.parse(row[4] || '{}'); } catch(e) {}",
-    "    machines.push({ key: row[0], title: row[1], type: row[2], condition: row[3], data: dataObj });",
+    "    // Return in format generator expects: spread the data + key/condition",
+    "    machines.push(Object.assign({ key: row[0], modelName: row[1], machineType: row[2], condition: row[3] }, dataObj));",
     "  }",
     "  return { machines: machines };",
     "}",
     "function saveMachine(m) {",
     "  const s = getMachineDBSheet();",
     "  const data = s.getDataRange().getValues();",
-    "  const key = m.key || (m.title + '_' + m.condition);",
+    "  // Generator sends: { modelName, machineType, condition, desc, qty, refPrice, cwItems, extraSpecs }",
+    "  const modelName = m.modelName || m.title || '';",
+    "  const machineType = m.machineType || m.type || 'other';",
+    "  const condition = m.condition || 'New';",
+    "  const key = m.key || (modelName + '_' + condition);",
+    "  // Store the full machine data (everything except top-level fields) as JSON",
+    "  const dataObj = {",
+    "    desc: m.desc || '',",
+    "    qty: m.qty || '1 Unit',",
+    "    refPrice: m.refPrice || 0,",
+    "    cwItems: m.cwItems || [],",
+    "    extraSpecs: m.extraSpecs || []",
+    "  };",
     "  for (let i = 1; i < data.length; i++) {",
     "    if (String(data[i][0]) === key) {",
     "      archiveRow(s, data[i], 'machine_update');",
-    "      s.getRange(i+1, 1, 1, 6).setValues([[key, m.title||'', m.type||'', m.condition||'', JSON.stringify(m.data||{}), new Date().toISOString()]]);",
+    "      s.getRange(i+1, 1, 1, 6).setValues([[key, modelName, machineType, condition, JSON.stringify(dataObj), new Date().toISOString()]]);",
     "      return { ok: true, updated: true };",
     "    }",
     "  }",
-    "  s.appendRow([key, m.title||'', m.type||'', m.condition||'', JSON.stringify(m.data||{}), new Date().toISOString()]);",
+    "  s.appendRow([key, modelName, machineType, condition, JSON.stringify(dataObj), new Date().toISOString()]);",
     "  return { ok: true, created: true };",
     "}",
     "",
