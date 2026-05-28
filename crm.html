@@ -342,7 +342,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v1.8</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v1.9</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -542,7 +542,7 @@
 <script>
 
 // ═══════════════════════════════════════════════════════════════════
-// CRM v1.8 — Real data connection + Quick Filters + Overdue alerts
+// CRM v1.9 — Real data connection + Quick Filters + Overdue alerts
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── State ─────────────────────────────────────────────────────
@@ -628,28 +628,37 @@ function detectCountry(addr, company) {
   // Order matters: more specific first
   const map = [
     // Indonesia
-    [['indonesia','jakarta','surabaya','bandung','tangerang','semarang','medan','batam','bali','pt. ',' pt ','pt label','indo ','indo,'], 'Indonesia'],
-    // Malaysia (very common patterns)
-    [['malaysia','selangor','penang','johor','klang','kuala lumpur','sdn bhd','sdn. bhd','jalan ','jln ','jln. ','jl. ','taman ','damansara','petaling','seri ','sri '], 'Malaysia'],
+    [['indonesia','jakarta','surabaya','bandung','tangerang','semarang','medan','batam','bali','bekasi','bogor','depok','cikarang','karawang','sidoarjo','gresik','pt. ',' pt ','pt label','indo ','indo,'], 'Indonesia'],
+    // Malaysia — states + many towns (esp Johor towns from customer base)
+    [['malaysia','selangor','penang','pulau pinang','johor','johor bahru','jb,','klang','kuala lumpur',' k.l',' kl,','sdn bhd','sdn. bhd','sdn.bhd','jalan ','jln ','jln. ','jl. ','taman ','damansara','petaling','seri ','sri ',
+      // Johor towns
+      'yong peng','skudai','senai','kulai','pasir gudang','pontian','batu pahat','kluang','muar','segamat','tangkak','masai','ulu tiram','tampoi','larkin','plentong','kota tinggi','mersing','gelang patah','nusajaya','iskandar',
+      // Perak
+      'ipoh','taiping','sitiawan','teluk intan','batu gajah','kampar','lumut',
+      // Penang area
+      'butterworth','bukit mertajam','seberang','bayan lepas','prai','perai',
+      // Other states
+      'melaka','malacca','negeri sembilan','seremban','nilai','perak','kedah','alor setar','sungai petani','kuantan','pahang','terengganu','kelantan','kota bharu','sabah','kota kinabalu','sarawak','kuching','miri','sibu','putrajaya','cyberjaya','shah alam','subang','puchong','rawang','kajang','bangi','semenyih','cheras','ampang','gombak','sepang','banting','perindustrian','bandar '], 'Malaysia'],
     // Singapore
-    [['singapore','pte ltd','pte. ltd'], 'Singapore'],
-    // Korea (catch SONGSEON-RO, BEON-GIL, POCHEON-SI, etc — Korean address patterns)
-    [['korea','seoul','busan','incheon','pocheon','goyang','suwon','daegu','-si,','-gun,','-ro','-gil','-dong','korean','south korea','sungdo','sunrise','shinghung'], 'Korea'],
+    [['singapore','s\'pore','pte ltd','pte. ltd','pte.ltd'], 'Singapore'],
+    // Korea
+    [['korea','seoul','busan','incheon','pocheon','goyang','suwon','daegu','gyeonggi','-si,','-gun,','-ro','-gil','-dong','korean','south korea','sungdo','sunrise','shinghung'], 'Korea'],
     // Japan
-    [['japan','tokyo','osaka','kyoto','yokohama','japan,','japanese','dksh','wingup','abe kouki'], 'Japan'],
+    [['japan','tokyo','osaka','kyoto','yokohama','nagoya','japan,','japanese','dksh','wingup','abe kouki'], 'Japan'],
     // Vietnam
-    [['vietnam','hanoi','saigon','ho chi minh','phong chau','khang viet','k.l service'], 'Vietnam'],
+    [['vietnam','viet nam','hanoi','saigon','ho chi minh','hcmc','binh duong','dong nai','phong chau','khang viet','k.l service'], 'Vietnam'],
     // Thailand
-    [['thailand','bangkok','thai ','cct'], 'Thailand'],
-    // Philippines (the user's word: "PHILS")
-    [['philippines','manila','phils inc','phils.','filipino','cebu','quezon'], 'Philippines'],
+    [['thailand','bangkok','thai ','samut','nonthaburi','chonburi','cct'], 'Thailand'],
+    // Philippines
+    [['philippines','manila','phils inc','phils.','phil.','filipino','cebu','quezon','makati','pasig','laguna','cavite','bulacan'], 'Philippines'],
     // India
-    [['india','mumbai','maharashtra','thane','chennai','delhi','bangalore','pune','khushi'], 'India'],
-    [['bangladesh','dhaka'], 'Bangladesh'],
+    [['india','mumbai','maharashtra','thane','chennai','delhi','bangalore','bengaluru','pune','hyderabad','gujarat','ahmedabad','noida','gurgaon','khushi'], 'India'],
+    [['bangladesh','dhaka','chittagong'], 'Bangladesh'],
     [['pakistan','karachi','lahore'], 'Pakistan'],
-    [['australia','sydney','melbourne'], 'Australia'],
-    [['ragraf','slovenia','germany','italy','france','spain',' s.a.',' s.r.l',' gmbh',' b.v.'], 'Europe'],
-    [['china',' shanghai',' guangzhou',' beijing',' shenzhen'], 'China'],
+    [['australia','sydney','melbourne','brisbane'], 'Australia'],
+    [['ragraf','slovenia','germany','deutschland','italy','italia','france','spain','netherlands','poland',' s.a.',' s.r.l',' gmbh',' b.v.',' s.p.a'], 'Europe'],
+    [['china',' shanghai',' guangzhou',' beijing',' shenzhen',' dongguan',' foshan',' ningbo'], 'China'],
+    [['taiwan','taipei','kaohsiung','taichung'], 'Taiwan'],
   ];
   for (const [keywords, country] of map) {
     for (const kw of keywords) {
@@ -666,21 +675,90 @@ const COUNTRY_FLAGS = {
 };
 function flagFor(country) { return COUNTRY_FLAGS[country] || '🌍'; }
 
-// User can manually override country for any customer (stored in localStorage)
+// User can manually override country for any customer.
+// v1.9: synced across devices via a special CRM_Tasks row (contractNo='_META_COUNTRY')
+//        + localStorage as offline cache/fallback. Address-based auto-detection added.
 const COUNTRY_OVERRIDE_KEY = 'sen_crm_country_overrides';
-function getCountryOverrides() {
+const COUNTRY_META_CONTRACT = '_META_COUNTRY';  // special task that holds synced overrides
+
+// In-memory merged overrides (synced ∪ local). Synced wins.
+let COUNTRY_OVERRIDES = {};
+// Address text blob per company (from CustomerDB) for accurate country detection
+let CUSTOMER_ADDR_BLOB = {};
+
+function getLocalCountryOverrides() {
   try { return JSON.parse(localStorage.getItem(COUNTRY_OVERRIDE_KEY) || '{}'); }
   catch (e) { return {}; }
 }
-function setCountryOverride(company, country) {
-  const o = getCountryOverrides();
-  if (country) o[company] = country; else delete o[company];
-  localStorage.setItem(COUNTRY_OVERRIDE_KEY, JSON.stringify(o));
+function setLocalCountryOverrides(obj) {
+  try { localStorage.setItem(COUNTRY_OVERRIDE_KEY, JSON.stringify(obj)); } catch(e) {}
 }
+
+function getCountryOverrides() {
+  // COUNTRY_OVERRIDES is the live merged map (kept in sync at load time)
+  return COUNTRY_OVERRIDES;
+}
+
+async function setCountryOverride(company, country) {
+  // 1. Update in-memory + localStorage immediately (instant UX)
+  if (country) COUNTRY_OVERRIDES[company] = country; else delete COUNTRY_OVERRIDES[company];
+  setLocalCountryOverrides(COUNTRY_OVERRIDES);
+  // 2. Push to synced store (CRM_Tasks meta row) so other devices get it
+  await syncCountryOverridesToCloud();
+}
+
+// Find the meta task that stores country overrides (or null)
+function findCountryMetaTask() {
+  return (TASKS_STATE.tasks || []).find(t => t.contractNo === COUNTRY_META_CONTRACT && t.status !== 'deleted');
+}
+
+async function syncCountryOverridesToCloud() {
+  const payload = JSON.stringify(COUNTRY_OVERRIDES);
+  try {
+    const meta = findCountryMetaTask();
+    if (meta) {
+      await apiPost('crm_updateTask', { id: meta.id, updates: { notes: payload } });
+      meta.notes = payload;
+    } else {
+      const r = await apiPost('crm_addTask', { task: {
+        title: '[CRM meta] country overrides — do not delete',
+        customer: '', contractNo: COUNTRY_META_CONTRACT,
+        dueDate: '', priority: 'low', notes: payload
+      }});
+      // Track locally so we don't create duplicates
+      if (r && r.id) {
+        TASKS_STATE.tasks.push({ id: r.id, title: '[CRM meta] country overrides — do not delete',
+          customer: '', contractNo: COUNTRY_META_CONTRACT, dueDate: '', priority: 'low',
+          status: 'pending', notes: payload });
+      }
+    }
+  } catch (e) { console.warn('Country sync failed (saved locally):', e); }
+}
+
+// Merge synced overrides (from meta task) with local; synced wins, then migrate local up
+function loadCountryOverridesFromTasks() {
+  const local = getLocalCountryOverrides();
+  let synced = {};
+  const meta = findCountryMetaTask();
+  if (meta && meta.notes) {
+    try { synced = JSON.parse(meta.notes); } catch(e) { synced = {}; }
+  }
+  // Merge: start with local, overlay synced (synced is source of truth across devices)
+  COUNTRY_OVERRIDES = Object.assign({}, local, synced);
+  setLocalCountryOverrides(COUNTRY_OVERRIDES);
+  // If local had entries not in synced (e.g. edited offline on this device), push them up
+  const localOnly = Object.keys(local).filter(k => !(k in synced));
+  if (localOnly.length > 0) {
+    syncCountryOverridesToCloud();  // fire-and-forget migration
+  }
+}
+
 function getCustomerCountry(company) {
   const overrides = getCountryOverrides();
   if (overrides[company]) return overrides[company];
-  return detectCountry('', company);
+  // v1.9: use address blob (from CustomerDB) + company name for detection
+  const addrBlob = CUSTOMER_ADDR_BLOB[company] || '';
+  return detectCountry(addrBlob, company);
 }
 
 // v1.4: User can rename a customer (store override locally, doesn't change Google Sheet)
@@ -836,6 +914,29 @@ async function refreshData() {
     
     const allContracts = contractsRes.contracts || contractsRes.records || [];
     
+    // v1.9: Fetch CustomerDB (for address-based country detection) + tasks (for synced overrides)
+    // Build CUSTOMER_ADDR_BLOB: company → concatenated text of all fields (robust to column order)
+    CUSTOMER_ADDR_BLOB = {};
+    try {
+      const custRes = await apiGet('customerDB');
+      const custList = (custRes && custRes.customers) ? custRes.customers : [];
+      custList.forEach(c => {
+        if (!c.company) return;
+        // Concat every field — so "Malaysia" anywhere (addr/attn/notes) is caught regardless of column mapping
+        const blob = [c.addr, c.address, c.attn, c.notes, c.port, c.tel].filter(Boolean).join(' ');
+        CUSTOMER_ADDR_BLOB[c.company.trim()] = blob;
+      });
+    } catch (e) { console.warn('CustomerDB fetch failed (country detection will use names only):', e); }
+    
+    // Load tasks early so synced country overrides are available before detection
+    try {
+      if (!TASKS_STATE.loaded) {
+        const tr = await apiGet('crm_getTasks');
+        if (tr && tr.tasks) { TASKS_STATE.tasks = tr.tasks; TASKS_STATE.loaded = true; }
+      }
+    } catch (e) { console.warn('Task preload for overrides failed:', e); }
+    loadCountryOverridesFromTasks();  // merge synced + local overrides into COUNTRY_OVERRIDES
+    
     STATE.contracts = allContracts.map(r => ({
       contractNo: r.contractNo || '',
       date: r.date || '',
@@ -844,7 +945,7 @@ async function refreshData() {
       currency: r.currency || 'USD',
       amount: parseFloat(r.amount) || 0,
       status: r.status || 'Quotation Sent',
-      country: getCustomerCountry(r.company || '')
+      country: getCustomerCountry((r.company || '').trim())
     })).filter(c => c.company);  // Filter out empty company names
     
     // Load all follow-ups across all customers (for "overdue" detection)
@@ -1270,17 +1371,21 @@ function openCountryEditor(company) {
   $('modal-overlay').classList.add('show');
 }
 
-function saveCountry(company) {
+async function saveCountry(company) {
   const country = $('country-select').value;
-  setCountryOverride(company, country);
+  await setCountryOverride(company, country);
   closeModal();
-  showToast(`Country set: ${flagFor(country)} ${country}`, 'success');
+  showToast(`Country set: ${flagFor(country)} ${country} (synced)`, 'success');
   // Re-process customer data with new country
   STATE.customers.forEach(c => {
     if (c.company === company) {
       c.country = country;
       c.flag = flagFor(country);
     }
+  });
+  // v1.9: also update the contracts' country (so Pipeline/Dashboard reflect it)
+  STATE.contracts.forEach(c => {
+    if (c.company === company) c.country = country;
   });
   // Re-populate country dropdown
   STATE.countries.clear();
@@ -1539,7 +1644,7 @@ function toIsoDate(val) {
 }
 
 function updateTaskCounts() {
-  const tasks = (TASKS_STATE.tasks || []).filter(t => !isInquiryTask(t));  // v1.8: exclude inquiries
+  const tasks = (TASKS_STATE.tasks || []).filter(t => !isInquiryTask(t) && !isMetaTask(t));  // v1.8/1.9: exclude inquiries + meta
   const today = new Date().toISOString().split('T')[0];
   const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
   
@@ -1580,6 +1685,8 @@ function renderTasks() {
   filtered = filtered.filter(t => t.status !== 'deleted');
   // v1.8: Exclude inquiry-tasks (INQ- prefix) — they live in the Inquiries tab
   filtered = filtered.filter(t => !isInquiryTask(t));
+  // v1.9: Exclude meta tasks (_META prefix)
+  filtered = filtered.filter(t => !isMetaTask(t));
   
   if (TASKS_STATE.filter === 'pending') filtered = filtered.filter(t => t.status !== 'done');
   else if (TASKS_STATE.filter === 'done') filtered = filtered.filter(t => t.status === 'done');
@@ -2266,6 +2373,10 @@ const INQUIRY_OVERDUE_DAYS = 3; // Inquiry older than this with no conversion �
 
 function isInquiryTask(task) {
   return !!(task && task.contractNo && String(task.contractNo).startsWith('INQ-'));
+}
+// v1.9: meta tasks (e.g. country overrides) — hidden from all task/inquiry views
+function isMetaTask(task) {
+  return !!(task && task.contractNo && String(task.contractNo).startsWith('_META'));
 }
 
 function parseInquiryNotes(notesStr) {
@@ -3046,12 +3157,12 @@ function renderSnapshot() {
   
   // 1. Today's tasks (exclude inquiry-tasks)
   const tasksToday = (TASKS_STATE.tasks || []).filter(t => 
-    !isInquiryTask(t) && t.status !== 'done' && t.status !== 'deleted' && toIsoDate(t.dueDate) === today
+    !isInquiryTask(t) && !isMetaTask(t) && t.status !== 'done' && t.status !== 'deleted' && toIsoDate(t.dueDate) === today
   );
   
   // 2. Overdue tasks (exclude inquiry-tasks)
   const tasksOverdue = (TASKS_STATE.tasks || []).filter(t => {
-    if (isInquiryTask(t) || t.status === 'done' || t.status === 'deleted') return false;
+    if (isInquiryTask(t) || isMetaTask(t) || t.status === 'done' || t.status === 'deleted') return false;
     const d = toIsoDate(t.dueDate);
     return d && d < today;
   });
