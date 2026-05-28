@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.58</title>
+<title>Sen Labels — Contract Generator v10.59</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.58</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.59</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3886,12 +3886,52 @@ async function saveToSheets(silent=false) {
         } }) });
     }
     if (!silent) {
-      setBtn('✅ Saved!', '#2e7d32');
-      setTimeout(()=>{ setBtn('💾 Save Record',''); }, 2000);
+      // ── VERIFY the save actually landed (no-cors can't confirm, so we read it back) ──
+      setBtn('🔍 Verifying...', '#888');
+      const verified = await verifySaved(state.contractNo);
+      if (verified) {
+        setBtn('✅ Saved & Verified!', '#2e7d32');
+        const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+        showSaveStamp('✅ 已存档并确认 — ' + ts);
+      } else {
+        setBtn('⚠ Save unconfirmed', '#e67e00');
+        showSaveStamp('⚠ 存档未能确认，请再按一次 Save Record', true);
+      }
+      setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000);
     }
   } catch(e) {
-    if (!silent) { setBtn('❌ Failed','#c0392b'); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
+    if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp('❌ 存档失败: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
   }
+}
+
+// Read the contract back to confirm it really saved. Retries a couple of times
+// because Apps Script may take a moment to commit.
+async function verifySaved(contractNo) {
+  if (!contractNo || !gsUrl) return false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await new Promise(r => setTimeout(r, 1200));  // give Apps Script time to write
+    try {
+      const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
+      const data = await resp.json();
+      if (data && data.ok && data.state) return true;  // confirmed: state cache has it
+    } catch(e) { /* retry */ }
+  }
+  return false;
+}
+
+// Show a small persistent stamp near the Save button so you can see save status at a glance
+function showSaveStamp(msg, isWarning) {
+  let el = document.getElementById('save-stamp');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'save-stamp';
+    el.style.cssText = 'font-size:12px;font-weight:600;margin:4px 0;padding:4px 8px;border-radius:4px;display:inline-block';
+    const btn = document.querySelector('[onclick="saveToSheets()"]');
+    if (btn && btn.parentNode) btn.parentNode.insertBefore(el, btn.nextSibling);
+  }
+  el.textContent = msg;
+  el.style.background = isWarning ? '#fff3e0' : '#e8f5e9';
+  el.style.color = isWarning ? '#e65100' : '#2e7d32';
 }
 
 function loadHistory() {
