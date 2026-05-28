@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.2</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.3</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -1320,6 +1320,11 @@ function renderCustomerDetail(c, followups) {
     <div class="section-title">
       💬 Follow-ups (${followups.length})
       <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')">+ Add Follow-up</button>
+    </div>
+    <div class="quick-fu-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">
+      <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="客户没接电话 → 明天再跟">📞 没接 → 明天</button>
+      <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="已读不回 / 没回复 → 3天后再跟">💬 没回 → 3天后</button>
+      <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','done')" title="跟进完成 → 设下次日期">✅ 完成 → 设日期</button>
     </div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
       followups.map(f => {
@@ -3870,6 +3875,38 @@ function openFollowupModal(customer) {
     <button class="btn" onclick="saveFollowup('${customer.replace(/'/g, "\\'")}')">💾 Save Follow-up</button>
   `;
   $('modal-overlay').classList.add('show');
+}
+
+// Quick one-tap follow-up logging for common outcomes (no answer / no reply / done)
+async function quickFollowup(customer, kind) {
+  const today = new Date().toISOString().split('T')[0];
+  let nextDays, type, desc, outcome;
+  if (kind === 'no_answer') {
+    nextDays = 1;  type = 'Call';
+    desc = '📞 Called — no answer'; outcome = 'No answer, will retry tomorrow';
+  } else if (kind === 'no_reply') {
+    nextDays = 3;  type = 'WhatsApp';
+    desc = '💬 Messaged — no reply yet'; outcome = 'No reply, will follow up in 3 days';
+  } else if (kind === 'done') {
+    // "Done" needs a custom next date → just open the full modal pre-filled
+    openFollowupModal(customer);
+    return;
+  } else { return; }
+
+  const nextDate = new Date(Date.now() + nextDays*86400000).toISOString().split('T')[0];
+  // Try to attach the customer's most recent contract number (optional)
+  const c = STATE.customers.find(x => x.company === customer);
+  const contractNo = (c && c.contracts && c.contracts[0]) ? c.contracts[0].contractNo : '';
+
+  const fu = { customer, date: today, type, contractNo, description: desc, outcome, nextFollowupDate: nextDate };
+  try {
+    const r = await apiPost('crm_addFollowup', { followup: fu });
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    showToast(`✅ 已记录 — 下次跟进 ${fmtDate(nextDate)}`, 'success');
+    await selectCustomer(customer);  // refresh
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
 }
 
 async function saveFollowup(customer) {
