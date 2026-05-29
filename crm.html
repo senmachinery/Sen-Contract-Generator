@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.3</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.4</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -450,6 +450,7 @@
         <button class="qf-chip" data-inq-filter="overdue" onclick="setInquiryFilter('overdue')">🚨 Overdue <span id="inq-cnt-overdue">0</span></button>
         <button class="qf-chip" data-inq-filter="converted" onclick="setInquiryFilter('converted')">✅ Converted <span id="inq-cnt-converted">0</span></button>
         <button class="qf-chip" data-inq-filter="all" onclick="setInquiryFilter('all')">All</button>
+        <button class="btn btn-sm" onclick="printInquiries()" style="background:#1a3a5c;color:#fff" title="打印目前清单发给老板">🖨 Print List</button>
         <input type="text" id="inquiry-search" placeholder="🔍 Search..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;margin-left:auto;min-width:160px">
       </div>
     </div>
@@ -2936,6 +2937,91 @@ function runSmartPaste() {
     resultEl.classList.add('show');
   }
   if (typeof updateCustomerStatus === 'function') updateCustomerStatus();  // v2.1
+}
+
+function printInquiries() {
+  // Build a clean printable list from the CURRENT filtered view
+  const search = (INQUIRIES_STATE.search || '').toLowerCase();
+  let list = (INQUIRIES_STATE.inquiries || []).slice();
+  if (INQUIRIES_STATE.filter === 'pending') list = list.filter(i => !i.converted);
+  else if (INQUIRIES_STATE.filter === 'converted') list = list.filter(i => i.converted);
+  else if (INQUIRIES_STATE.filter === 'overdue') list = list.filter(inquiryIsOverdue);
+  if (search) {
+    list = list.filter(i => ((i.customer+' '+i.machine+' '+i.detail+' '+i.country+' '+i.attn).toLowerCase().includes(search)));
+  }
+  list.sort((a,b) => {
+    const ao = inquiryIsOverdue(a)?0:1, bo = inquiryIsOverdue(b)?0:1;
+    if (ao!==bo) return ao-bo;
+    return (b.inquiryDate||'').localeCompare(a.inquiryDate||'');
+  });
+
+  if (!list.length) { showToast('没有 inquiry 可打印', 'error'); return; }
+
+  const today = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const filterLabel = { pending:'Pending (等报价)', overdue:'Overdue (逾期)', converted:'Converted (已报价)', all:'All' }[INQUIRIES_STATE.filter] || 'All';
+
+  let rows = '';
+  list.forEach((inq, idx) => {
+    const flag = typeof flagFor === 'function' ? (flagFor(inq.country) || '') : '';
+    const prio = inq.priority === 'high' ? '🔴 High' : (inq.priority === 'low' ? '🔵 Low' : '🟡 Normal');
+    const overdue = inquiryIsOverdue(inq) ? ' style="background:#fff5f5"' : '';
+    rows += `<tr${overdue}>
+      <td style="text-align:center">${idx+1}</td>
+      <td><b>${escapeHtml(inq.customer || '—')}</b>${inq.country ? '<br><span style="color:#888;font-size:11px">'+flag+' '+escapeHtml(inq.country)+'</span>' : ''}</td>
+      <td>${escapeHtml(inq.machine || '—')}${inq.quantity ? ' <span style="color:#666">× '+escapeHtml(inq.quantity)+'</span>' : ''}</td>
+      <td>${escapeHtml(inq.attn || '—')}${inq.tel ? '<br><span style="color:#888;font-size:11px">'+escapeHtml(inq.tel)+'</span>' : ''}</td>
+      <td>${inq.budget ? escapeHtml(inq.budget) : '—'}</td>
+      <td style="text-align:center">${prio}</td>
+      <td style="font-size:11px">${inq.detail ? escapeHtml(inq.detail.slice(0,120)) : '—'}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Inquiry List - Sen Labels</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, 'Microsoft YaHei', sans-serif; color:#1a2433; margin:0; }
+    .head { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid #1a3a5c; padding-bottom:8px; margin-bottom:4px; }
+    h1 { font-size:20px; color:#1a3a5c; margin:0; }
+    .sub { color:#e67e00; font-weight:600; font-size:13px; }
+    .meta { color:#666; font-size:12px; text-align:right; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; }
+    th { background:#1a3a5c; color:#fff; padding:7px 8px; text-align:left; font-size:11px; }
+    td { border:1px solid #dde5ef; padding:6px 8px; vertical-align:top; }
+    tr:nth-child(even) td { background:#f6f9fc; }
+    .footer { margin-top:14px; color:#888; font-size:11px; text-align:center; }
+    @media print { .noprint { display:none } }
+  </style></head><body>
+    <div class="head">
+      <div>
+        <h1>📞 Customer Inquiries — 待报价清单</h1>
+        <div class="sub">Sen Labels Machinery Sdn Bhd</div>
+      </div>
+      <div class="meta">
+        Printed: ${today}<br>
+        View: <b>${filterLabel}</b> &nbsp;|&nbsp; Total: <b>${list.length}</b> inquiries
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:30px">#</th>
+        <th style="width:18%">Customer</th>
+        <th style="width:20%">Machine / Equipment</th>
+        <th style="width:14%">Contact (Attn)</th>
+        <th style="width:10%">Budget</th>
+        <th style="width:9%;text-align:center">Priority</th>
+        <th>Notes / Detail</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="footer">— 此清单由 Sen Labels CRM 自动产生 · 共 ${list.length} 个客户等待报价 —</div>
+    <button class="noprint" onclick="window.print()" style="position:fixed;top:10px;right:10px;padding:10px 18px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨 Print / Save PDF</button>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('请允许弹出视窗以打印', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { try { win.print(); } catch(e){} }, 400);
 }
 
 function openNewInquiryModal(prefill) {
