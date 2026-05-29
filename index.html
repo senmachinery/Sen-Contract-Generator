@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.60</title>
+<title>Sen Labels — Contract Generator v10.61</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -332,7 +332,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.60</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.61</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -582,7 +582,11 @@ function mobileTab(tab) {
     <div class="field-row">
       <div class="field-group">
         <label>Deposit %</label>
-        <input type="number" id="f-deposit-pct" value="30" min="0" max="100" oninput="calcPrice();updatePreview()">
+        <input type="number" id="f-deposit-pct" value="30" min="0" max="100" oninput="onDepositPctInput();calcPrice();updatePreview()">
+      </div>
+      <div class="field-group">
+        <label>OR Deposit Amount (fixed)</label>
+        <input type="number" id="f-deposit-amt" value="" min="0" placeholder="e.g. 3000" oninput="onDepositAmtInput();calcPrice();updatePreview()" title="填固定金额会盖过上面的百分比。例如机器 7500,这里填 3000 = 收 3000 定金">
       </div>
       <div class="field-group">
         <label>Payment Condition</label>
@@ -971,7 +975,7 @@ let state = {
   company:'', addr:'', tel:'', email:'', attn:'', port:'',
   currency:'USD',
   rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
-  depositPct:30, payCond:'30/70',
+  depositPct:30, depositAmt:0, payCond:'30/70',
   tradeinDesc:'', tradeinValue:0,
   installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
   installmentRate:0, installmentStartDate:'', installmentRows:[],
@@ -1288,6 +1292,7 @@ function saveCurrentMachineToState() {
   state.rateSGD    = n('f-rate-sgd') || 1.35;
   state.rateIDR    = n('f-rate-idr') || 16200;
   state.depositPct   = n('f-deposit-pct') || 30;
+  state.depositAmt   = n('f-deposit-amt') || 0;
   state.payCond      = g('f-pay-cond');
   state.tradeinDesc  = g('f-tradein-desc');
   state.tradeinValue = n('f-tradein-value') || 0;
@@ -1770,7 +1775,7 @@ function generateInstallments() {
 
   // Total balance = total price minus deposit minus trade-in
   const totalPrice = state.machines.reduce((s,m)=>(s + (calcPriceForMachine(m).sellPrice||0)),0);
-  const depositAmt = totalPrice * ((state.depositPct||30)/100);
+  const depositAmt = getDepositFor(totalPrice);
   const tradeinAmt = (state.tradeinValue>0) ? (state.tradeinValue||0) : 0;
   const balance    = totalPrice - depositAmt - tradeinAmt;
 
@@ -1965,8 +1970,35 @@ function onPayCondChange(val) {
   if (depMap[val] !== undefined) {
     const depField = document.getElementById('f-deposit-pct');
     if (depField) { depField.value = depMap[val]; state.depositPct = depMap[val]; }
+    // Switching to a preset % clears any fixed amount
+    const amtField = document.getElementById('f-deposit-amt');
+    if (amtField) { amtField.value = ''; state.depositAmt = 0; }
   }
   updatePreview();
+}
+
+// When user types a fixed deposit amount, it overrides the percentage
+function onDepositAmtInput() {
+  const amtField = document.getElementById('f-deposit-amt');
+  const amt = parseFloat(amtField ? amtField.value : '') || 0;
+  state.depositAmt = amt;
+  // Visual hint: grey out the % field when a fixed amount is in use
+  const pctField = document.getElementById('f-deposit-pct');
+  if (pctField) pctField.style.opacity = amt > 0 ? '0.4' : '1';
+}
+
+// When user types a percentage, clear the fixed amount
+function onDepositPctInput() {
+  const amtField = document.getElementById('f-deposit-amt');
+  if (amtField && amtField.value) { amtField.value = ''; state.depositAmt = 0; }
+  const pctField = document.getElementById('f-deposit-pct');
+  if (pctField) pctField.style.opacity = '1';
+}
+
+// Returns the effective deposit amount for a given total (fixed amount wins over %)
+function getDepositFor(total) {
+  if ((state.depositAmt || 0) > 0) return Math.min(state.depositAmt, total);
+  return total * ((state.depositPct || 30) / 100);
 }
 
 function calcPrice() {
@@ -1985,7 +2017,7 @@ function calcPrice() {
   m._finalPrice = sellPrice;
 
   const fmt = n => formatMoney(n, curr);
-  const dep = sellPrice * ((state.depositPct||30)/100);
+  const dep = getDepositFor(sellPrice);
   const bal = sellPrice - dep;
 
   const resultDiv = document.getElementById('price-calc-result');
@@ -2000,7 +2032,7 @@ function calcPrice() {
       } else {
         html += `<div class="pc-row total"><span>Net Price</span><span class="price-tag" style="font-size:15px">${fmt(sellPrice)}</span></div>`;
       }
-      html += `<div class="pc-row deposit"><span>Deposit (${state.depositPct||30}%)</span><span class="price-tag">${fmt(dep)}</span></div>`;
+      html += `<div class="pc-row deposit"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span class="price-tag">${fmt(dep)}</span></div>`;
       html += `<div class="pc-row balance"><span>Balance</span><span class="price-tag">${fmt(bal)}</span></div>`;
       resultDiv.innerHTML = html;
     } else {
@@ -2012,11 +2044,11 @@ function calcPrice() {
   if (totBox && state.machines.length > 1) {
     const allPrices = state.machines.map(mm => ({title: shortTitle(mm)||'Machine', price: calcPriceForMachine(mm).sellPrice}));
     const grand = allPrices.reduce((s,x)=>s+x.price,0);
-    const grandDep = grand * ((state.depositPct||30)/100);
+    const grandDep = getDepositFor(grand);
     const grandBal = grand - grandDep;
     let rows = allPrices.map((x,i) => `<div class="at-row"><span>Machine ${i+1} (${x.title})</span><span>${fmt(x.price)}</span></div>`).join('');
     rows += `<div class="at-row at-total"><span>&#931; Grand Total</span><span>${fmt(grand)}</span></div>`;
-    rows += `<div class="at-row" style="color:#e67e00"><span>Deposit (${state.depositPct||30}%)</span><span>${fmt(grandDep)}</span></div>`;
+    rows += `<div class="at-row" style="color:#e67e00"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span>${fmt(grandDep)}</span></div>`;
     rows += `<div class="at-row" style="color:#2e7d32"><span>Balance</span><span>${fmt(grandBal)}</span></div>`;
     totBox.style.display = 'block';
     totBox.innerHTML = `<div style="font-weight:700;font-size:11px;color:#1a3a5c;margin-bottom:6px">ALL MACHINES TOTAL</div>${rows}`;
@@ -2837,7 +2869,7 @@ function buildContractHTML() {
   // Compute all machine prices
   const machinePrices = state.machines.map(m => calcPriceForMachine(m).sellPrice);
   const totalPrice = machinePrices.reduce((s,p)=>s+(p||0), 0);
-  const totalDep = totalPrice * ((state.depositPct||30)/100);
+  const totalDep = getDepositFor(totalPrice);
   const tradeinAmt = (state.tradeinDesc && state.tradeinValue > 0) ? (state.tradeinValue||0) : 0;
   const effectiveDep = state.payCond === 'tradein' ? 0 : totalDep;
   const totalBal = totalPrice - effectiveDep - tradeinAmt;
@@ -2937,15 +2969,16 @@ function buildContractHTML() {
     });
 
     const totalAll = subtotalAll;
-    const dep = totalAll * ((state.depositPct||30)/100);
+    const dep = getDepositFor(totalAll);
     const bal = totalAll - dep;
     const balLbl = state.balanceLabel || 'Before Delivery';
+    const depLbl = (state.depositAmt||0) > 0 ? 'Deposit' : ((state.depositPct||30) + '% Deposit');
     let payRows = '';
     if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
       payRows = buildCustomPayRowsHTML(totalAll, fmt);
     } else if (state.payCond !== 'full') {
       payRows = `
-        <tr><td colspan="4"><strong>~ ${state.depositPct||30}% Deposit Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(dep)}</td></tr>
+        <tr><td colspan="4"><strong>~ ${depLbl} Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(dep)}</td></tr>
         <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(bal)}</td></tr>`;
     } else {
       payRows = `<tr><td colspan="4"><strong>~ Full Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;
@@ -3099,8 +3132,9 @@ function buildContractHTML() {
     payRows += `
     <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(totalBal)}</td></tr>`;
   } else if (state.payCond !== 'full') {
+    const depLbl2 = (state.depositAmt||0) > 0 ? 'Deposit' : ((state.depositPct||30) + '% Deposit');
     payRows = `
-    <tr><td colspan="4"><strong>~ ${state.depositPct||30}% Deposit Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(totalDep)}</td></tr>`;
+    <tr><td colspan="4"><strong>~ ${depLbl2} Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(totalDep)}</td></tr>`;
     if (tradeinAmt > 0) {
       payRows += `
     <tr><td colspan="4"><strong>~ Trade-In : ${esc(state.tradeinDesc||'Trade-In Machine')}</strong></td><td style="text-align:right;font-weight:700;color:#7b3f00">- ${fmt(tradeinAmt)}</td></tr>`;
@@ -4007,7 +4041,7 @@ function newContract() {
     admin: document.getElementById('f-admin').value || 'NR',
     company:'', addr:'', tel:'', email:'', attn:'', port:'',
     currency:'USD', rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
-    depositPct:30, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
+    depositPct:30, depositAmt:0, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
     installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
     installmentRate:0, installmentStartDate:'', installmentRows:[],
     validity:'One (1) Month only',
@@ -4128,7 +4162,7 @@ function loadStateJSON(input) {
       sv('f-rate-myr',     state.rateMYR);
       sv('f-rate-sgd',     state.rateSGD);
       sv('f-rate-idr',     state.rateIDR);
-      sv('f-deposit-pct',  state.depositPct);
+      sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||'');
       sv('f-pay-cond',     state.payCond);
       sv('f-tradein-desc', state.tradeinDesc);
       sv('f-tradein-value',state.tradeinValue);
@@ -4229,7 +4263,7 @@ function loadFromPastedJSON() {
     sv('f-rate-myr',     state.rateMYR);
     sv('f-rate-sgd',     state.rateSGD);
     sv('f-rate-idr',     state.rateIDR);
-    sv('f-deposit-pct',  state.depositPct);
+    sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||'');
     sv('f-pay-cond',     state.payCond);
     sv('f-tradein-desc', state.tradeinDesc);
     sv('f-tradein-value',state.tradeinValue);
@@ -4354,7 +4388,7 @@ async function loadFromLibrary(contractNo) {
     sv('f-fax',state.fax||'');
     sv('f-email',state.email); sv('f-attn',state.attn); sv('f-port',state.port);
     sv('f-currency',state.currency); sv('f-rate-usd',state.rateUSD); sv('f-rate-myr',state.rateMYR);
-    sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct);
+    sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct); sv('f-deposit-amt',state.depositAmt||'');
     sv('f-pay-cond',state.payCond); sv('f-tradein-desc',state.tradeinDesc); sv('f-tradein-value',state.tradeinValue);
     sv('f-validity',state.validity); sv('f-delivery',state.delivery);
     sv('f-balance-label',state.balanceLabel||''); sv('f-pay-terms-text',state.payTermsText||'');
@@ -4927,7 +4961,7 @@ function exportToExcel() {
   const fmt  = n => formatMoney(n, curr);
   const mp   = state.machines.map(m => calcPriceForMachine(m).sellPrice);
   const total = mp.reduce((s,p) => s+(p||0), 0);
-  const dep        = total * ((state.depositPct||30)/100);
+  const dep        = getDepositFor(total);
   const tradeinAmt = (state.tradeinDesc && state.tradeinValue > 0) ? (state.tradeinValue||0) : 0;
   const bal        = total - dep - tradeinAmt;
 
@@ -5068,7 +5102,7 @@ function exportToExcel() {
   // ── Remark / Payment terms ────────────────────────────────────────────────
   fullRow('REMARK :', ST.secHdr);
   if (state.payCond!=='full') {
-    r([c(''), c(`~ ${state.depositPct||30}% Deposit Upon Order Confirmed`), c(''), c(''), c(fmt(dep))]);
+    r([c(''), c(`~ ${(state.depositAmt||0)>0?'Deposit':((state.depositPct||30)+'% Deposit')} Upon Order Confirmed`), c(''), c(''), c(fmt(dep))]);
     if (tradeinAmt>0) r([c(''), c(`~ Trade-In : ${state.tradeinDesc||''}`), c(''), c(''), c('- '+fmt(tradeinAmt))]);
     r([c(''), c('~ Balance Payment Before Delivery'), c(''), c(''), c(fmt(bal))]);
   } else {
@@ -5210,7 +5244,7 @@ function exportToWord() {
 
   const machinePrices = state.machines.map(m => calcPriceForMachine(m).sellPrice);
   const totalPrice = machinePrices.reduce((s,p)=>s+(p||0),0);
-  const totalDep   = totalPrice * ((state.depositPct||30)/100);
+  const totalDep   = getDepositFor(totalPrice);
   const wordTradein = (state.tradeinDesc && state.tradeinValue > 0) ? (state.tradeinValue||0) : 0;
   const totalBal   = totalPrice - totalDep - wordTradein;
 
@@ -5358,7 +5392,7 @@ function exportToWord() {
   if (state.payCond !== 'full') {
     body += `
   <tr>
-    <td style="${B}padding:2pt 6pt">~ ${state.depositPct||30}% Deposit Upon Order Confirmed</td>
+    <td style="${B}padding:2pt 6pt">~ ${(state.depositAmt||0)>0?'Deposit':((state.depositPct||30)+'% Deposit')} Upon Order Confirmed</td>
     <td style="${B}font-weight:bold;color:${CO};text-align:right;padding:2pt 0;white-space:nowrap">${fmt(totalDep)}</td>
   </tr>`;
     if (wordTradein > 0) body += `
@@ -6314,7 +6348,7 @@ function restoreAutosaveDraft() {
   ['admin','doctype','status','contract-no','date','revised','company','addr','tel','fax','email','attn','port','currency','deposit-pct','pay-cond','validity','delivery','remarks','notes','tradein-desc','tradein-value']
     .forEach(k => sv('f-'+k, state[k.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] || state[k] || ''));
   sv('f-contract-no', state.contractNo); sv('f-date', state.date);
-  sv('f-deposit-pct', state.depositPct); sv('f-pay-cond', state.payCond);
+  sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); sv('f-pay-cond', state.payCond);
   sv('f-tradein-desc', state.tradeinDesc); sv('f-tradein-value', state.tradeinValue);
   renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
   renderCwItems(); renderRemarkItems(); updatePreview();
@@ -6369,7 +6403,7 @@ function duplicateAsNew() {
   sv('f-company', state.company); sv('f-addr', state.addr);
   sv('f-tel', state.tel); sv('f-fax', state.fax||''); sv('f-email', state.email); sv('f-attn', state.attn);
   sv('f-port', state.port); sv('f-currency', state.currency);
-  sv('f-deposit-pct', state.depositPct); sv('f-pay-cond', state.payCond);
+  sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); sv('f-pay-cond', state.payCond);
   sv('f-validity', state.validity); sv('f-delivery', state.delivery);
   sv('f-remarks', state.remarks); sv('f-notes', state.notes||'');
   genContractNo(); // try to auto-generate next number
