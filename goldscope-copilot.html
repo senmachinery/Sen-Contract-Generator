@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoldScope Co-Pilot · 开仓前副驾</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0B0E14;--panel:#121620;--panel2:#171c28;--line:#222937;--txt:#E6E9F0;--dim:#7B8499;
+    --gold:#E8B339;--goldsoft:#7a652e;--long:#2DD4A7;--short:#FF5C5C;--amber:#E8B339;
+    --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 85% -10%,rgba(232,179,57,.08),transparent 45%)}
+  .wrap{max-width:980px;margin:0 auto;padding:18px 16px 60px}
+  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+  h1{font-family:var(--mono);font-weight:700;font-size:19px;letter-spacing:.4px}
+  h1 span{color:var(--gold)}
+  .tag{font-family:var(--mono);font-size:11px;color:var(--dim);border:1px solid var(--line);padding:2px 7px;border-radius:4px}
+  .disclaimer{background:rgba(232,179,57,.07);border:1px solid rgba(232,179,57,.25);color:#f0d79a;font-size:12px;line-height:1.6;padding:9px 12px;border-radius:8px;margin-bottom:16px}
+  .disclaimer b{color:var(--gold)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .card h2{font-family:var(--mono);font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+  label{display:block;font-size:12px;color:var(--dim);margin:10px 0 4px;font-family:var(--mono)}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);font-family:var(--mono);
+    font-size:14px;padding:8px 10px;border-radius:7px;outline:none}
+  input:focus,select:focus{border-color:var(--gold)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .dirtoggle{display:flex;gap:8px;margin-top:4px}
+  .dirtoggle button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--dim);font-family:var(--mono);
+    font-weight:600;font-size:14px;padding:9px;border-radius:7px;cursor:pointer;transition:.15s}
+  .dirtoggle button.long.active{background:rgba(45,212,167,.15);border-color:var(--long);color:var(--long)}
+  .dirtoggle button.short.active{background:rgba(255,92,92,.15);border-color:var(--short);color:var(--short)}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-family:var(--mono);font-size:13px;color:var(--txt);cursor:pointer}
+  .chk input{width:auto}
+  .size-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+  .stat{background:var(--panel2);border-radius:8px;padding:11px;text-align:center}
+  .stat .n{font-family:var(--mono);font-size:21px;font-weight:700}
+  .stat .l{font-size:11px;color:var(--dim);margin-top:3px}
+  .stat.big{grid-column:span 2}
+  .stat.big .n{font-size:26px;color:var(--gold)}
+  .verdict{text-align:center;padding:14px;border-radius:10px;margin-bottom:12px;border:1px solid var(--line);font-family:var(--mono)}
+  .verdict .lab{font-size:22px;font-weight:700;letter-spacing:.5px}
+  .verdict.go{background:rgba(45,212,167,.10);border-color:rgba(45,212,167,.45)} .verdict.go .lab{color:var(--long)}
+  .verdict.cau{background:rgba(232,179,57,.10);border-color:rgba(232,179,57,.45)} .verdict.cau .lab{color:var(--amber)}
+  .verdict.no{background:rgba(255,92,92,.10);border-color:rgba(255,92,92,.45)} .verdict.no .lab{color:var(--short)}
+  .verdict .sub{font-size:12px;color:var(--dim);margin-top:4px}
+  .citem{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-family:var(--mono);font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .citem .ic{font-weight:700;flex-shrink:0}
+  .citem.pass .ic{color:var(--long)} .citem.cau .ic{color:var(--amber)} .citem.fail .ic{color:var(--short)}
+  .citem .txt{flex:1} .citem .note{color:var(--dim);font-size:11px;display:block;margin-top:1px}
+  .btn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);font-family:var(--mono);font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--gold);color:var(--gold)}
+  .btn.sm{font-size:11px;padding:5px 9px}
+  .btn.prim{background:var(--gold);color:#0B0E14;font-weight:600;border-color:var(--gold)}
+  .btn.prim:hover{filter:brightness(1.08);color:#0B0E14}
+  .jbtns{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 8px}
+  .jlog{max-height:230px;overflow-y:auto}
+  .jrow{font-family:var(--mono);font-size:11.5px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);align-items:center}
+  .jrow .d{font-weight:700;padding:1px 6px;border-radius:4px;font-size:10px}
+  .jrow .d.LONG{background:rgba(45,212,167,.18);color:var(--long)} .jrow .d.SHORT{background:rgba(255,92,92,.18);color:var(--short)}
+  .hint{font-size:11px;color:var(--dim);font-family:var(--mono);line-height:1.6;margin-top:8px}
+  textarea{width:100%;min-height:54px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:7px;outline:none;resize:vertical}
+  textarea:focus{border-color:var(--gold)}
+  .pasteband{background:rgba(232,179,57,.06);border:1px solid rgba(232,179,57,.3);border-radius:9px;padding:11px;margin-bottom:14px}
+  .pb-title{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);margin-bottom:4px}
+  .pb-hint{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.5;margin-bottom:8px}
+  footer{margin-top:20px;font-size:11px;color:var(--dim);line-height:1.7;border-top:1px solid var(--line);padding-top:12px;font-family:var(--mono)}
+  .send{background:var(--panel2);border:1px dashed var(--goldsoft);border-radius:8px;padding:10px;margin-top:10px;font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.5;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>GoldScope <span>Co-Pilot</span></h1>
+    <span class="tag">开仓前副驾</span>
+    <span class="tag">纯本地 · 不联网</span>
+  </header>
+
+  <div class="disclaimer">
+    <b>这是纪律与算账工具,不是买卖建议,也不预测胜负。</b>它只帮你按规则核对、算仓位、记日志。最终判断请结合你发给 Claude 的截图分析,并先在 demo 模拟账户测试。约 9 成散户长期亏损,务必带止损。
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: inputs -->
+    <div class="card">
+      <div class="pasteband">
+        <div class="pb-title">⚡ 一键填入</div>
+        <div class="pb-hint">把 TradingView 截图发给 Claude → 它回你一行数据 → 粘到这里 → 点填入,下面全部自动算好</div>
+        <textarea id="pasteBox" placeholder="例: GS|SHORT|4545.43|4550.78|4531.61|STRONG BEAR|41.7|18.4|BEAR|no|BULL"></textarea>
+        <button class="btn prim sm" id="fillBtn" style="margin-top:8px">⮃ 填入并计算</button>
+      </div>
+      <h2>① 填入这笔交易</h2>
+      <div class="row">
+        <div><label>账户资金 (USD)</label><input id="bal" type="number" value="10000"></div>
+        <div><label>单笔风险 %</label><input id="risk" type="number" value="1" step="0.1"></div>
+      </div>
+      <label>方向</label>
+      <div class="dirtoggle">
+        <button class="long active" id="dirLong" data-d="LONG">做多 LONG</button>
+        <button class="short" id="dirShort" data-d="SHORT">做空 SHORT</button>
+      </div>
+      <div class="row3">
+        <div><label>入场价</label><input id="entry" type="number" value="4540" step="0.01"></div>
+        <div><label>止损价</label><input id="sl" type="number" value="4535" step="0.01"></div>
+        <div><label>止盈价</label><input id="tp" type="number" value="4548" step="0.01"></div>
+      </div>
+
+      <h2 style="margin-top:18px">② KhanSaab 面板读数</h2>
+      <label>Market Bias 市场偏向</label>
+      <select id="bias">
+        <option>STRONG BULL</option><option>BULL</option><option selected>NEUTRAL</option><option>BEAR</option><option>STRONG BEAR</option>
+      </select>
+      <div class="row">
+        <div><label>RSI (14)</label><input id="rsi" type="number" value="50" step="0.1"></div>
+        <div><label>ADX Power</label><input id="adx" type="number" value="25" step="0.1"></div>
+      </div>
+      <label>MACD Trend</label>
+      <select id="macd"><option>BULL</option><option selected>NEUTRAL</option><option>BEAR</option></select>
+      <label class="chk"><input id="news" type="checkbox"> 30 分钟内有重大消息 / 数据公布</label>
+
+      <h2 style="margin-top:18px">③ 1 小时大趋势 (过滤器)</h2>
+      <label>1h 方向(只做顺着它的单)</label>
+      <select id="htf"><option value="BULL">BULL 偏多(只做多)</option><option value="NEUTRAL" selected>NEUTRAL 不明</option><option value="BEAR">BEAR 偏空(只做空)</option></select>
+      <div class="hint">改任何一个值,右边会即时重算。止盈留空也行。1h 与你的方向相反时,清单会直接亮红灯。</div>
+    </div>
+
+    <!-- RIGHT: outputs -->
+    <div>
+      <div class="card">
+        <h2>仓位与风险</h2>
+        <div class="size-grid">
+          <div class="stat big"><div class="n" id="oLots">—</div><div class="l">建议手数 (标准手, 1手=100盎司)</div></div>
+          <div class="stat"><div class="n" id="oRiskUSD">—</div><div class="l">本笔最大亏损</div></div>
+          <div class="stat"><div class="n" id="oRR">—</div><div class="l">盈亏比 R:R</div></div>
+          <div class="stat"><div class="n" id="oSLdist">—</div><div class="l">止损距离 /盎司</div></div>
+          <div class="stat"><div class="n" id="oOz">—</div><div class="l">≈ 持仓盎司</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>开仓前检查清单</h2>
+        <div class="verdict cau" id="verdict"><div class="lab" id="vLab">…</div><div class="sub" id="vSub"></div></div>
+        <div id="checklist"></div>
+        <div class="jbtns">
+          <button class="btn prim sm" id="logBtn">＋ 记录这笔</button>
+          <button class="btn sm" id="copyBtn">⧉ 复制给 Claude 的摘要</button>
+        </div>
+        <div class="send" id="sendBox" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>交易日志</h2>
+    <div class="jbtns">
+      <button class="btn sm" id="expBtn">⭳ 导出 CSV</button>
+      <label class="btn sm" for="impFile" style="cursor:pointer">⭱ 导入</label>
+      <input id="impFile" type="file" accept=".csv,.json" style="display:none">
+      <button class="btn sm" id="clrBtn">清空</button>
+    </div>
+    <div class="jlog" id="jlog"></div>
+    <div class="hint">每按一次「记录这笔」存一行(含你的检查结果、仓位、盈亏比)。成交后可在 CSV 里补上实际结果,月底连同 TradingView 模拟账户的成交历史一起发我,我帮你做深度复盘。</div>
+  </div>
+
+  <footer>
+    GoldScope Co-Pilot · 纯 JavaScript,零外部联网,本地双击也能开,绝不会"加载失败"。<br>
+    仓位算法:风险额 = 资金 × 风险% ;手数 = 风险额 ÷ (止损距离 × 100)。XAUUSD 每手 100 盎司,价格每动 $1 ≈ 每手 $100。不同券商合约规格略有差异,请以你平台为准。
+  </footer>
+</div>
+
+<script>
+const S={dir:'LONG',journal:[]};
+const $=id=>document.getElementById(id);
+const num=id=>parseFloat($(id).value);
+const fmt=(n,d=2)=>n==null||isNaN(n)||!isFinite(n)?'—':Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+async function jSave(){
+  try{ if(window.storage&&window.storage.set){ await window.storage.set('gs_copilot',JSON.stringify(S.journal)); return; } }catch(e){}
+  try{ localStorage.setItem('gs_copilot',JSON.stringify(S.journal)); }catch(e){}
+}
+async function jLoad(){
+  try{ if(window.storage&&window.storage.get){ const r=await window.storage.get('gs_copilot'); if(r&&r.value){ S.journal=JSON.parse(r.value); return; } } }catch(e){}
+  try{ const v=localStorage.getItem('gs_copilot'); if(v) S.journal=JSON.parse(v); }catch(e){}
+}
+
+function compute(){
+  const bal=num('bal'),risk=num('risk'),entry=num('entry'),sl=num('sl'),tp=num('tp');
+  const dir=S.dir, dirN=dir==='LONG'?1:-1;
+  const slDist=Math.abs(entry-sl);
+  const riskUSD=bal*risk/100;
+  const lots= slDist>0 ? riskUSD/(slDist*100) : NaN;
+  const oz= lots*100;
+  let rr=NaN; if(tp && slDist>0){ const reward=(tp-entry)*dirN; rr= reward/slDist; }
+  $('oLots').textContent=fmt(lots,2);
+  $('oRiskUSD').textContent='$'+fmt(riskUSD,0);
+  $('oRR').textContent= isNaN(rr)?'—':fmt(rr,2);
+  $('oSLdist').textContent='$'+fmt(slDist,2);
+  $('oOz').textContent=fmt(oz,0)+' oz';
+
+  // ---- checklist ----
+  const bias=$('bias').value, rsi=num('rsi'), adx=num('adx'), macd=$('macd').value, news=$('news').checked, htf=$('htf').value;
+  const items=[]; const minRR=1.5;
+  // 0 higher-timeframe (1h) filter — most important
+  if(htf==='NEUTRAL') items.push(['cau','1h 方向不明',`1h 中性 — 没有大趋势撑腰,胜算打折`]);
+  else if((dir==='LONG'&&htf==='BULL')||(dir==='SHORT'&&htf==='BEAR')) items.push(['pass','顺着 1h 大趋势',`1h ${htf} 与${dir==='LONG'?'做多':'做空'}一致`]);
+  else items.push(['fail','逆 1h 大趋势 — 别做',`1h 是 ${htf},你却要${dir==='LONG'?'做多':'做空'},在跟大趋势对着干`]);
+  // 1 bias alignment
+  const bullBias=bias.includes('BULL'), bearBias=bias.includes('BEAR');
+  if((dir==='LONG'&&bullBias)||(dir==='SHORT'&&bearBias)) items.push(['pass','方向顺着市场偏向',`${bias} 与${dir==='LONG'?'做多':'做空'}一致`]);
+  else if(bias==='NEUTRAL') items.push(['cau','市场偏向中性',`${bias} — 没有明确顺势,胜算打折`]);
+  else items.push(['fail','方向与市场偏向相反',`面板是 ${bias},你却要${dir==='LONG'?'做多':'做空'}——逆势`]);
+  // 2 MACD agreement
+  if((dir==='LONG'&&macd==='BULL')||(dir==='SHORT'&&macd==='BEAR')) items.push(['pass','MACD 同向',`MACD ${macd}`]);
+  else if(macd==='NEUTRAL') items.push(['cau','MACD 中性','动能不明确']);
+  else items.push(['fail','MACD 反向',`MACD ${macd} 与方向相反`]);
+  // 3 ADX trend strength
+  if(adx>=25) items.push(['pass','趋势够强 (ADX≥25)',`ADX ${fmt(adx,1)} — 适合趋势策略`]);
+  else if(adx>=20) items.push(['cau','趋势偏弱 (ADX 20-25)',`ADX ${fmt(adx,1)} — 临界,小心假突破`]);
+  else items.push(['fail','震荡市 (ADX<20)',`ADX ${fmt(adx,1)} — 这类信号最容易反复打脸`]);
+  // 4 RSI not exhausted (not chasing)
+  if(dir==='LONG'){ if(rsi>=75) items.push(['cau','RSI 偏高,像在追多',`RSI ${fmt(rsi,1)} — 超买区进多风险大`]); else if(rsi<30) items.push(['cau','RSI 超卖做多 = 抄底',`RSI ${fmt(rsi,1)} — 逆势抄底,需谨慎`]); else items.push(['pass','RSI 区间合理',`RSI ${fmt(rsi,1)}`]); }
+  else { if(rsi<=25) items.push(['cau','RSI 偏低,像在追空',`RSI ${fmt(rsi,1)} — 超卖区进空风险大`]); else if(rsi>70) items.push(['cau','RSI 超买做空 = 摸顶',`RSI ${fmt(rsi,1)} — 逆势摸顶,需谨慎`]); else items.push(['pass','RSI 区间合理',`RSI ${fmt(rsi,1)}`]); }
+  // 5 R:R
+  if(isNaN(rr)) items.push(['cau','未设止盈',`填止盈才能算盈亏比(建议≥${minRR})`]);
+  else if(rr>=minRR) items.push(['pass',`盈亏比达标 (≥${minRR})`,`R:R ${fmt(rr,2)}`]);
+  else if(rr>0) items.push(['fail',`盈亏比偏低 (<${minRR})`,`R:R ${fmt(rr,2)} — 赢的钱不够补亏`]);
+  else items.push(['fail','止盈方向放错了',`目标价在亏损一侧`]);
+  // 6 risk cap
+  if(risk>2) items.push(['fail','单笔风险过大 (>2%)',`${fmt(risk,1)}% — 几笔连亏就伤筋动骨`]);
+  else if(risk>1) items.push(['cau','单笔风险偏高 (1-2%)',`${fmt(risk,1)}% — 可以,但别再高`]);
+  else items.push(['pass','单笔风险稳健 (≤1%)',`${fmt(risk,1)}%`]);
+  // 7 news
+  if(news) items.push(['fail','临近重大消息',`数据公布前后波动剧烈、易被扫损,通常该避开`]);
+  else items.push(['pass','无临近重大消息','']);
+
+  $('checklist').innerHTML=items.map(([k,t,n])=>`<div class="citem ${k}"><span class="ic">${k==='pass'?'✓':k==='cau'?'!':'✕'}</span><span class="txt">${t}${n?`<span class="note">${n}</span>`:''}</span></div>`).join('');
+  const fails=items.filter(i=>i[0]==='fail').length, caus=items.filter(i=>i[0]==='cau').length, pass=items.filter(i=>i[0]==='pass').length;
+  const v=$('verdict');
+  if(fails>=1){ v.className='verdict no'; $('vLab').textContent='不建议进场'; $('vSub').textContent=`${fails} 项硬伤 · ${caus} 项警示 · ${pass} 项通过`; }
+  else if(caus>=2){ v.className='verdict cau'; $('vLab').textContent='谨慎 / 再想想'; $('vSub').textContent=`${caus} 项警示 · ${pass} 项通过 — 条件不够干净`; }
+  else if(caus===1){ v.className='verdict cau'; $('vLab').textContent='勉强可以'; $('vSub').textContent=`1 项警示 · ${pass} 项通过`; }
+  else { v.className='verdict go'; $('vLab').textContent='条件齐全'; $('vSub').textContent=`全部 ${pass} 项通过 — 仍要带止损`; }
+  S.last={dir,entry,sl,tp,lots,riskUSD,rr,bias,rsi,adx,macd,news,htf,fails,caus,pass};
+}
+
+function copySummary(){
+  const l=S.last; if(!l)return;
+  const txt=`帮我看这笔黄金交易该不该进(结合我截给你的 TradingView 图):\n方向 ${l.dir} · 入场 ${fmt(l.entry)} · 止损 ${fmt(l.sl)} · 止盈 ${l.tp?fmt(l.tp):'未设'}\n仓位 ${fmt(l.lots,2)} 手 · 单笔风险 $${fmt(l.riskUSD,0)} · 盈亏比 ${isNaN(l.rr)?'NA':fmt(l.rr,2)}\n15m 面板: Bias ${l.bias} · RSI ${fmt(l.rsi,1)} · ADX ${fmt(l.adx,1)} · MACD ${l.macd} · 临近消息 ${l.news?'是':'否'}\n1h 大趋势: ${l.htf}\n副驾检查: ${l.fails} 硬伤 / ${l.caus} 警示 / ${l.pass} 通过`;
+  const box=$('sendBox'); box.style.display='block'; box.textContent=txt;
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>{const b=$('copyBtn');b.textContent='✓ 已复制';setTimeout(()=>b.textContent='⧉ 复制给 Claude 的摘要',1500);}).catch(()=>{});
+}
+
+function logTrade(){
+  const l=S.last; if(!l)return;
+  S.journal.push({t:Date.now(),dir:l.dir,entry:l.entry,sl:l.sl,tp:l.tp||'',lots:+fmt(l.lots,2),risk:+fmt(l.riskUSD,0),rr:isNaN(l.rr)?'':+fmt(l.rr,2),
+    bias:l.bias,rsi:l.rsi,adx:l.adx,macd:l.macd,news:l.news,htf:l.htf,verdict:`${l.fails}F/${l.caus}C/${l.pass}P`,result:'',note:''});
+  jSave(); renderLog();
+}
+function renderLog(){
+  const rows=[...S.journal].reverse().slice(0,40).map(j=>{
+    const d=new Date(j.t); const ts=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<div class="jrow"><span class="d ${j.dir}">${j.dir==='LONG'?'多':'空'}</span><span>${ts} · 入${fmt(j.entry)} 损${fmt(j.sl)} ${j.tp?'盈'+fmt(j.tp):''} · ${fmt(j.lots,2)}手 · RR ${j.rr||'-'}</span><span style="color:var(--dim)">${j.verdict}</span></div>`;
+  }).join('');
+  $('jlog').innerHTML=rows||'<div class="hint">还没有记录。按「＋ 记录这笔」开始建你的交易日志。</div>';
+}
+function exportCSV(){
+  const head='time,dir,entry,sl,tp,lots,risk_usd,rr,bias,rsi,adx,macd,news,htf,verdict,result,note\n';
+  const body=S.journal.map(j=>[new Date(j.t).toISOString(),j.dir,j.entry,j.sl,j.tp,j.lots,j.risk,j.rr,j.bias,j.rsi,j.adx,j.macd,j.news,j.htf||'',j.verdict,j.result,(''+j.note).replace(/,/g,';')].join(',')).join('\n');
+  const blob=new Blob([head+body],{type:'text/csv'});const u=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=u;a.download=`copilot_log_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(u);
+}
+function importFile(file){const fr=new FileReader();fr.onload=()=>{try{
+  const t=fr.result.trim(); if(t[0]==='['){S.journal=JSON.parse(t);}
+  else{const lines=t.split('\n');const h=lines[0].split(',');S.journal=lines.slice(1).filter(Boolean).map(l=>{const v=l.split(',');const o={};h.forEach((k,i)=>o[k]=v[i]);
+    return{t:new Date(o.time).getTime(),dir:o.dir,entry:+o.entry,sl:+o.sl,tp:o.tp,lots:+o.lots,risk:+o.risk_usd,rr:o.rr,bias:o.bias,rsi:+o.rsi,adx:+o.adx,macd:o.macd,news:o.news==='true',verdict:o.verdict,result:o.result||'',note:o.note||''};});}
+  jSave();renderLog();}catch(e){alert('导入失败: '+e.message);}};fr.readAsText(file);}
+
+function fillFromPaste(){
+  const raw=$('pasteBox').value.trim(); if(!raw)return;
+  const parts=raw.split('|').map(s=>s.trim());
+  if(parts[0].toUpperCase()!=='GS'||parts.length<10){alert('格式不对。应为:\nGS|方向|入场|止损|止盈|Bias|RSI|ADX|MACD|消息|1h趋势\n例: GS|SHORT|4545.43|4550.78|4531.61|STRONG BEAR|41.7|18.4|BEAR|no|BULL');return;}
+  const [,dir,entry,sl,tp,bias,rsi,adx,macd,news,htf]=parts;
+  S.dir=dir.toUpperCase()==='SHORT'?'SHORT':'LONG';
+  $('dirLong').classList.toggle('active',S.dir==='LONG');
+  $('dirShort').classList.toggle('active',S.dir==='SHORT');
+  if(entry)$('entry').value=entry; if(sl)$('sl').value=sl; $('tp').value=tp||'';
+  const bU=bias.toUpperCase(); [...$('bias').options].forEach(o=>{if(o.value===bU)$('bias').value=o.value;});
+  if(rsi)$('rsi').value=rsi; if(adx)$('adx').value=adx;
+  const mU=macd.toUpperCase(); [...$('macd').options].forEach(o=>{if(o.value===mU)$('macd').value=o.value;});
+  $('news').checked=/^(yes|y|true|1|是|有)$/i.test(news);
+  if(htf){const hU=htf.toUpperCase(); if(['BULL','BEAR','NEUTRAL'].includes(hU))$('htf').value=hU;}
+  compute(); $('pasteBox').value='';
+}
+
+// events
+['bal','risk','entry','sl','tp','rsi','adx'].forEach(id=>$(id).addEventListener('input',compute));
+['bias','macd','htf'].forEach(id=>$(id).addEventListener('change',compute));
+$('news').addEventListener('change',compute);
+$('dirLong').addEventListener('click',()=>{S.dir='LONG';$('dirLong').classList.add('active');$('dirShort').classList.remove('active');compute();});
+$('dirShort').addEventListener('click',()=>{S.dir='SHORT';$('dirShort').classList.add('active');$('dirLong').classList.remove('active');compute();});
+$('logBtn').addEventListener('click',logTrade);
+$('copyBtn').addEventListener('click',copySummary);
+$('expBtn').addEventListener('click',exportCSV);
+$('clrBtn').addEventListener('click',()=>{if(confirm('清空所有日志?')){S.journal=[];jSave();renderLog();}});
+$('impFile').addEventListener('change',e=>{if(e.target.files[0])importFile(e.target.files[0]);});
+$('fillBtn').addEventListener('click',fillFromPaste);
+(async()=>{await jLoad();renderLog();compute();})();
+</script>
+</body>
+</html>
