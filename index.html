@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.64</title>
+<title>Sen Labels — Contract Generator v10.65</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -337,7 +337,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.64</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.65</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -4351,12 +4351,16 @@ async function searchLibrary() {
   try {
     const resp = await fetch(`${gsUrl}?action=list&q=${encodeURIComponent(q)}`);
     const data = await resp.json();
-    const records = (data.records || []).sort((a, b) => {
-      // Sort by savedAt first (most recently saved), fallback to date
-      const sa = a.savedAt || a.date || '';
-      const sb = b.savedAt || b.date || '';
-      return String(sb).localeCompare(String(sa));
-    });
+    const __nowMs = Date.now();
+    // Effective edit time: ignore future-dated savedAt (bad data) by capping/falling back to date
+    function effEditMs(r) {
+      let t = Date.parse(r.savedAt || '');
+      if (isNaN(t) || t > __nowMs + 86400000) {  // missing or in the future → use contract date instead
+        t = Date.parse(r.date || '');
+      }
+      return isNaN(t) ? 0 : t;
+    }
+    const records = (data.records || []).sort((a, b) => effEditMs(b) - effEditMs(a));
     document.getElementById('library-status').textContent = `${records.length} contract(s) found`;
     if (records.length === 0) {
       document.getElementById('library-list').innerHTML = '<div style="padding:20px;text-align:center;color:#999">No contracts found.</div>';
@@ -4367,13 +4371,18 @@ async function searchLibrary() {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const dayMs = 86400000;
     function editTime(r) {
-      const t = Date.parse(r.savedAt || r.date || '');
+      let t = Date.parse(r.savedAt || '');
+      if (isNaN(t) || t > __nowMs + 86400000) {  // future/bad savedAt → fall back to contract date
+        t = Date.parse(r.date || '');
+      }
       return isNaN(t) ? 0 : t;
     }
     function relTimeLabel(t) {
       if (!t) return '';
-      const diffDays = Math.floor((startOfToday - new Date(new Date(t).getFullYear(), new Date(t).getMonth(), new Date(t).getDate()).getTime()) / dayMs);
-      if (diffDays <= 0) return 'today';
+      const editDay = new Date(new Date(t).getFullYear(), new Date(t).getMonth(), new Date(t).getDate()).getTime();
+      const diffDays = Math.round((startOfToday - editDay) / dayMs);
+      if (diffDays < 0) return '';              // future date (bad data) — show no relative label
+      if (diffDays === 0) return 'today';
       if (diffDays === 1) return 'yesterday';
       if (diffDays < 7) return diffDays + ' days ago';
       if (diffDays < 14) return 'last week';
@@ -4384,8 +4393,9 @@ async function searchLibrary() {
     function groupOf(t) {
       if (!t) return 'older';
       const editDay = new Date(new Date(t).getFullYear(), new Date(t).getMonth(), new Date(t).getDate()).getTime();
-      const diffDays = Math.floor((startOfToday - editDay) / dayMs);
-      if (diffDays <= 0) return 'today';
+      const diffDays = Math.round((startOfToday - editDay) / dayMs);
+      if (diffDays < 0) return 'older';         // future date (bad data) → treat as older, not today
+      if (diffDays === 0) return 'today';
       if (diffDays === 1) return 'yesterday';
       if (diffDays < 7) return 'thisweek';
       if (diffDays < 30) return 'thismonth';
