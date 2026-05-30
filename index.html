@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.62</title>
+<title>Sen Labels — Contract Generator v10.64</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -97,6 +97,7 @@ button{cursor:pointer;font-family:inherit}
 .btn-success{background:#2e7d32;color:#fff}
 .btn-success:hover{background:#388e3c}
 .lib-item{padding:10px 14px;border-bottom:1px solid #edf2f8;cursor:pointer;transition:.15s;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.lib-cat-header{padding:6px 14px;background:#eef3f9;font-size:10px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #dde4f0;position:sticky;top:0;z-index:2}
 .lib-item:hover{background:#f0f4ff}
 .lib-item:last-child{border-bottom:none}
 .lib-item-no{font-weight:700;font-size:12px;color:#1a3a5c}
@@ -105,6 +106,10 @@ button{cursor:pointer;font-family:inherit}
 .lib-item-meta{text-align:right;font-size:11px;color:#888;white-space:nowrap}
 .lib-item-amount{font-weight:700;color:#1a3a5c;font-size:12px}
 .mdb-item{padding:10px 14px;border-bottom:1px solid #edf2f8;cursor:pointer;transition:.15s}
+.mdb-chip{padding:3px 10px;border:1px solid #c0cde0;background:#fff;border-radius:12px;font-size:11px;cursor:pointer;color:#555;transition:.12s}
+.mdb-chip:hover{background:#f0f5ff}
+.mdb-chip.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c;font-weight:600}
+.mdb-cat-header{padding:5px 14px;background:#eef3f9;font-size:10px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #dde4f0;position:sticky;top:0}
 .mdb-item:hover{background:#fff8f0}
 .mdb-item:last-child{border-bottom:none}
 .mdb-item-name{font-weight:700;font-size:12px;color:#1a3a5c;margin-bottom:3px}
@@ -332,7 +337,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.62</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.64</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -849,6 +854,24 @@ function mobileTab(tab) {
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <input type="text" id="machinedb-search" placeholder="Search model name..." style="flex:1;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px" oninput="searchMachineDB()">
       <button class="btn btn-outline btn-sm" onclick="searchMachineDB()">&#128269; Search</button>
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px">
+        <span style="font-size:10px;color:#999;align-self:center;margin-right:2px">状态:</span>
+        <button class="mdb-chip active" data-mdb-cond="all" onclick="setMachineCondFilter('all')">All</button>
+        <button class="mdb-chip" data-mdb-cond="New" onclick="setMachineCondFilter('New')">🆕 New</button>
+        <button class="mdb-chip" data-mdb-cond="Refurbished" onclick="setMachineCondFilter('Refurbished')">♻️ Refurbished</button>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <span style="font-size:10px;color:#999;align-self:center;margin-right:2px">类型:</span>
+        <button class="mdb-chip active" data-mdb-type="all" onclick="setMachineTypeFilter('all')">All Types</button>
+        <button class="mdb-chip" data-mdb-type="printing" onclick="setMachineTypeFilter('printing')">🖨 Printing</button>
+        <button class="mdb-chip" data-mdb-type="diecut" onclick="setMachineTypeFilter('diecut')">✂️ Die Cut</button>
+        <button class="mdb-chip" data-mdb-type="slitting" onclick="setMachineTypeFilter('slitting')">📏 Slitting</button>
+        <button class="mdb-chip" data-mdb-type="cutter" onclick="setMachineTypeFilter('cutter')">🔪 Cutter</button>
+        <button class="mdb-chip" data-mdb-type="rewinder" onclick="setMachineTypeFilter('rewinder')">🌀 Rewinder</button>
+        <button class="mdb-chip" data-mdb-type="other" onclick="setMachineTypeFilter('other')">⚙️ Other</button>
+      </div>
     </div>
     <div id="machinedb-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
     <div id="machinedb-list" style="max-height:440px;overflow-y:auto;border:1px solid #dde4f0;border-radius:4px">
@@ -4339,7 +4362,49 @@ async function searchLibrary() {
       document.getElementById('library-list').innerHTML = '<div style="padding:20px;text-align:center;color:#999">No contracts found.</div>';
       return;
     }
-    document.getElementById('library-list').innerHTML = records.map((r, i) => `
+    // Group records by how recently they were edited (savedAt). Most recent group on top.
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const dayMs = 86400000;
+    function editTime(r) {
+      const t = Date.parse(r.savedAt || r.date || '');
+      return isNaN(t) ? 0 : t;
+    }
+    function relTimeLabel(t) {
+      if (!t) return '';
+      const diffDays = Math.floor((startOfToday - new Date(new Date(t).getFullYear(), new Date(t).getMonth(), new Date(t).getDate()).getTime()) / dayMs);
+      if (diffDays <= 0) return 'today';
+      if (diffDays === 1) return 'yesterday';
+      if (diffDays < 7) return diffDays + ' days ago';
+      if (diffDays < 14) return 'last week';
+      if (diffDays < 30) return Math.floor(diffDays/7) + ' weeks ago';
+      if (diffDays < 60) return 'last month';
+      return Math.floor(diffDays/30) + ' months ago';
+    }
+    function groupOf(t) {
+      if (!t) return 'older';
+      const editDay = new Date(new Date(t).getFullYear(), new Date(t).getMonth(), new Date(t).getDate()).getTime();
+      const diffDays = Math.floor((startOfToday - editDay) / dayMs);
+      if (diffDays <= 0) return 'today';
+      if (diffDays === 1) return 'yesterday';
+      if (diffDays < 7) return 'thisweek';
+      if (diffDays < 30) return 'thismonth';
+      return 'older';
+    }
+    const GROUP_LABELS = {
+      today: '📅 今天修改 Today', yesterday: '🕐 昨天 Yesterday',
+      thisweek: '📆 本周稍早 Earlier This Week', thismonth: '🗓 本月 This Month',
+      older: '📁 更早 Older (用搜索更快 — use search)'
+    };
+    const GROUP_ORDER = ['today','yesterday','thisweek','thismonth','older'];
+    // Bucket the (already savedAt-sorted) records
+    const buckets = {};
+    records.forEach(r => { const g = groupOf(editTime(r)); (buckets[g] = buckets[g] || []).push(r); });
+
+    const itemHTML = (r) => {
+      const t = editTime(r);
+      const rel = relTimeLabel(t);
+      return `
       <div class="lib-item" onclick="loadFromLibrary('${escAttr(r.contractNo)}')">
         <div>
           <div class="lib-item-no">📄 ${escHtml(r.contractNo)}</div>
@@ -4348,10 +4413,19 @@ async function searchLibrary() {
         </div>
         <div class="lib-item-meta">
           <div class="lib-item-amount">${escHtml(r.currency)} ${Number(r.amount||0).toLocaleString('en-MY',{minimumFractionDigits:2})}</div>
-          <div>${escHtml(r.date)}</div>
+          <div>${escHtml(r.date)}${rel ? ` <span style="color:#e67e00;font-weight:600">· ${rel}</span>` : ''}</div>
           <div style="color:#2e7d32;font-weight:600">${escHtml(r.status||'')}</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    };
+
+    let html = '';
+    GROUP_ORDER.forEach(g => {
+      if (!buckets[g] || !buckets[g].length) return;
+      html += `<div class="lib-cat-header">${GROUP_LABELS[g]} (${buckets[g].length})</div>`;
+      html += buckets[g].map(itemHTML).join('');
+    });
+    document.getElementById('library-list').innerHTML = html;
   } catch(e) {
     document.getElementById('library-status').textContent = 'Error loading library';
     document.getElementById('library-list').innerHTML = `<div style="padding:20px;text-align:center;color:#c0392b">Error: ${e.message}</div>`;
@@ -4853,22 +4927,88 @@ async function searchMachineDB() {
   }
 }
 
+// Detect machine category from its type field + model name keywords
+function detectMachineCategory(m) {
+  const name = ((m.modelName || '') + ' ' + (m.machineType || '') + ' ' + (m.desc || '')).toLowerCase();
+  // Order matters: check more specific first
+  if (name.includes('die cut') || name.includes('die-cut') || name.includes('diecut') || name.includes('hot stamp')) return 'diecut';
+  if (name.includes('slitting') || name.includes('slitter')) return 'slitting';
+  if (name.includes('rewinder') || name.includes('rewinding')) return 'rewinder';
+  if (name.includes('cutter') || name.includes('sheet cut') || name.includes('core cut')) return 'cutter';
+  if (name.includes('printing') || name.includes('flexo') || name.includes('letter press') || name.includes('letterpress') || name.includes('press')) return 'printing';
+  return 'other';
+}
+const MACHINE_CAT_LABELS = {
+  printing: '🖨 Printing Machines', diecut: '✂️ Die Cut Machines', slitting: '📏 Slitting Machines',
+  cutter: '🔪 Cutter Machines', rewinder: '🌀 Rewinder Machines', other: '⚙️ Other Machines'
+};
+let _mdbCondFilter = 'all';
+let _mdbTypeFilter = 'all';
+function setMachineCondFilter(cond) {
+  _mdbCondFilter = cond;
+  document.querySelectorAll('[data-mdb-cond]').forEach(el => el.classList.toggle('active', el.dataset.mdbCond === cond));
+  renderMachineDBList(_machineDBCache);
+}
+function setMachineTypeFilter(type) {
+  _mdbTypeFilter = type;
+  document.querySelectorAll('[data-mdb-type]').forEach(el => el.classList.toggle('active', el.dataset.mdbType === type));
+  renderMachineDBList(_machineDBCache);
+}
+
 function renderMachineDBList(machines) {
   const listEl = document.getElementById('machinedb-list');
-  if (!machines.length) {
+  if (!machines || !machines.length) {
     listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No machines found. Add them in Google Sheet → MachineDB tab.</div>';
     return;
   }
-  listEl.innerHTML = machines.map((m, i) => `
-    <div class="mdb-item" onclick="loadMachineFromDB(${i})">
-      <div class="mdb-item-name">🔧 ${escHtml(m.modelName)}</div>
+  // Tag each machine with its category + original index (for loadMachineFromDB)
+  let tagged = machines.map((m, i) => ({ m, i, cat: detectMachineCategory(m) }));
+  // Apply filters
+  if (_mdbCondFilter !== 'all') {
+    tagged = tagged.filter(t => String(t.m.condition || 'New').toLowerCase() === _mdbCondFilter.toLowerCase());
+  }
+  if (_mdbTypeFilter !== 'all') {
+    tagged = tagged.filter(t => t.cat === _mdbTypeFilter);
+  }
+  const statusEl = document.getElementById('machinedb-status');
+  if (statusEl) {
+    const total = machines.length;
+    statusEl.textContent = (tagged.length === total)
+      ? `${total} machine(s) in database`
+      : `Showing ${tagged.length} of ${total} machine(s)`;
+  }
+  if (!tagged.length) {
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#999">没有符合筛选的机器 — 试试别的分类</div>';
+    return;
+  }
+  // Group by category (only when not already filtered to one type) for easy browsing
+  const catOrder = ['printing','diecut','slitting','cutter','rewinder','other'];
+  const groups = {};
+  tagged.forEach(t => { (groups[t.cat] = groups[t.cat] || []).push(t); });
+
+  let html = '';
+  const itemHTML = (t) => `
+    <div class="mdb-item" onclick="loadMachineFromDB(${t.i})">
+      <div class="mdb-item-name">🔧 ${escHtml(t.m.modelName)}</div>
       <div class="mdb-item-meta">
-        <span>📦 ${escHtml(m.condition)}</span>
-        <span>📐 ${m.extraSpecs ? m.extraSpecs.length : 0} specs</span>
-        ${m.cwItems && m.cwItems.length ? `<span>✅ ${m.cwItems.length} come-with items</span>` : ''}
-        ${m.refPrice ? `<span class="mdb-item-price">Ref: USD ${Number(m.refPrice).toLocaleString()}</span>` : ''}
+        <span>📦 ${escHtml(t.m.condition)}</span>
+        <span>📐 ${t.m.extraSpecs ? t.m.extraSpecs.length : 0} specs</span>
+        ${t.m.cwItems && t.m.cwItems.length ? `<span>✅ ${t.m.cwItems.length} come-with items</span>` : ''}
+        ${t.m.refPrice ? `<span class="mdb-item-price">Ref: USD ${Number(t.m.refPrice).toLocaleString()}</span>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+
+  // Show category headers when viewing "All Types" (so it's auto-organized); skip headers when one type is selected
+  if (_mdbTypeFilter === 'all') {
+    catOrder.forEach(cat => {
+      if (!groups[cat] || !groups[cat].length) return;
+      html += `<div class="mdb-cat-header">${MACHINE_CAT_LABELS[cat]} (${groups[cat].length})</div>`;
+      html += groups[cat].map(itemHTML).join('');
+    });
+  } else {
+    html = tagged.map(itemHTML).join('');
+  }
+  listEl.innerHTML = html;
 }
 
 function loadMachineFromDB(idx) {
