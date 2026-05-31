@@ -65,6 +65,11 @@
   .jrow .d{font-weight:700;padding:1px 6px;border-radius:4px;font-size:10px}
   .jrow .d.LONG{background:rgba(45,212,167,.18);color:var(--long)} .jrow .d.SHORT{background:rgba(255,92,92,.18);color:var(--short)}
   .hint{font-size:11px;color:var(--dim);font-family:var(--mono);line-height:1.6;margin-top:8px}
+  .markettoggle{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .mt-label{font-family:var(--mono);font-size:12px;color:var(--dim)}
+  .mt-btn{background:var(--panel);border:1px solid var(--line);color:var(--dim);font-family:var(--mono);font-weight:600;font-size:13px;padding:7px 14px;border-radius:8px;cursor:pointer;transition:.15s}
+  .mt-btn.active{background:var(--gold);color:#0B0E14;border-color:var(--gold)}
+  .mt-btn:hover:not(.active){color:var(--txt)}
   textarea{width:100%;min-height:54px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:7px;outline:none;resize:vertical}
   textarea:focus{border-color:var(--gold)}
   .pasteband{background:rgba(232,179,57,.06);border:1px solid rgba(232,179,57,.3);border-radius:9px;padding:11px;margin-bottom:14px}
@@ -86,13 +91,19 @@
     <b>这是纪律与算账工具,不是买卖建议,也不预测胜负。</b>它只帮你按规则核对、算仓位、记日志。最终判断请结合你发给 Claude 的截图分析,并先在 demo 模拟账户测试。约 9 成散户长期亏损,务必带止损。
   </div>
 
+  <div class="markettoggle">
+    <span class="mt-label">市场</span>
+    <button class="mt-btn active" id="mktGold" data-m="GOLD">🥇 黄金 XAUUSD</button>
+    <button class="mt-btn" id="mktBTC" data-m="BTC">₿ 比特币 BTC</button>
+  </div>
+
   <div class="grid">
     <!-- LEFT: inputs -->
     <div class="card">
       <div class="pasteband">
         <div class="pb-title">⚡ 一键填入</div>
         <div class="pb-hint">把 TradingView 截图发给 Claude → 它回你一行数据 → 粘到这里 → 点填入,下面全部自动算好</div>
-        <textarea id="pasteBox" placeholder="例: GS|SHORT|4545.43|4550.78|4531.61|STRONG BEAR|41.7|18.4|BEAR|no|BULL"></textarea>
+        <textarea id="pasteBox" placeholder="例: GS|LONG|74038|73900|74172|BULL|49.9|25.9|BEAR|no|BULL|BTC"></textarea>
         <button class="btn prim sm" id="fillBtn" style="margin-top:8px">⮃ 填入并计算</button>
       </div>
       <h2>① 填入这笔交易</h2>
@@ -135,11 +146,11 @@
       <div class="card">
         <h2>仓位与风险</h2>
         <div class="size-grid">
-          <div class="stat big"><div class="n" id="oLots">—</div><div class="l">建议手数 (标准手, 1手=100盎司)</div></div>
+          <div class="stat big"><div class="n" id="oLots">—</div><div class="l" id="oLotsL">建议手数 (标准手, 1手=100盎司)</div></div>
           <div class="stat"><div class="n" id="oRiskUSD">—</div><div class="l">本笔最大亏损</div></div>
           <div class="stat"><div class="n" id="oRR">—</div><div class="l">盈亏比 R:R</div></div>
-          <div class="stat"><div class="n" id="oSLdist">—</div><div class="l">止损距离 /盎司</div></div>
-          <div class="stat"><div class="n" id="oOz">—</div><div class="l">≈ 持仓盎司</div></div>
+          <div class="stat"><div class="n" id="oSLdist">—</div><div class="l" id="oSLdistL">止损距离 /盎司</div></div>
+          <div class="stat"><div class="n" id="oOz">—</div><div class="l" id="oOzL">≈ 持仓盎司</div></div>
         </div>
       </div>
 
@@ -169,13 +180,14 @@
   </div>
 
   <footer>
-    GoldScope Co-Pilot · 纯 JavaScript,零外部联网,本地双击也能开,绝不会"加载失败"。<br>
-    仓位算法:风险额 = 资金 × 风险% ;手数 = 风险额 ÷ (止损距离 × 100)。XAUUSD 每手 100 盎司,价格每动 $1 ≈ 每手 $100。不同券商合约规格略有差异,请以你平台为准。
+    GoldScope Co-Pilot · 纯 JavaScript,零外部联网,本地双击也能开。<br>
+    仓位算法:风险额 = 资金 × 风险%。黄金:手数 = 风险额 ÷ (止损距离 × 100),每手 100 盎司。BTC:数量 = 风险额 ÷ 止损距离(美元),按币计。<br>
+    ⚠ BTC 波动远大于黄金,小账户想按规矩控险往往被迫用高杠杆、急跳易爆仓——仓位务必压到极小,先在模拟盘测。不同平台合约规格略有差异,以你平台为准。
   </footer>
 </div>
 
 <script>
-const S={dir:'LONG',journal:[]};
+const S={dir:'LONG',market:'GOLD',journal:[]};
 const $=id=>document.getElementById(id);
 const num=id=>parseFloat($(id).value);
 const fmt=(n,d=2)=>n==null||isNaN(n)||!isFinite(n)?'—':Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -194,14 +206,28 @@ function compute(){
   const dir=S.dir, dirN=dir==='LONG'?1:-1;
   const slDist=Math.abs(entry-sl);
   const riskUSD=bal*risk/100;
-  const lots= slDist>0 ? riskUSD/(slDist*100) : NaN;
-  const oz= lots*100;
   let rr=NaN; if(tp && slDist>0){ const reward=(tp-entry)*dirN; rr= reward/slDist; }
-  $('oLots').textContent=fmt(lots,2);
+  let sizeNum;
+  if(S.market==='BTC'){
+    sizeNum = slDist>0 ? riskUSD/slDist : NaN;        // size in BTC
+    const notional = sizeNum*entry;
+    $('oLots').textContent=fmt(sizeNum,4);
+    $('oLotsL').textContent='建议 BTC 数量';
+    $('oSLdistL').textContent='止损距离 (USD)';
+    $('oOz').textContent='$'+fmt(notional,0);
+    $('oOzL').textContent='≈ 持仓名义价值';
+  } else {
+    sizeNum = slDist>0 ? riskUSD/(slDist*100) : NaN;  // gold lots
+    const oz=sizeNum*100;
+    $('oLots').textContent=fmt(sizeNum,2);
+    $('oLotsL').textContent='建议手数 (标准手, 1手=100盎司)';
+    $('oSLdistL').textContent='止损距离 /盎司';
+    $('oOz').textContent=fmt(oz,0)+' oz';
+    $('oOzL').textContent='≈ 持仓盎司';
+  }
   $('oRiskUSD').textContent='$'+fmt(riskUSD,0);
   $('oRR').textContent= isNaN(rr)?'—':fmt(rr,2);
   $('oSLdist').textContent='$'+fmt(slDist,2);
-  $('oOz').textContent=fmt(oz,0)+' oz';
 
   // ---- checklist ----
   const bias=$('bias').value, rsi=num('rsi'), adx=num('adx'), macd=$('macd').value, news=$('news').checked, htf=$('htf').value;
@@ -246,46 +272,48 @@ function compute(){
   else if(caus>=2){ v.className='verdict cau'; $('vLab').textContent='谨慎 / 再想想'; $('vSub').textContent=`${caus} 项警示 · ${pass} 项通过 — 条件不够干净`; }
   else if(caus===1){ v.className='verdict cau'; $('vLab').textContent='勉强可以'; $('vSub').textContent=`1 项警示 · ${pass} 项通过`; }
   else { v.className='verdict go'; $('vLab').textContent='条件齐全'; $('vSub').textContent=`全部 ${pass} 项通过 — 仍要带止损`; }
-  S.last={dir,entry,sl,tp,lots,riskUSD,rr,bias,rsi,adx,macd,news,htf,fails,caus,pass};
+  S.last={dir,entry,sl,tp,lots:sizeNum,market:S.market,riskUSD,rr,bias,rsi,adx,macd,news,htf,fails,caus,pass};
 }
 
 function copySummary(){
   const l=S.last; if(!l)return;
-  const txt=`帮我看这笔黄金交易该不该进(结合我截给你的 TradingView 图):\n方向 ${l.dir} · 入场 ${fmt(l.entry)} · 止损 ${fmt(l.sl)} · 止盈 ${l.tp?fmt(l.tp):'未设'}\n仓位 ${fmt(l.lots,2)} 手 · 单笔风险 $${fmt(l.riskUSD,0)} · 盈亏比 ${isNaN(l.rr)?'NA':fmt(l.rr,2)}\n15m 面板: Bias ${l.bias} · RSI ${fmt(l.rsi,1)} · ADX ${fmt(l.adx,1)} · MACD ${l.macd} · 临近消息 ${l.news?'是':'否'}\n1h 大趋势: ${l.htf}\n副驾检查: ${l.fails} 硬伤 / ${l.caus} 警示 / ${l.pass} 通过`;
+  const unit=l.market==='BTC'?'BTC':'手'; const dec=l.market==='BTC'?4:2; const mkt=l.market==='BTC'?'BTC':'黄金 XAUUSD';
+  const txt=`帮我看这笔 ${mkt} 交易该不该进(结合我截给你的 TradingView 图):\n方向 ${l.dir} · 入场 ${fmt(l.entry)} · 止损 ${fmt(l.sl)} · 止盈 ${l.tp?fmt(l.tp):'未设'}\n仓位 ${fmt(l.lots,dec)} ${unit} · 单笔风险 $${fmt(l.riskUSD,0)} · 盈亏比 ${isNaN(l.rr)?'NA':fmt(l.rr,2)}\n面板: Bias ${l.bias} · RSI ${fmt(l.rsi,1)} · ADX ${fmt(l.adx,1)} · MACD ${l.macd} · 临近消息 ${l.news?'是':'否'}\n1h 大趋势: ${l.htf}\n副驾检查: ${l.fails} 硬伤 / ${l.caus} 警示 / ${l.pass} 通过`;
   const box=$('sendBox'); box.style.display='block'; box.textContent=txt;
   if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>{const b=$('copyBtn');b.textContent='✓ 已复制';setTimeout(()=>b.textContent='⧉ 复制给 Claude 的摘要',1500);}).catch(()=>{});
 }
 
 function logTrade(){
   const l=S.last; if(!l)return;
-  S.journal.push({t:Date.now(),dir:l.dir,entry:l.entry,sl:l.sl,tp:l.tp||'',lots:+fmt(l.lots,2),risk:+fmt(l.riskUSD,0),rr:isNaN(l.rr)?'':+fmt(l.rr,2),
+  S.journal.push({t:Date.now(),market:l.market,dir:l.dir,entry:l.entry,sl:l.sl,tp:l.tp||'',lots:+fmt(l.lots,l.market==='BTC'?4:2),risk:+fmt(l.riskUSD,0),rr:isNaN(l.rr)?'':+fmt(l.rr,2),
     bias:l.bias,rsi:l.rsi,adx:l.adx,macd:l.macd,news:l.news,htf:l.htf,verdict:`${l.fails}F/${l.caus}C/${l.pass}P`,result:'',note:''});
   jSave(); renderLog();
 }
 function renderLog(){
   const rows=[...S.journal].reverse().slice(0,40).map(j=>{
     const d=new Date(j.t); const ts=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    return `<div class="jrow"><span class="d ${j.dir}">${j.dir==='LONG'?'多':'空'}</span><span>${ts} · 入${fmt(j.entry)} 损${fmt(j.sl)} ${j.tp?'盈'+fmt(j.tp):''} · ${fmt(j.lots,2)}手 · RR ${j.rr||'-'}</span><span style="color:var(--dim)">${j.verdict}</span></div>`;
+    const unit=j.market==='BTC'?'BTC':'手'; const mk=j.market==='BTC'?'₿':'🥇';
+    return `<div class="jrow"><span class="d ${j.dir}">${mk}${j.dir==='LONG'?'多':'空'}</span><span>${ts} · 入${fmt(j.entry)} 损${fmt(j.sl)} ${j.tp?'盈'+fmt(j.tp):''} · ${fmt(j.lots,j.market==='BTC'?4:2)}${unit} · RR ${j.rr||'-'}</span><span style="color:var(--dim)">${j.verdict}</span></div>`;
   }).join('');
   $('jlog').innerHTML=rows||'<div class="hint">还没有记录。按「＋ 记录这笔」开始建你的交易日志。</div>';
 }
 function exportCSV(){
-  const head='time,dir,entry,sl,tp,lots,risk_usd,rr,bias,rsi,adx,macd,news,htf,verdict,result,note\n';
-  const body=S.journal.map(j=>[new Date(j.t).toISOString(),j.dir,j.entry,j.sl,j.tp,j.lots,j.risk,j.rr,j.bias,j.rsi,j.adx,j.macd,j.news,j.htf||'',j.verdict,j.result,(''+j.note).replace(/,/g,';')].join(',')).join('\n');
+  const head='time,market,dir,entry,sl,tp,size,risk_usd,rr,bias,rsi,adx,macd,news,htf,verdict,result,note\n';
+  const body=S.journal.map(j=>[new Date(j.t).toISOString(),j.market||'GOLD',j.dir,j.entry,j.sl,j.tp,j.lots,j.risk,j.rr,j.bias,j.rsi,j.adx,j.macd,j.news,j.htf||'',j.verdict,j.result,(''+j.note).replace(/,/g,';')].join(',')).join('\n');
   const blob=new Blob([head+body],{type:'text/csv'});const u=URL.createObjectURL(blob);const a=document.createElement('a');
   a.href=u;a.download=`copilot_log_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(u);
 }
 function importFile(file){const fr=new FileReader();fr.onload=()=>{try{
   const t=fr.result.trim(); if(t[0]==='['){S.journal=JSON.parse(t);}
   else{const lines=t.split('\n');const h=lines[0].split(',');S.journal=lines.slice(1).filter(Boolean).map(l=>{const v=l.split(',');const o={};h.forEach((k,i)=>o[k]=v[i]);
-    return{t:new Date(o.time).getTime(),dir:o.dir,entry:+o.entry,sl:+o.sl,tp:o.tp,lots:+o.lots,risk:+o.risk_usd,rr:o.rr,bias:o.bias,rsi:+o.rsi,adx:+o.adx,macd:o.macd,news:o.news==='true',verdict:o.verdict,result:o.result||'',note:o.note||''};});}
+    return{t:new Date(o.time).getTime(),market:o.market||'GOLD',dir:o.dir,entry:+o.entry,sl:+o.sl,tp:o.tp,lots:+(o.size||o.lots),risk:+o.risk_usd,rr:o.rr,bias:o.bias,rsi:+o.rsi,adx:+o.adx,macd:o.macd,news:o.news==='true',htf:o.htf,verdict:o.verdict,result:o.result||'',note:o.note||''};});}
   jSave();renderLog();}catch(e){alert('导入失败: '+e.message);}};fr.readAsText(file);}
 
 function fillFromPaste(){
   const raw=$('pasteBox').value.trim(); if(!raw)return;
   const parts=raw.split('|').map(s=>s.trim());
-  if(parts[0].toUpperCase()!=='GS'||parts.length<10){alert('格式不对。应为:\nGS|方向|入场|止损|止盈|Bias|RSI|ADX|MACD|消息|1h趋势\n例: GS|SHORT|4545.43|4550.78|4531.61|STRONG BEAR|41.7|18.4|BEAR|no|BULL');return;}
-  const [,dir,entry,sl,tp,bias,rsi,adx,macd,news,htf]=parts;
+  if(parts[0].toUpperCase()!=='GS'||parts.length<10){alert('格式不对。应为:\nGS|方向|入场|止损|止盈|Bias|RSI|ADX|MACD|消息|1h趋势|市场\n例: GS|LONG|74038|73900|74172|BULL|49.9|25.9|BEAR|no|BULL|BTC');return;}
+  const [,dir,entry,sl,tp,bias,rsi,adx,macd,news,htf,market]=parts;
   S.dir=dir.toUpperCase()==='SHORT'?'SHORT':'LONG';
   $('dirLong').classList.toggle('active',S.dir==='LONG');
   $('dirShort').classList.toggle('active',S.dir==='SHORT');
@@ -295,7 +323,9 @@ function fillFromPaste(){
   const mU=macd.toUpperCase(); [...$('macd').options].forEach(o=>{if(o.value===mU)$('macd').value=o.value;});
   $('news').checked=/^(yes|y|true|1|是|有)$/i.test(news);
   if(htf){const hU=htf.toUpperCase(); if(['BULL','BEAR','NEUTRAL'].includes(hU))$('htf').value=hU;}
-  compute(); $('pasteBox').value='';
+  $('pasteBox').value='';
+  if(market){const mk=market.toUpperCase(); if(mk==='BTC'||mk==='GOLD'){setMarket(mk);return;}}
+  compute();
 }
 
 // events
@@ -304,6 +334,9 @@ function fillFromPaste(){
 $('news').addEventListener('change',compute);
 $('dirLong').addEventListener('click',()=>{S.dir='LONG';$('dirLong').classList.add('active');$('dirShort').classList.remove('active');compute();});
 $('dirShort').addEventListener('click',()=>{S.dir='SHORT';$('dirShort').classList.add('active');$('dirLong').classList.remove('active');compute();});
+function setMarket(m){S.market=m;$('mktGold').classList.toggle('active',m==='GOLD');$('mktBTC').classList.toggle('active',m==='BTC');compute();}
+$('mktGold').addEventListener('click',()=>setMarket('GOLD'));
+$('mktBTC').addEventListener('click',()=>setMarket('BTC'));
 $('logBtn').addEventListener('click',logTrade);
 $('copyBtn').addEventListener('click',copySummary);
 $('expBtn').addEventListener('click',exportCSV);
