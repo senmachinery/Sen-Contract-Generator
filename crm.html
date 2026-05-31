@@ -534,6 +534,7 @@
             <option value="overdue">只看逾期 Overdue Only</option>
             <option value="month">本月 + 逾期 This Month</option>
             <option value="all">全部待跟进 All Pending</option>
+            <option value="everyone">全部活跃客户 (含没排跟进的)</option>
           </select>
         </div>
       </div>
@@ -2404,6 +2405,7 @@ async function loadReps() {
     if (r && r.reps) {
       REPS_STATE.reps = r.reps;
       REPS_STATE.loaded = true;
+      STATE.salesReps = r.reps;   // mirror so Pack dropdown + rep filtering can read them
     }
   } catch (e) {
     console.error('Failed to load reps:', e);
@@ -4051,7 +4053,15 @@ function gatherPackData(onlyChecked) {
     // Inquiries for this customer (pending only)
     const inquiries = includeInq ? ((INQUIRIES_STATE && INQUIRIES_STATE.inquiries || []).filter(i => i.customer === customer.company && !i.converted)) : [];
 
-    if (overdue.length || upcoming.length || inquiries.length) {
+    if (period === 'everyone') {
+      // "全部活跃客户": include any customer with at least one ACTIVE (not closed/lost) contract,
+      // even if they have no scheduled follow-up. This surfaces the customers you never set a reminder for.
+      const hasActive = (customer.activeContracts || 0) > 0 ||
+        (customer.contracts || []).some(ct => !['Closed (Paid)','Delivered','Lost','Cancelled'].includes(ct.status));
+      if (hasActive || overdue.length || upcoming.length || inquiries.length) {
+        rows.push({ customer, overdue, upcoming, inquiries, noFollowup: !overdue.length && !upcoming.length });
+      }
+    } else if (overdue.length || upcoming.length || inquiries.length) {
       rows.push({ customer, overdue, upcoming, inquiries });
     }
   }
@@ -4064,7 +4074,7 @@ function gatherPackData(onlyChecked) {
     upcoming: rows.reduce((s,x)=>s+x.upcoming.length,0),
     inquiries: rows.reduce((s,x)=>s+x.inquiries.length,0)
   };
-  const periodLabel = { week:'本周 + 逾期', overdue:'只看逾期', month:'本月 + 逾期', all:'全部待跟进' }[period] || period;
+  const periodLabel = { week:'本周 + 逾期', overdue:'只看逾期', month:'本月 + 逾期', all:'全部待跟进', everyone:'全部活跃客户' }[period] || period;
   let scopeLabel = 'All Customers';
   if (PACK_STATE.repName) {
     const rep = (STATE.salesReps || []).find(r => r.name === PACK_STATE.repName);
@@ -4164,6 +4174,13 @@ function renderPackCustomerCard(x, today) {
             <span style="color:var(--text-secondary)">— ${escapeHtml((inq.machine || '').substring(0,70))}${inq.quantity ? ' × '+escapeHtml(inq.quantity) : ''}${inq.budget ? ' · '+escapeHtml(inq.budget) : ''}</span>
           </div>
         `).join('')}
+        ${x.noFollowup ? `
+          <div class="pack-followup-item">
+            <span class="pack-followup-icon">⚪</span>
+            <span style="color:var(--text-muted);font-weight:600">尚未排跟进</span>
+            <span style="color:var(--text-secondary)">— 这个客户有合同但没设过跟进提醒,建议联系</span>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -4244,6 +4261,7 @@ function buildPackDocHTML(forWord) {
     x.overdue.forEach(f => items.push(`<span style="color:#c0392b">[逾期 ${daysAgoText(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
     x.upcoming.forEach(f => items.push(`<span style="color:#e67e00">[${fmtDate(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
     x.inquiries.forEach(inq => items.push(`<span style="color:#1565c0">[询价]</span> ${escapeHtml((inq.machine||'').substring(0,70))}${inq.quantity?' × '+escapeHtml(inq.quantity):''}${inq.budget?' · 预算 '+escapeHtml(inq.budget):''}`));
+    if (x.noFollowup) items.push(`<span style="color:#999">[尚未排跟进 — 建议联系]</span>`);
     // Machine / contracts (what to quote)
     const machines = (c.contracts || []).slice(0,3).map(ct => `${escapeHtml(ct.contractNo)}: ${escapeHtml((ct.machine||'').substring(0,50))}${ct.amount?' ('+escapeHtml(ct.currency||'')+' '+Number(ct.amount).toLocaleString()+')':''}`);
     const rowBg = x.overdue.length > 0 ? ' style="background:#fff5f5"' : '';
@@ -4462,7 +4480,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (t.dataset.tab === 'reps') renderReps();
     if (t.dataset.tab === 'packs') {
       if (typeof loadInquiries === 'function' && !INQUIRIES_STATE.loaded) loadInquiries();
-      initPackCountryFilter(); renderPack();
+      // Make sure reps are loaded so the rep dropdown is populated
+      if (!REPS_STATE.loaded) {
+        loadReps().then(() => { initPackCountryFilter(); renderPack(); });
+      } else {
+        if ((!STATE.salesReps || !STATE.salesReps.length) && REPS_STATE.reps.length) STATE.salesReps = REPS_STATE.reps;
+        initPackCountryFilter(); renderPack();
+      }
     }
     // v1.7: Phase 6 Today's Snapshot
     if (t.dataset.tab === 'snapshot') renderSnapshot();
