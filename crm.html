@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.5</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.6</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -497,7 +497,10 @@
           <button class="qf-chip active" data-rep-filter="active" onclick="setRepFilter('active')">✅ Active <span id="rep-cnt-active">0</span></button>
           <button class="qf-chip" data-rep-filter="all" onclick="setRepFilter('all')">All</button>
         </div>
-        <input type="text" id="rep-search" placeholder="🔍 Search rep or country..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:200px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <input type="text" id="rep-search" placeholder="🔍 Search rep or country..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:180px">
+          <button class="btn btn-sm" onclick="openRepModal()" style="background:var(--accent);color:#fff">+ 新增代理 Add Rep</button>
+        </div>
       </div>
     </div>
     <div id="reps-grid"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading sales reps...</div></div></div>
@@ -720,6 +723,9 @@ let COUNTRY_OVERRIDES = {};
 let CUSTOMER_ADDR_BLOB = {};
 // v2.1: set of lowercase company names that exist in Customer DB (for new/existing detection)
 let CUSTOMER_DB_NAMES = new Set();
+// v2.6: company → default sales rep; contractNo → rep set on that contract
+let CUSTOMER_DEFAULT_REP = {};
+let CONTRACT_REP = {};
 // Helper: is this company already in the Customer DB? (exact, case-insensitive)
 function isExistingCustomer(company) {
   if (!company) return false;
@@ -958,6 +964,7 @@ async function refreshData() {
     // Build CUSTOMER_ADDR_BLOB: company → concatenated text of all fields (robust to column order)
     CUSTOMER_ADDR_BLOB = {};
     CUSTOMER_DB_NAMES = new Set();  // v2.1: lowercase company names that exist in Customer DB
+    CUSTOMER_DEFAULT_REP = {};      // v2.6: company → default sales rep (from CustomerDB)
     try {
       const custRes = await apiGet('customerDB');
       const custList = (custRes && custRes.customers) ? custRes.customers : [];
@@ -967,6 +974,7 @@ async function refreshData() {
         const blob = [c.addr, c.address, c.attn, c.notes, c.port, c.tel].filter(Boolean).join(' ');
         CUSTOMER_ADDR_BLOB[c.company.trim()] = blob;
         CUSTOMER_DB_NAMES.add(c.company.trim().toLowerCase());  // v2.1
+        if (c.defaultRep) CUSTOMER_DEFAULT_REP[c.company.trim()] = c.defaultRep;  // v2.6
       });
     } catch (e) { console.warn('CustomerDB fetch failed (country detection will use names only):', e); }
     
@@ -987,8 +995,12 @@ async function refreshData() {
       currency: r.currency || 'USD',
       amount: parseFloat(r.amount) || 0,
       status: r.status || 'Quotation Sent',
+      salesRep: r.salesRep || '',
       country: getCustomerCountry((r.company || '').trim())
     })).filter(c => c.company);  // Filter out empty company names
+    // v2.6: build contractNo → rep map (only contracts that actually have a rep set)
+    CONTRACT_REP = {};
+    STATE.contracts.forEach(c => { if (c.salesRep) CONTRACT_REP[c.contractNo] = c.salesRep; });
     
     // v2.2: Defensive de-dup — if the sheet has duplicate rows with the same contractNo
     // (e.g. saved twice before the Apps Script fix), keep only the LAST one (most recent).
@@ -1029,7 +1041,8 @@ async function refreshData() {
           flag: flagFor(c.country), totalSpent: 0, totalConfirmed: 0,
           lastDate: null, latestContract: null, latestStatus: '',
           latestMachine: '', overdueFollowups: 0, nextDueDate: null,
-          activeContracts: 0
+          activeContracts: 0,
+          defaultRep: CUSTOMER_DEFAULT_REP[key] || ''
         };
       }
       const cust = custMap[key];
@@ -1285,6 +1298,10 @@ function renderCustomerDetail(c, followups) {
           <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change country</span>
           ${isRenamed ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Original name (in Google Sheet): ${escapeHtml(c.company)}</div>` : ''}
         </div>
+        <div class="meta-row" style="margin-top:4px">
+          👤 负责代理: <strong>${c.defaultRep ? escapeHtml(c.defaultRep) : '<span style="color:var(--text-muted);font-weight:400">未指定</span>'}</strong>
+          <span onclick="openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="设定/更改负责代理">✏️ 设定代理</span>
+        </div>
       </div>
       <div style="text-align:right">
         <div style="font-size:11px;color:var(--text-muted)">Lifetime Value</div>
@@ -1340,6 +1357,8 @@ function renderCustomerDetail(c, followups) {
             <div style="margin-top:4px">
               <span class="pill ${statusColor(ct.status)}">${ct.status}</span>
               <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
+              <span style="font-size:11px;margin-left:6px">👤 ${ct.salesRep ? escapeHtml(ct.salesRep) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(c.defaultRep)+' (默认)</span>' : '<span style="color:var(--text-muted)">未指定</span>')}</span>
+              <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="设定此合同的代理">✏️</span>
             </div>
           </div>
           <div class="contract-amount">${fmtMoney(ct.amount, ct.currency)}</div>
@@ -1410,6 +1429,88 @@ function typeIcon(type) {
 }
 
 // Manually change country for a customer (override auto-detection)
+// Set / change a customer's default sales rep
+// Set / change a single contract's sales rep (overrides customer default for that contract)
+function openContractRepEditor(contractNo) {
+  const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo);
+  const reps = (REPS_STATE.reps || []);
+  const cur = ct ? ct.salesRep : '';
+  const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${cur === r.name ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
+  $('modal-title').textContent = `合同负责代理 — ${contractNo}`;
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>这张合同由哪个 Sales Rep 负责</label>
+      <select id="contract-rep-select">
+        <option value="">— 不指定 (用客户默认) —</option>
+        ${repOpts}
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 合同自己指定的代理会盖过客户默认代理。如果在 Generator 忘了填,可以在这里补。</div>
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveContractRep('${contractNo.replace(/'/g, "\\'")}')">💾 Save</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveContractRep(contractNo) {
+  const rep = $('contract-rep-select').value;
+  try {
+    const r = await apiPost('crm_setContractSalesRep', { contractNo: contractNo, salesRep: rep });
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    // Update local state immediately
+    const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo);
+    if (ct) ct.salesRep = rep;
+    if (rep) CONTRACT_REP[contractNo] = rep; else delete CONTRACT_REP[contractNo];
+    closeModal();
+    showToast(rep ? `✅ 合同代理设为 ${rep}` : '✅ 已清除合同代理', 'success');
+    // Refresh the customer detail if open
+    if (ct && ct.company) await selectCustomer(ct.company);
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+function openCustomerRepEditor(company) {
+  const c = STATE.customers.find(x => x.company === company);
+  const reps = (REPS_STATE.reps || []);
+  const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${c && c.defaultRep === r.name ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
+  $('modal-title').textContent = `负责代理 — ${getDisplayName(company)}`;
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>选择负责这个客户的 Sales Rep</label>
+      <select id="cust-rep-select">
+        <option value="">— 不指定 / 清除 —</option>
+        ${repOpts}
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 设定后,这个客户的合同在打包筛选时会归到这个代理 (合同自己有指定的除外)</div>
+    </div>
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveCustomerRep('${company.replace(/'/g, "\\'")}')">💾 Save</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveCustomerRep(company) {
+  const rep = $('cust-rep-select').value;
+  try {
+    const r = await apiPost('crm_setCustomerRep', { company: company, defaultRep: rep });
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    // Update local state immediately
+    CUSTOMER_DEFAULT_REP[company] = rep;
+    const cust = STATE.customers.find(x => x.company === company);
+    if (cust) cust.defaultRep = rep;
+    closeModal();
+    showToast(rep ? `✅ 负责代理设为 ${rep}` : '✅ 已清除负责代理', 'success');
+    await selectCustomer(company);  // refresh detail
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
 function openCountryEditor(company) {
   const currentCountry = getCustomerCountry(company);
   const allCountries = Object.keys(COUNTRY_FLAGS);
@@ -2317,6 +2418,66 @@ function setRepFilter(filter) {
   renderReps();
 }
 
+// Open the add/edit rep modal. Pass a rep id to edit, or nothing to add new.
+function openRepModal(repId) {
+  const editing = repId ? (REPS_STATE.reps || []).find(r => r.id === repId) : null;
+  $('modal-title').textContent = editing ? `编辑代理 — ${editing.name}` : '新增 Sales Rep';
+  $('modal-body').innerHTML = `
+    <div class="form-row">
+      <label>姓名 Name *</label>
+      <input type="text" id="rep-f-name" value="${editing ? escapeHtml(editing.name||'') : ''}" placeholder="e.g. Wilson">
+    </div>
+    <div class="form-row">
+      <label>负责国家/地区 Country <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(多个用逗号: Malaysia, Singapore)</span></label>
+      <input type="text" id="rep-f-country" value="${editing ? escapeHtml(editing.country||'') : ''}" placeholder="e.g. Malaysia, Singapore">
+    </div>
+    <div class="form-row">
+      <label>WhatsApp / 电话</label>
+      <input type="text" id="rep-f-whatsapp" value="${editing ? escapeHtml(editing.whatsapp||'') : ''}" placeholder="e.g. 60129881898">
+    </div>
+    <div class="form-row">
+      <label>Email</label>
+      <input type="text" id="rep-f-email" value="${editing ? escapeHtml(editing.email||'') : ''}" placeholder="e.g. wilson@example.com">
+    </div>
+    <div class="form-row">
+      <label>备注 Notes</label>
+      <textarea id="rep-f-notes" placeholder="optional">${editing ? escapeHtml(editing.notes||'') : ''}</textarea>
+    </div>
+    ${editing ? `<div class="form-row"><label style="cursor:pointer"><input type="checkbox" id="rep-f-active" ${editing.isActive !== false ? 'checked' : ''}> Active (取消勾选 = 停用此代理)</label></div>` : ''}
+  `;
+  $('modal-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveRep('${editing ? editing.id : ''}')">💾 Save</button>
+  `;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveRep(repId) {
+  const name = ($('rep-f-name').value || '').trim();
+  if (!name) { showToast('请填写姓名', 'error'); return; }
+  const rep = {
+    name: name,
+    country: ($('rep-f-country').value || '').trim(),
+    whatsapp: ($('rep-f-whatsapp').value || '').trim(),
+    email: ($('rep-f-email').value || '').trim(),
+    notes: ($('rep-f-notes').value || '').trim()
+  };
+  const activeEl = $('rep-f-active');
+  if (activeEl) rep.isActive = activeEl.checked;
+  try {
+    let r;
+    if (repId) { rep.id = repId; r = await apiPost('crm_updateRep', { rep }); }
+    else { r = await apiPost('crm_addRep', { rep }); }
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    closeModal();
+    showToast(repId ? '✅ 代理已更新' : '✅ 代理已新增', 'success');
+    REPS_STATE.loaded = false;
+    await loadReps();   // refresh list
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
 function renderReps() {
   const grid = $('reps-grid');
   if (!grid) return;
@@ -2408,6 +2569,7 @@ function renderRepCard(r) {
         ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="Open WhatsApp">💬 WhatsApp</a>` : ''}
         ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Send email">📧 Email</a>` : ''}
         ${wa ? `<button class="rep-action-btn copy" onclick="copyText('${wa}', 'Phone copied')" title="Copy phone">📋 ${wa}</button>` : ''}
+        <button class="rep-action-btn" onclick="openRepModal('${escapeHtml((r.id||'').replace(/'/g,"\\'"))}')" style="background:var(--primary);color:#fff" title="编辑">✏️ Edit</button>
       </div>
     </div>
   `;
@@ -3862,11 +4024,21 @@ function gatherPackData(onlyChecked) {
     // ── Scope filters (who belongs in this pack) ──
     if (onlyChecked && PACK_UNCHECKED.has(customer.company)) continue;  // user un-ticked this one
     if (PACK_STATE.country && customer.country !== PACK_STATE.country) continue;
-    if (repCountries.length && !customerMatchesRep(customer, repCountries)) continue;
+    if (PACK_STATE.repName) {
+      // A customer belongs to a rep if: explicit default rep matches, OR any contract has that rep,
+      // OR (fallback) no explicit rep anywhere but their country matches the rep's countries.
+      const repName = PACK_STATE.repName;
+      const hasExplicitDefault = customer.defaultRep && customer.defaultRep === repName;
+      const hasContractRep = (customer.contracts || []).some(ct => CONTRACT_REP[ct.contractNo] === repName);
+      const anyExplicitRep = (customer.defaultRep) || (customer.contracts || []).some(ct => CONTRACT_REP[ct.contractNo]);
+      const countryMatch = customerMatchesRep(customer, repCountries) && !anyExplicitRep;
+      if (!(hasExplicitDefault || hasContractRep || countryMatch)) continue;
+    }
     if (assignedSet) {
       const cc = (customer.country || '').toLowerCase();
-      const isAssigned = cc && [...assignedSet].some(rc => rc.includes(cc) || cc.includes(rc));
-      if (isAssigned) continue;  // unassigned-only: skip customers whose country has a rep
+      const hasAnyRep = customer.defaultRep || (customer.contracts || []).some(ct => CONTRACT_REP[ct.contractNo]);
+      const countryAssigned = cc && [...assignedSet].some(rc => rc.includes(cc) || cc.includes(rc));
+      if (hasAnyRep || countryAssigned) continue;  // unassigned-only: skip anyone with a rep (explicit or by country)
     }
 
     const fups = STATE.followups[customer.company] || [];
