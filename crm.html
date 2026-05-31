@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.4</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.5</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -507,27 +507,56 @@
     <div class="card" style="padding:12px;margin-bottom:14px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div>
-          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0">📨 Monday Follow-up Pack</h3>
-          <div style="font-size:11px;color:var(--text-muted)">Customers needing attention this week — overdue + due-soon follow-ups</div>
+          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0">📨 Agent Follow-up Pack — 代理跟进清单</h3>
+          <div style="font-size:11px;color:var(--text-muted)">筛选客户 → 打包成清单给代理/销售去跟进 (打印 / PDF / Word / 复制)</div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <button class="qf-chip active" data-pack-filter="all" onclick="setPackFilter('all')">All</button>
-          <button class="qf-chip" data-pack-filter="overdue" onclick="setPackFilter('overdue')">🚨 Overdue Only</button>
-          <select id="pack-country-filter" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">👤 销售/代理</label>
+          <select id="pack-rep-filter" onchange="onPackRepChange()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:160px">
+            <option value="">All / 全部</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">🌍 国家</label>
+          <select id="pack-country-filter" onchange="renderPack()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:130px">
             <option value="">All Countries</option>
           </select>
         </div>
+        <div>
+          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">📅 周期</label>
+          <select id="pack-period-filter" onchange="renderPack()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:130px">
+            <option value="week">本周 + 逾期 This Week</option>
+            <option value="overdue">只看逾期 Overdue Only</option>
+            <option value="month">本月 + 逾期 This Month</option>
+            <option value="all">全部待跟进 All Pending</option>
+          </select>
+        </div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">
+        <label style="cursor:pointer"><input type="checkbox" id="pack-include-inquiries" onchange="renderPack()" checked> 包含询价 (Inquiries)</label>
+        &nbsp;&nbsp;
+        <label style="cursor:pointer"><input type="checkbox" id="pack-unassigned-only" onchange="onPackUnassignedToggle()"> 只看未分配代理的客户 (我直接对接的)</label>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;align-items:center">
+        <span style="font-size:12px;color:var(--text-muted);margin-right:4px">已选 <strong id="pack-pick-count">0 / 0</strong></span>
+        <button class="btn btn-sm btn-outline" onclick="packSelectAll(true)" style="font-size:11px">全选</button>
+        <button class="btn btn-sm btn-outline" onclick="packSelectAll(false)" style="font-size:11px">全不选</button>
+        <span style="border-left:1px solid var(--border);height:20px;margin:0 4px"></span>
+        <button class="btn btn-sm" onclick="printPack()" style="background:var(--primary);color:#fff">🖨 Print / PDF</button>
+        <button class="btn btn-sm" onclick="downloadPackWord()" style="background:#2b579a;color:#fff">📄 Download Word</button>
         <button class="btn btn-sm" onclick="copyPackContactsToClipboard()" style="background:var(--info);color:#fff">📋 Copy Names + Tels</button>
-        <button class="btn btn-sm" onclick="printPack()" style="background:var(--primary);color:#fff">🖨 Print Pack</button>
+        <button class="btn btn-sm" onclick="copyPackForWhatsApp()" style="background:#25d366;color:#fff">💬 Copy for WhatsApp</button>
       </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">💡 下面清单可以取消勾选不需要跟进的客户,只有勾选的会进 Word / PDF / 复制</div>
     </div>
     <div id="pack-summary" style="margin-bottom:14px"></div>
-    <div id="pack-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building this week's pack...</div></div></div>
+    <div id="pack-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building pack...</div></div></div>
   </div>
 
 </div>
+
 
 <!-- Modal -->
 <div class="modal-overlay" id="modal-overlay">
@@ -3689,21 +3718,44 @@ function renderSnapshot() {
 // v1.6: FOLLOW-UP PACKS (Monday morning view)
 // ═══════════════════════════════════════════════════════════════════
 
-let PACK_STATE = { filter: 'all', country: '' };
+let PACK_STATE = { period: 'week', country: '', repName: '', unassignedOnly: false };
+// Companies the user has UN-ticked in the preview (so they won't go into Word/PDF/copy).
+// Stored as "unchecked" so default = everyone included.
+let PACK_UNCHECKED = new Set();
+
+function onPackPickToggle(el) {
+  const co = el.dataset.company;
+  if (el.checked) PACK_UNCHECKED.delete(co);
+  else PACK_UNCHECKED.add(co);
+  updatePackPickCount();
+}
+function updatePackPickCount() {
+  const all = document.querySelectorAll('.pack-pick');
+  const checked = document.querySelectorAll('.pack-pick:checked');
+  const el = document.getElementById('pack-pick-count');
+  if (el) el.textContent = checked.length + ' / ' + all.length;
+}
+// Tick or untick everything currently shown
+function packSelectAll(on) {
+  document.querySelectorAll('.pack-pick').forEach(cb => {
+    cb.checked = on;
+    const co = cb.dataset.company;
+    if (on) PACK_UNCHECKED.delete(co); else PACK_UNCHECKED.add(co);
+  });
+  updatePackPickCount();
+}
 
 async function preloadAllFollowups() {
   // Get all followups in one call (no customer filter)
   try {
     const r = await apiGet('crm_getFollowups');
     if (r && r.followups) {
-      // Group by customer
       const grouped = {};
       r.followups.forEach(f => {
         const key = f.customer || '';
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(f);
       });
-      // Merge with existing (don't overwrite recently loaded individual customer data)
       Object.keys(grouped).forEach(co => {
         if (!STATE.followups[co]) STATE.followups[co] = grouped[co];
       });
@@ -3713,134 +3765,195 @@ async function preloadAllFollowups() {
   }
 }
 
-function setPackFilter(filter) {
-  PACK_STATE.filter = filter;
-  $$('[data-pack-filter]').forEach(el => el.classList.toggle('active', el.dataset.packFilter === filter));
+// Map a rep to the countries they cover (reps are linked to customers by country)
+function repCountriesFor(repName) {
+  const rep = (STATE.salesReps || []).find(r => (r.name||'') === repName);
+  if (!rep) return [];
+  return (rep.country || '').split(/[,\/]/).map(c => c.trim().toLowerCase()).filter(Boolean);
+}
+// Set of all countries that have ANY assigned rep (for "unassigned / direct" detection)
+function allRepCountries() {
+  const set = new Set();
+  (STATE.salesReps || []).forEach(r => {
+    (r.country || '').split(/[,\/]/).forEach(c => { const t = c.trim().toLowerCase(); if (t) set.add(t); });
+  });
+  return set;
+}
+// Does a customer's country match the currently selected rep?
+function customerMatchesRep(customer, repCountries) {
+  if (!repCountries.length) return true;
+  const cc = (customer.country || '').toLowerCase();
+  if (!cc) return false;
+  return repCountries.some(rc => rc.includes(cc) || cc.includes(rc));
+}
+
+function onPackRepChange() {
+  const sel = $('pack-rep-filter');
+  PACK_STATE.repName = sel ? sel.value : '';
+  // Selecting a rep clears the manual country filter + unassigned toggle (they conflict)
+  if (PACK_STATE.repName) {
+    const cf = $('pack-country-filter'); if (cf) cf.value = '';
+    PACK_STATE.country = '';
+    const ua = $('pack-unassigned-only'); if (ua) ua.checked = false;
+    PACK_STATE.unassignedOnly = false;
+  }
+  renderPack();
+}
+function onPackUnassignedToggle() {
+  const ua = $('pack-unassigned-only');
+  PACK_STATE.unassignedOnly = ua ? ua.checked : false;
+  // "Unassigned/direct" conflicts with picking a specific rep → clear rep
+  if (PACK_STATE.unassignedOnly) {
+    const rf = $('pack-rep-filter'); if (rf) rf.value = '';
+    PACK_STATE.repName = '';
+  }
   renderPack();
 }
 
 function initPackCountryFilter() {
+  // Populate rep dropdown
+  const repSel = $('pack-rep-filter');
+  if (repSel) {
+    const cur = repSel.value;
+    const reps = (STATE.salesReps || []).filter(r => r.isActive !== false);
+    repSel.innerHTML = '<option value="">All / 全部</option>' +
+      reps.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
+    repSel.value = cur;
+  }
+  // Populate country dropdown
   const sel = $('pack-country-filter');
-  if (!sel) return;
-  const counts = {};
-  (STATE.customers || []).forEach(c => { counts[c.country] = (counts[c.country]||0)+1; });
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">All Countries</option>' +
-    Object.keys(counts).sort((a,b) => counts[b]-counts[a]).map(c => 
-      `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
-  sel.value = cur;
+  if (sel) {
+    const counts = {};
+    (STATE.customers || []).forEach(c => { if (c.country) counts[c.country] = (counts[c.country]||0)+1; });
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All Countries</option>' +
+      Object.keys(counts).sort((a,b) => counts[b]-counts[a]).map(c =>
+        `<option value="${c}">${flagFor(c)} ${c} (${counts[c]})</option>`).join('');
+    sel.value = cur;
+  }
+}
+
+// Read current filter values from the DOM (period + country)
+function syncPackFiltersFromDOM() {
+  const p = $('pack-period-filter'); if (p) PACK_STATE.period = p.value;
+  const c = $('pack-country-filter'); if (c) PACK_STATE.country = c.value;
+  const r = $('pack-rep-filter'); if (r) PACK_STATE.repName = r.value;
+  const u = $('pack-unassigned-only'); if (u) PACK_STATE.unassignedOnly = u.checked;
+}
+
+// Shared: gather the list of customers to follow up, honoring all filters.
+// Returns { rows:[{customer, overdue[], upcoming[], inquiries[]}], counts, periodLabel, scopeLabel }
+function gatherPackData(onlyChecked) {
+  syncPackFiltersFromDOM();
+  const today = new Date().toISOString().split('T')[0];
+  const dayMs = 86400000;
+  const period = PACK_STATE.period || 'week';
+  let horizon = null;
+  if (period === 'week')  horizon = new Date(Date.now() + 7*dayMs).toISOString().split('T')[0];
+  if (period === 'month') horizon = new Date(Date.now() + 30*dayMs).toISOString().split('T')[0];
+  // 'overdue' → no upcoming; 'all' → no horizon limit
+
+  const repCountries = PACK_STATE.repName ? repCountriesFor(PACK_STATE.repName) : [];
+  const assignedSet = PACK_STATE.unassignedOnly ? allRepCountries() : null;
+  const includeInq = (() => { const el = $('pack-include-inquiries'); return el ? el.checked : true; })();
+
+  const rows = [];
+  for (const customer of (STATE.customers || [])) {
+    // ── Scope filters (who belongs in this pack) ──
+    if (onlyChecked && PACK_UNCHECKED.has(customer.company)) continue;  // user un-ticked this one
+    if (PACK_STATE.country && customer.country !== PACK_STATE.country) continue;
+    if (repCountries.length && !customerMatchesRep(customer, repCountries)) continue;
+    if (assignedSet) {
+      const cc = (customer.country || '').toLowerCase();
+      const isAssigned = cc && [...assignedSet].some(rc => rc.includes(cc) || cc.includes(rc));
+      if (isAssigned) continue;  // unassigned-only: skip customers whose country has a rep
+    }
+
+    const fups = STATE.followups[customer.company] || [];
+    const overdue = fups.filter(f => { const d = toIsoDate(f.nextFollowupDate); return d && d < today && f.status !== 'completed'; });
+    const upcoming = (period === 'overdue') ? [] : fups.filter(f => {
+      const d = toIsoDate(f.nextFollowupDate);
+      if (!d || d < today || f.status === 'completed') return false;
+      return horizon ? d <= horizon : true;
+    });
+    // Inquiries for this customer (pending only)
+    const inquiries = includeInq ? ((INQUIRIES_STATE && INQUIRIES_STATE.inquiries || []).filter(i => i.customer === customer.company && !i.converted)) : [];
+
+    if (overdue.length || upcoming.length || inquiries.length) {
+      rows.push({ customer, overdue, upcoming, inquiries });
+    }
+  }
+  // Sort: most overdue first, then by name
+  rows.sort((a, b) => (b.overdue.length - a.overdue.length) || a.customer.company.localeCompare(b.customer.company));
+
+  const counts = {
+    customers: rows.length,
+    overdue: rows.reduce((s,x)=>s+x.overdue.length,0),
+    upcoming: rows.reduce((s,x)=>s+x.upcoming.length,0),
+    inquiries: rows.reduce((s,x)=>s+x.inquiries.length,0)
+  };
+  const periodLabel = { week:'本周 + 逾期', overdue:'只看逾期', month:'本月 + 逾期', all:'全部待跟进' }[period] || period;
+  let scopeLabel = 'All Customers';
+  if (PACK_STATE.repName) {
+    const rep = (STATE.salesReps || []).find(r => r.name === PACK_STATE.repName);
+    scopeLabel = PACK_STATE.repName + (rep && rep.country ? ' (' + rep.country + ')' : '');
+  } else if (PACK_STATE.unassignedOnly) scopeLabel = '未分配代理 / 我直接对接';
+  else if (PACK_STATE.country) scopeLabel = PACK_STATE.country;
+  return { rows, counts, periodLabel, scopeLabel, today };
 }
 
 function renderPack() {
   const list = $('pack-list');
   const summary = $('pack-summary');
   if (!list || !summary) return;
-  
   if (!STATE.customers || STATE.customers.length === 0) {
     list.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
     summary.innerHTML = '';
     return;
   }
-  
-  const today = new Date().toISOString().split('T')[0];
-  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
-  
-  // Build list of customers needing attention
-  const customersNeedingAttention = [];
-  
-  for (const customer of STATE.customers) {
-    const fups = STATE.followups[customer.company] || [];
-    
-    // Find overdue + due-this-week
-    const overdueFups = fups.filter(f => {
-      const d = toIsoDate(f.nextFollowupDate);
-      return d && d < today && f.status !== 'completed';
-    });
-    const dueThisWeekFups = fups.filter(f => {
-      const d = toIsoDate(f.nextFollowupDate);
-      return d && d >= today && d <= weekFromNow && f.status !== 'completed';
-    });
-    
-    // Apply filters
-    if (PACK_STATE.filter === 'overdue' && overdueFups.length === 0) continue;
-    if (PACK_STATE.country && customer.country !== PACK_STATE.country) continue;
-    
-    if (overdueFups.length > 0 || dueThisWeekFups.length > 0) {
-      customersNeedingAttention.push({
-        customer,
-        overdue: overdueFups,
-        dueThisWeek: dueThisWeekFups
-      });
-    }
-  }
-  
-  // Sort: most overdue first
-  customersNeedingAttention.sort((a, b) => {
-    if (a.overdue.length !== b.overdue.length) return b.overdue.length - a.overdue.length;
-    return a.customer.company.localeCompare(b.customer.company);
-  });
-  
-  // Summary
-  const totalOverdue = customersNeedingAttention.reduce((s, x) => s + x.overdue.length, 0);
-  const totalDueWeek = customersNeedingAttention.reduce((s, x) => s + x.dueThisWeek.length, 0);
-  const totalCustomers = customersNeedingAttention.length;
-  
+  const { rows, counts, today } = gatherPackData();
+
   summary.innerHTML = `
     <div class="pack-summary-card">
-      <div class="pack-stat">
-        <div class="pack-stat-value">${totalCustomers}</div>
-        <div class="pack-stat-label">Customers to Contact</div>
-      </div>
-      <div class="pack-stat">
-        <div class="pack-stat-value">🚨 ${totalOverdue}</div>
-        <div class="pack-stat-label">Overdue Follow-ups</div>
-      </div>
-      <div class="pack-stat">
-        <div class="pack-stat-value">📅 ${totalDueWeek}</div>
-        <div class="pack-stat-label">Due This Week</div>
-      </div>
-    </div>
-  `;
-  
-  if (customersNeedingAttention.length === 0) {
+      <div class="pack-stat"><div class="pack-stat-value">${counts.customers}</div><div class="pack-stat-label">Customers to Contact</div></div>
+      <div class="pack-stat"><div class="pack-stat-value">🚨 ${counts.overdue}</div><div class="pack-stat-label">Overdue</div></div>
+      <div class="pack-stat"><div class="pack-stat-value">📅 ${counts.upcoming}</div><div class="pack-stat-label">Upcoming</div></div>
+      <div class="pack-stat"><div class="pack-stat-value">📞 ${counts.inquiries}</div><div class="pack-stat-label">Inquiries</div></div>
+    </div>`;
+
+  if (rows.length === 0) {
     list.innerHTML = `
       <div class="empty" style="padding:40px;text-align:center;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow)">
         <div style="font-size:42px;margin-bottom:8px">🎉</div>
         <div style="color:var(--success);font-weight:600;font-size:14px">All caught up!</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">No overdue or due-soon follow-ups in this filter</div>
-      </div>
-    `;
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">这个筛选下没有要跟进的客户 — 换个筛选试试</div>
+      </div>`;
     return;
   }
-  
-  list.innerHTML = customersNeedingAttention.map(x => renderPackCustomerCard(x, today)).join('');
+  list.innerHTML = rows.map(x => renderPackCustomerCard(x, today)).join('');
+  updatePackPickCount();
 }
 
 function renderPackCustomerCard(x, today) {
   const c = x.customer;
   const isOverdue = x.overdue.length > 0;
-  
-  // Get tel/email from customer master data (fetched via customerDB if available)
   const tel = c.tel || '';
   const email = c.email || '';
   const wa = (tel || '').replace(/\D/g, '');
-  
-  // Get latest contract for "Open in Generator" link
   const latest = (c.contracts || []).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
-  
   const waLink = wa && wa.length >= 8 ? `https://wa.me/${wa}` : '';
   const emailLink = email ? `mailto:${email}` : '';
-  
-  // Encoded URL for "Open Generator"
-  const generatorUrl = latest ? 
+  const generatorUrl = latest ?
     `index.html?contract=${encodeURIComponent(latest.contractNo)}&load=true` :
     `index.html?customer=${encodeURIComponent(c.company)}&autofill=true`;
-  
   const displayName = getDisplayName(c.company);
-  
+
   return `
     <div class="pack-customer-card ${isOverdue ? 'overdue' : ''}">
       <div class="pack-customer-header">
+        <div style="flex-shrink:0;padding-top:2px">
+          <input type="checkbox" class="pack-pick" data-company="${escapeHtml(c.company)}" ${PACK_UNCHECKED.has(c.company) ? '' : 'checked'} onchange="onPackPickToggle(this)" style="width:18px;height:18px;cursor:pointer" title="勾选 = 放进清单">
+        </div>
         <div style="flex:1;min-width:0">
           <div class="pack-customer-name">${c.flag} ${escapeHtml(displayName)}</div>
           <div class="pack-customer-meta">
@@ -3865,11 +3978,18 @@ function renderPackCustomerCard(x, today) {
             <span style="color:var(--text-secondary)">— ${escapeHtml((f.description || 'follow-up').substring(0, 100))}</span>
           </div>
         `).join('')}
-        ${x.dueThisWeek.map(f => `
+        ${x.upcoming.map(f => `
           <div class="pack-followup-item">
             <span class="pack-followup-icon">📅</span>
             <span style="color:var(--warning);font-weight:600">${toIsoDate(f.nextFollowupDate) === today ? 'Today' : 'in ' + Math.abs(daysAgo(toIsoDate(f.nextFollowupDate))) + 'd'} (${fmtDate(f.nextFollowupDate)})</span>
             <span style="color:var(--text-secondary)">— ${escapeHtml((f.description || 'follow-up').substring(0, 100))}</span>
+          </div>
+        `).join('')}
+        ${(x.inquiries||[]).map(inq => `
+          <div class="pack-followup-item">
+            <span class="pack-followup-icon">📞</span>
+            <span style="color:var(--info);font-weight:600">询价 Inquiry</span>
+            <span style="color:var(--text-secondary)">— ${escapeHtml((inq.machine || '').substring(0,70))}${inq.quantity ? ' × '+escapeHtml(inq.quantity) : ''}${inq.budget ? ' · '+escapeHtml(inq.budget) : ''}</span>
           </div>
         `).join('')}
       </div>
@@ -3878,40 +3998,135 @@ function renderPackCustomerCard(x, today) {
 }
 
 function copyPackContactsToClipboard() {
-  const today = new Date().toISOString().split('T')[0];
-  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
-  
+  const { rows } = gatherPackData(true);
   const lines = [];
   lines.push('Sen Labels — Follow-up List ' + new Date().toLocaleDateString());
-  lines.push('=' .repeat(50));
-  
-  for (const customer of STATE.customers) {
-    const fups = STATE.followups[customer.company] || [];
-    const overdueFups = fups.filter(f => {
-      const d = toIsoDate(f.nextFollowupDate);
-      return d && d < today && f.status !== 'completed';
-    });
-    const dueThisWeekFups = fups.filter(f => {
-      const d = toIsoDate(f.nextFollowupDate);
-      return d && d >= today && d <= weekFromNow && f.status !== 'completed';
-    });
-    if (PACK_STATE.filter === 'overdue' && overdueFups.length === 0) continue;
-    if (PACK_STATE.country && customer.country !== PACK_STATE.country) continue;
-    if (overdueFups.length === 0 && dueThisWeekFups.length === 0) continue;
-    
-    const tel = customer.tel || '';
-    const flag = overdueFups.length > 0 ? '🚨' : '📅';
-    const displayName = getDisplayName(customer.company);
+  lines.push('='.repeat(50));
+  for (const x of rows) {
+    const tel = x.customer.tel || '';
+    const flag = x.overdue.length > 0 ? '🚨' : (x.inquiries.length ? '📞' : '📅');
+    const displayName = getDisplayName(x.customer.company);
     lines.push(`${flag} ${displayName}${tel ? ' — ' + tel : ''}`);
   }
-  
-  const text = lines.join('\n');
-  copyText(text, `📋 Copied ${lines.length - 2} contacts to clipboard`);
+  copyText(lines.join('\n'), `📋 Copied ${rows.length} contacts to clipboard`);
+}
+
+// WhatsApp-friendly text (per customer: name, tel, what to follow up)
+function copyPackForWhatsApp() {
+  const { rows, periodLabel, scopeLabel } = gatherPackData(true);
+  const lines = [];
+  lines.push(`*Sen Labels — 跟进清单*`);
+  lines.push(`${scopeLabel} · ${periodLabel} · ${new Date().toLocaleDateString()}`);
+  lines.push('');
+  rows.forEach((x, i) => {
+    const c = x.customer;
+    const flag = x.overdue.length > 0 ? '🚨' : (x.inquiries.length ? '📞' : '📅');
+    lines.push(`${i+1}. ${flag} *${getDisplayName(c.company)}*${c.country ? ' ('+c.country+')' : ''}`);
+    if (c.attn) lines.push(`   👤 ${c.attn}`);
+    if (c.tel) lines.push(`   📱 ${c.tel}`);
+    const tasks = [];
+    x.overdue.forEach(f => tasks.push('逾期: ' + (f.description||'').substring(0,60)));
+    x.upcoming.forEach(f => tasks.push((f.description||'').substring(0,60)));
+    x.inquiries.forEach(inq => tasks.push('询价: ' + (inq.machine||'').substring(0,50)));
+    tasks.forEach(t => lines.push(`   • ${t}`));
+    lines.push('');
+  });
+  copyText(lines.join('\n'), `💬 已复制 ${rows.length} 个客户 (可贴到 WhatsApp)`);
 }
 
 function printPack() {
-  window.print();
+  const html = buildPackDocHTML();
+  const win = window.open('', '_blank');
+  if (!win) { showToast('请允许弹出视窗', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { try { win.print(); } catch(e){} }, 400);
 }
+
+// Download as Word (.doc) — editable, then user can save as PDF
+function downloadPackWord() {
+  const html = buildPackDocHTML(true);
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  const { scopeLabel } = gatherPackData();
+  const fname = 'Sen_Followup_' + scopeLabel.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().split('T')[0] + '.doc';
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('📄 Word 文件已下载', 'success');
+}
+
+// Build the printable / Word document HTML for the current pack
+function buildPackDocHTML(forWord) {
+  const { rows, counts, periodLabel, scopeLabel, today } = gatherPackData(true);
+  const dateStr = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+
+  const rowsHTML = rows.map((x, idx) => {
+    const c = x.customer;
+    const tel = c.tel || '';
+    const wa = tel.replace(/\D/g,'');
+    const waLink = wa.length >= 8 ? `https://wa.me/${wa}` : '';
+    const urgency = x.overdue.length > 0 ? '🔴 逾期 Overdue' : (x.inquiries.length ? '📞 询价 Inquiry' : '🟡 本周 This Week');
+    // What to follow up
+    const items = [];
+    x.overdue.forEach(f => items.push(`<span style="color:#c0392b">[逾期 ${daysAgoText(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
+    x.upcoming.forEach(f => items.push(`<span style="color:#e67e00">[${fmtDate(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
+    x.inquiries.forEach(inq => items.push(`<span style="color:#1565c0">[询价]</span> ${escapeHtml((inq.machine||'').substring(0,70))}${inq.quantity?' × '+escapeHtml(inq.quantity):''}${inq.budget?' · 预算 '+escapeHtml(inq.budget):''}`));
+    // Machine / contracts (what to quote)
+    const machines = (c.contracts || []).slice(0,3).map(ct => `${escapeHtml(ct.contractNo)}: ${escapeHtml((ct.machine||'').substring(0,50))}${ct.amount?' ('+escapeHtml(ct.currency||'')+' '+Number(ct.amount).toLocaleString()+')':''}`);
+    const rowBg = x.overdue.length > 0 ? ' style="background:#fff5f5"' : '';
+    return `<tr${rowBg}>
+      <td style="text-align:center;font-weight:bold">${idx+1}</td>
+      <td><b>${escapeHtml(getDisplayName(c.company))}</b>${c.country?'<br><span style="color:#888;font-size:10px">'+flagFor(c.country)+' '+escapeHtml(c.country)+'</span>':''}</td>
+      <td>${escapeHtml(c.attn||'—')}${tel?'<br><span style="font-size:10px;color:#555">'+escapeHtml(tel)+'</span>':''}${waLink?'<br><a href="'+waLink+'" style="font-size:10px;color:#25d366">💬 WhatsApp</a>':''}</td>
+      <td style="font-size:10px">${urgency}</td>
+      <td style="font-size:11px">${items.join('<br>') || '—'}</td>
+      <td style="font-size:10px;color:#444">${machines.join('<br>') || '—'}</td>
+      <td style="min-width:90px;border-left:1px dashed #ccc">&nbsp;</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Sen Labels Follow-up Pack</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, 'Microsoft YaHei', sans-serif; color:#1a2433; ${forWord?'':'margin:0;'} }
+    .head { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid #1a3a5c; padding-bottom:8px; margin-bottom:4px; }
+    h1 { font-size:18px; color:#1a3a5c; margin:0; }
+    .sub { color:#e67e00; font-weight:600; font-size:12px; }
+    .meta { color:#666; font-size:11px; text-align:right; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:11px; }
+    th { background:#1a3a5c; color:#fff; padding:6px 7px; text-align:left; font-size:10px; }
+    td { border:1px solid #dde5ef; padding:5px 7px; vertical-align:top; }
+    .footer { margin-top:14px; color:#888; font-size:10px; text-align:center; }
+    @media print { .noprint { display:none } }
+  </style></head><body>
+    <div class="head">
+      <div>
+        <h1>📨 Sen Labels — 跟进工作清单 Follow-up Pack</h1>
+        <div class="sub">负责: ${escapeHtml(scopeLabel)} &nbsp;|&nbsp; ${escapeHtml(periodLabel)}</div>
+      </div>
+      <div class="meta">
+        日期 Date: ${dateStr}<br>
+        ${counts.customers} 客户 · 🔴 ${counts.overdue} 逾期 · 📅 ${counts.upcoming} 本周 · 📞 ${counts.inquiries} 询价
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:25px">#</th>
+        <th style="width:16%">客户 Customer</th>
+        <th style="width:14%">联系人 Contact</th>
+        <th style="width:9%">状态</th>
+        <th style="width:26%">要跟进 To Follow Up</th>
+        <th style="width:20%">相关报价 Quotes/Machine</th>
+        <th>跟进结果 Result (手写)</th>
+      </tr></thead>
+      <tbody>${rowsHTML || '<tr><td colspan="7" style="text-align:center;padding:20px">没有要跟进的客户</td></tr>'}</tbody>
+    </table>
+    <div class="footer">— Sen Labels Machinery Sdn Bhd · 此清单由 CRM 产生,请跟进后填写结果回报 —</div>
+    ${forWord ? '' : '<button class="noprint" onclick="window.print()" style="position:fixed;top:10px;right:10px;padding:10px 18px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨 Print / Save PDF</button>'}
+  </body></html>`;
+}
+
 
 // ─── Add Follow-up Modal ───────────────────────────────────────
 function openFollowupModal(customer) {
@@ -4073,7 +4288,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // v1.6: Sales Reps + Packs
     if (t.dataset.tab === 'reps' && !REPS_STATE.loaded) loadReps();
     if (t.dataset.tab === 'reps') renderReps();
-    if (t.dataset.tab === 'packs') { initPackCountryFilter(); renderPack(); }
+    if (t.dataset.tab === 'packs') {
+      if (typeof loadInquiries === 'function' && !INQUIRIES_STATE.loaded) loadInquiries();
+      initPackCountryFilter(); renderPack();
+    }
     // v1.7: Phase 6 Today's Snapshot
     if (t.dataset.tab === 'snapshot') renderSnapshot();
   }));
