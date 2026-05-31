@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.66</title>
+<title>Sen Labels — Contract Generator v10.67</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -337,7 +337,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.66</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.67</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -402,6 +402,12 @@ function mobileTab(tab) {
     <div class="field-group">
       <label>Notes <span style="font-weight:400;font-size:11px;color:#888">(printed next to date on contract)</span></label>
       <textarea id="f-notes" rows="2" placeholder="e.g. Valid for export only" oninput="state.notes=this.value;updatePreview()"></textarea>
+    </div>
+    <div class="field-group">
+      <label>👤 Sales Rep <span style="font-weight:400;font-size:11px;color:#888">(谁负责这个客户 — 下拉选或直接打字)</span></label>
+      <input list="sales-rep-list" id="f-sales-rep" placeholder="选或输入负责的 Sales Rep" oninput="state.salesRep=this.value;updateSalesRepHint();updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
+      <datalist id="sales-rep-list"></datalist>
+      <div class="field-hint" id="sales-rep-hint" style="font-size:11px;color:#888"></div>
     </div>
     <div class="field-group">
       <label>Contract Status</label>
@@ -994,7 +1000,7 @@ function newMachine() {
 // STATE
 // ============================================================
 let state = {
-  contractNo:'', date:'', admin:'NR',
+  contractNo:'', date:'', admin:'NR', salesRep:'',
   company:'', addr:'', tel:'', email:'', attn:'', port:'',
   currency:'USD',
   rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
@@ -1297,6 +1303,7 @@ function saveCurrentMachineToState() {
   const n = id => parseFloat(document.getElementById(id)?.value) || 0;
   // Contract-level
   state.admin      = g('f-admin');
+  state.salesRep   = g('f-sales-rep') || state.salesRep || '';
   state.contractNo = g('f-contract-no');
   state.date       = g('f-date');
   state.revised    = g('f-revised');
@@ -2842,6 +2849,7 @@ function updatePreview() {
   try {
     const g = id => document.getElementById(id)?.value || '';
     state.admin      = g('f-admin');
+  state.salesRep   = g('f-sales-rep') || state.salesRep || '';
     state.contractNo = g('f-contract-no');
     state.date       = g('f-date');
     state.revised    = g('f-revised');
@@ -3031,6 +3039,7 @@ function buildContractHTML() {
     <div class="cp-sc-block">
       <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo)||'&nbsp;'}</div>
       <div>Date: ${dateStr}</div>
+      ${state.salesRep?`<div style="margin-top:1mm;font-size:9pt">Sales Rep: ${esc(state.salesRep)}${repCountryByName(state.salesRep)?' ('+esc(repCountryByName(state.salesRep))+')':''}</div>`:''}
       ${revisedStr?`<div>${revisedStr}</div>`:''}
       ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
@@ -3203,6 +3212,7 @@ function buildContractHTML() {
     <div class="cp-sc-block">
       <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo)||'&nbsp;'}</div>
       <div>Date: ${dateStr}</div>
+      ${state.salesRep?`<div style="margin-top:1mm;font-size:9pt">Sales Rep: ${esc(state.salesRep)}${repCountryByName(state.salesRep)?' ('+esc(repCountryByName(state.salesRep))+')':''}</div>`:''}
       ${revisedStr?`<div>${revisedStr}</div>`:''}
       ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
@@ -3930,7 +3940,7 @@ async function saveToSheets(silent=false) {
       contractNo: state.contractNo, date: state.date, company: state.company,
       machineTitle, currency: state.currency, amount: totalAmt,
       status: state.status||'Quotation Sent', admin: state.admin||'NR', port: state.port,
-      notes: state.notes||'', signedPdfUrl: state.signedPdfUrl||''
+      notes: state.notes||'', signedPdfUrl: state.signedPdfUrl||'', salesRep: state.salesRep||''
     };
     if (!silent) setBtn('💾 Saving...', '#888');
     const cleanState = await stripImagesForSave(state);
@@ -4214,6 +4224,7 @@ function loadStateJSON(input) {
       svBank('f-bank-swift',       state.bankSwift||'');
       svBank('f-bank-branch',      state.bankBranch||'');
       sv('f-notes',        state.notes || '');
+      sv('f-sales-rep',    state.salesRep || '');
       if (!state.remarkItems || state.remarkItems.length === 0) {
         state.remarkItems = [
           'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
@@ -4308,6 +4319,7 @@ function loadFromPastedJSON() {
     if (Array.isArray(state.customPayRows)) renderCustomPayRows();
     ['account','beneficiary','name','swift','branch'].forEach(k=>{const el=document.getElementById('f-bank-'+k);const sk='bank'+k.charAt(0).toUpperCase()+k.slice(1);if(el)el.value=state[sk]||'';});
     sv('f-notes',        state.notes || '');
+      sv('f-sales-rep',    state.salesRep || '');
     if (!state.remarkItems || state.remarkItems.length === 0) {
       state.remarkItems = [
         'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
@@ -4487,7 +4499,7 @@ async function loadFromLibrary(contractNo) {
       svBank('f-bank-name',        state.bankName||'');
       svBank('f-bank-swift',       state.bankSwift||'');
       svBank('f-bank-branch',      state.bankBranch||'');
-    sv('f-notes',state.notes||'');
+    sv('f-notes',state.notes||''); sv('f-sales-rep',state.salesRep||'');
     setTimeout(() => renderRemarkItems(), 50);
     renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
     renderCwItems(); reloadImageThumbs(); updatePreview(); switchTabDirect('basic');
@@ -6617,6 +6629,37 @@ function setupDragDrop() {
   });
 }
 
+// ───── SALES REPS (dropdown options for the Sales Rep field) ─────
+let __repsCache = null;
+async function loadSalesReps() {
+  if (!gsUrl) return;
+  try {
+    const resp = await fetch(`${gsUrl}?action=crm_getReps`);
+    const data = await resp.json();
+    if (!data || !data.reps) return;
+    __repsCache = data.reps;
+    const dl = document.getElementById('sales-rep-list');
+    if (dl) {
+      dl.innerHTML = data.reps.map(r =>
+        `<option value="${(r.name||'').replace(/"/g,'&quot;')}">${r.country ? r.country : ''}</option>`
+      ).join('');
+    }
+  } catch(e) { /* reps are optional; ignore if unreachable */ }
+}
+// Look up a rep's country by name (for the hint + contract display)
+function repCountryByName(name) {
+  if (!__repsCache || !name) return '';
+  const r = __repsCache.find(x => (x.name||'').toLowerCase() === name.toLowerCase());
+  return r ? (r.country||'') : '';
+}
+// Update the small hint under the Sales Rep field
+function updateSalesRepHint() {
+  const hint = document.getElementById('sales-rep-hint');
+  if (!hint) return;
+  const country = repCountryByName(state.salesRep);
+  hint.textContent = country ? ('🌍 ' + country) : '';
+}
+
 // ───── AUTOCOMPLETE for company name ─────────────────────────
 let __companyCache = null;
 let __companyDropdown = null;
@@ -6634,7 +6677,7 @@ async function setupCompanyAutocomplete() {
       const data = await resp.json();
       __companyCache = (data.customers || []).map(c => ({
         company: c.company || '', addr: c.addr||'', tel: c.tel||'', fax: c.fax||'',
-        email: c.email||'', attn: c.attn||''
+        email: c.email||'', attn: c.attn||'', defaultRep: c.defaultRep||''
       }));
       return __companyCache;
     } catch { return []; }
@@ -6672,6 +6715,14 @@ async function setupCompanyAutocomplete() {
         document.getElementById('f-attn').value  = m.attn;
         state.company = m.company; state.addr = m.addr; state.tel = m.tel;
         state.fax = m.fax; state.email = m.email; state.attn = m.attn;
+        // Auto-fill the customer's default Sales Rep (only if the rep field is empty,
+        // so a rep already chosen for THIS contract isn't overwritten).
+        const repField = document.getElementById('f-sales-rep');
+        if (m.defaultRep && repField && !repField.value.trim()) {
+          repField.value = m.defaultRep;
+          state.salesRep = m.defaultRep;
+          updateSalesRepHint();
+        }
         __closeCompanyDropdown(); updatePreview();
       });
       __companyDropdown.appendChild(item);
@@ -6828,6 +6879,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Autocomplete (once gsUrl is configured)
   setTimeout(setupCompanyAutocomplete, 1000);
+  setTimeout(loadSalesReps, 1100);
   
   // Warn before unload if dirty
   window.addEventListener('beforeunload', e => {
