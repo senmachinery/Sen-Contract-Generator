@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.7</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.9</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -4062,8 +4062,15 @@ function gatherPackData(onlyChecked) {
       if (hasActive || overdue.length || upcoming.length || inquiries.length) {
         rows.push({ customer, overdue, upcoming, inquiries, noFollowup: !overdue.length && !upcoming.length });
       }
-    } else if (overdue.length || upcoming.length || inquiries.length) {
-      rows.push({ customer, overdue, upcoming, inquiries });
+    } else {
+      // v2.9: reminders only apply to customers with at least one ACTIVE deal — once every
+      // contract is Closed/Delivered/Lost/Cancelled, the customer drops out of the follow-up loop.
+      const hasActiveDeal = (customer.contracts || []).some(ct => !['Closed (Paid)','Delivered','Lost','Cancelled'].includes(ct.status));
+      const ov = hasActiveDeal ? overdue : [];
+      const up = hasActiveDeal ? upcoming : [];
+      if (ov.length || up.length || inquiries.length) {
+        rows.push({ customer, overdue: ov, upcoming: up, inquiries });
+      }
     }
   }
   // Sort: most overdue first, then by name
@@ -4183,8 +4190,107 @@ function renderPackCustomerCard(x, today) {
           </div>
         ` : ''}
       </div>
+
+      <div class="pack-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+        <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;font-size:11px" title="挑一条话术,复制或直接发 WhatsApp(带预填文字)">✍️ 话术 / WhatsApp</button>
+        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" style="background:#00897b;color:#fff;font-size:11px" title="记一笔:已发消息还没回,下次跟进自动设 +3 天">💬 没回 · 3天后跟</button>
+        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="记一笔:打了没接,下次 +1 天">📞 没接 · 明天打</button>
+        <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px" title="详细记录:选结果 / 指定合同 / 自定下次日期">📝 详细记录</button>
+        <button class="btn btn-sm btn-outline" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="客户选定哪台 / 成交 / 不跟了 — 逐张设合同状态">📌 结案 / 状态</button>
+      </div>
     </div>
   `;
+}
+
+// ───── v2.8: act on a customer directly from the Follow-up Pack ─────
+// One-tap follow-up logging FROM the pack. Mirrors quickFollowup() but refreshes the
+// pack card (not the CRM detail panel), so the existing quickFollowup flow is untouched.
+async function packQuickFollowup(company, kind) {
+  const c = (STATE.customers || []).find(x => x.company === company);
+  if (!c) { showToast('找不到客户', 'error'); return; }
+  if (kind === 'done') { openFollowupModal(company); return; }  // detailed flow refreshes the pack on save
+  const today = new Date().toISOString().split('T')[0];
+  let nextDays, type, desc, outcome;
+  if (kind === 'no_answer')     { nextDays = 1; type = 'Call';     desc = '📞 Called — no answer';     outcome = 'No answer, will retry tomorrow'; }
+  else if (kind === 'no_reply') { nextDays = 3; type = 'WhatsApp'; desc = '💬 Messaged — no reply yet'; outcome = 'No reply, will follow up in 3 days'; }
+  else return;
+  const nextDate = new Date(Date.now() + nextDays*86400000).toISOString().split('T')[0];
+  const latest = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+  const contractNo = latest ? latest.contractNo : '';
+  const fu = { customer: company, date: today, type, contractNo, description: desc, outcome, nextFollowupDate: nextDate, supersede: true };
+  showToast('⏳ 记录中…', '');
+  try {
+    const r = await apiPost('crm_addFollowup', { followup: fu });
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    // Re-fetch THIS customer's followups so the pack card reflects the new entry
+    try {
+      const fr = await apiGet('crm_getFollowups', { customer: company });
+      STATE.followups[company] = fr.followups || [];
+    } catch (e) { /* non-fatal: card refreshes on next full sync */ }
+    showToast(`✅ 已记录 — 下次跟进 ${fmtDate(nextDate)}`, 'success');
+    renderPack();
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+// ───── v2.9: 结案 / 状态 — set each contract's status (customer picks the one they bought) ─────
+function openContractStatusModal(company) {
+  const c = (STATE.customers || []).find(x => x.company === company);
+  if (!c) { showToast('找不到客户', 'error'); return; }
+  $('modal-title').textContent = `📌 结案 / 更新状态 — ${getDisplayName(company)}`;
+  $('modal-body').innerHTML = buildContractStatusBody(c);
+  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">关闭</button>`;
+  $('modal-overlay').classList.add('show');
+}
+
+function buildContractStatusBody(c) {
+  const terminal = ['Closed (Paid)','Delivered','Lost','Cancelled'];
+  const contracts = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  if (!contracts.length) return '<div class="empty">这个客户还没有合同记录</div>';
+  const coAttr = c.company.replace(/'/g, "\\'");
+  const cards = contracts.map(ct => {
+    const won = ct.status === 'Closed (Paid)' || ct.status === 'Delivered';
+    const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
+    const isTerminal = won || lost;
+    const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
+    return `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px${isTerminal ? ';opacity:.65;background:#fafafa' : ''}">
+        <div style="font-weight:600;font-size:13px">${escapeHtml(ct.contractNo)}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin:2px 0">${escapeHtml((ct.machine||'').substring(0,80))}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(ct.currency||'')} ${Number(ct.amount||0).toLocaleString()} · 现状: <b>${escapeHtml(ct.status||'')}</b></div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Closed (Paid)','${coAttr}')" ${won?'disabled':''} style="background:#2e7d32;color:#fff;font-size:11px${won?';opacity:.5':''}">✅ 成交 (选了这台)</button>
+          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Lost','${coAttr}')" ${lost?'disabled':''} style="background:#c0392b;color:#fff;font-size:11px${lost?';opacity:.5':''}">🚫 不跟了 (Lost)</button>
+        </div>
+      </div>`;
+  }).join('');
+  return `
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">💡 报了好几台、客户最后选定其中一台时:把选中那张标「成交」,其余没选上的标「不跟了」。<br>一旦这个客户没有任何活跃合同,就会自动从跟进清单消失。</div>
+    ${cards}`;
+}
+
+async function setContractStatus(contractNo, status, company) {
+  showToast('⏳ 更新中…', '');
+  try {
+    const r = await apiPost('crm_setContractStatus', { contractNo, status });
+    if (!r.ok) throw new Error(r.error || '更新失败');
+    // Update local state so the pack + modal reflect it immediately (no full reload needed)
+    const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo);
+    if (ct) ct.status = status;
+    const cust = (STATE.customers || []).find(x => x.company === company);
+    if (cust) {
+      const terminal = ['Closed (Paid)','Delivered','Lost','Cancelled'];
+      cust.activeContracts = (cust.contracts || []).filter(x => !terminal.includes(x.status)).length;
+      // backend may have cleared reminders if no active deal is left → re-fetch this customer's followups
+      try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; } catch(e) {}
+    }
+    showToast(`✅ 已更新为 ${status}`, 'success');
+    if (cust) $('modal-body').innerHTML = buildContractStatusBody(cust);  // refresh modal
+    renderPack();                                                          // refresh pack behind it
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
 }
 
 function copyPackContactsToClipboard() {
@@ -4579,7 +4685,7 @@ async function quickFollowup(customer, kind) {
   const c = STATE.customers.find(x => x.company === customer);
   const contractNo = (c && c.contracts && c.contracts[0]) ? c.contracts[0].contractNo : '';
 
-  const fu = { customer, date: today, type, contractNo, description: desc, outcome, nextFollowupDate: nextDate };
+  const fu = { customer, date: today, type, contractNo, description: desc, outcome, nextFollowupDate: nextDate, supersede: true };
   try {
     const r = await apiPost('crm_addFollowup', { followup: fu });
     if (!r.ok) throw new Error(r.error || 'Save failed');
@@ -4601,7 +4707,8 @@ async function saveFollowup(customer) {
     contractNo: $('fu-contract').value || '',
     description: desc,
     outcome: $('fu-outcome').value || '',
-    nextFollowupDate: $('fu-next').value || ''
+    nextFollowupDate: $('fu-next').value || '',
+    supersede: true
   };
   
   const btn = $('modal-footer').querySelector('.btn:last-child');
@@ -4614,6 +4721,11 @@ async function saveFollowup(customer) {
     showToast('✅ Follow-up saved', 'success');
     // Refresh customer detail to show new follow-up
     await selectCustomer(customer);
+    // v2.8: if logged from the Follow-up Packs tab, re-render the pack so the card updates too
+    // (selectCustomer above already refreshed STATE.followups[customer])
+    if (document.getElementById('tab-packs') && document.getElementById('tab-packs').classList.contains('active')) {
+      renderPack();
+    }
   } catch (e) {
     btn.disabled = false; btn.innerHTML = '💾 Save Follow-up';
     showToast('Failed: ' + e.message, 'error');
