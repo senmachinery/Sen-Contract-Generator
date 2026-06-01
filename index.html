@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.69</title>
+<title>Sen Labels — Contract Generator v10.70</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -337,7 +337,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.69</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.70</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -4619,7 +4619,7 @@ async function saveImagesToDrive() {
         method: 'POST',
         mode: 'no-cors',
         headers: {'Content-Type': 'text/plain'},
-        body: JSON.stringify({ action: 'uploadImage', filename, base64, mimeType, machineRef })
+        body: JSON.stringify({ action: 'uploadImage', folder: 'SenLabels_MachineImages', folderName: 'SenLabels_MachineImages', name: filename, filename, base64, mimeType, machineRef })
       });
       success++;
     } catch(e) {
@@ -4689,11 +4689,15 @@ async function searchImagePicker() {
     const resp = await fetch(`${gsUrl}?action=listImages&q=${encodeURIComponent(q)}`);
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || 'Failed to load images');
-    const images = data.images || [];
+    let images = data.images || [];
+    const qLower = q.toLowerCase();
+    if (qLower) images = images.filter(im => (im.name || '').toLowerCase().includes(qLower));
     _imagePickerCache = images;
     statusEl.textContent = `${images.length} image(s) found`;
     if (!images.length) {
-      gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
+      gridEl.innerHTML = qLower
+        ? `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images match "${esc(q)}".<br>Try a different keyword, or clear the search.</div>`
+        : '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
       return;
     }
     gridEl.innerHTML = '';
