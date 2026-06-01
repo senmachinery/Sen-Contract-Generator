@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.9</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.10</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -1361,6 +1361,7 @@ function renderCustomerDetail(c, followups) {
               <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
               <span style="font-size:11px;margin-left:6px">👤 ${ct.salesRep ? escapeHtml(ct.salesRep) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(c.defaultRep)+' (默认)</span>' : '<span style="color:var(--text-muted)">未指定</span>')}</span>
               <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="设定此合同的代理">✏️</span>
+              <button onclick="event.stopPropagation();openContractPDF('${ct.contractNo.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="预览这张合同的 PDF(新分页,不离开 CRM)">👁 预览 PDF</button>
             </div>
           </div>
           <div class="contract-amount">${fmtMoney(ct.amount, ct.currency)}</div>
@@ -1376,6 +1377,7 @@ function renderCustomerDetail(c, followups) {
       <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="客户没接电话 → 明天再跟">📞 没接 → 明天</button>
       <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="已读不回 / 没回复 → 3天后再跟">💬 没回 → 3天后</button>
       <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','done')" title="跟进完成 → 设下次日期">✅ 完成 → 设日期</button>
+      <button class="btn btn-sm" style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" title="客户选定哪台 / 成交 / 不跟了 — 逐张设合同状态">📌 结案 / 状态</button>
     </div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
       followups.map(f => {
@@ -1628,7 +1630,13 @@ function escapeHtml(s) {
 }
 
 function openContractInGenerator(contractNo) {
-  window.location.href = `index.html?contract=${encodeURIComponent(contractNo)}&load=true`;
+  window.open(`index.html?contract=${encodeURIComponent(contractNo)}&load=true`, '_blank');
+}
+
+// v2.10: open a clean PDF-style preview of a contract in a NEW tab (no editor UI, keeps CRM open)
+function openContractPDF(contractNo) {
+  if (!contractNo) { showToast('此客户暂无合同可预览', 'error'); return; }
+  window.open(`index.html?preview=${encodeURIComponent(contractNo)}`, '_blank');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4156,7 +4164,7 @@ function renderPackCustomerCard(x, today) {
         <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
           ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="WhatsApp ${tel}">💬 WhatsApp</a>` : ''}
           ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Email ${email}">📧 Email</a>` : ''}
-          <a href="${generatorUrl}" class="rep-action-btn call" style="background:var(--primary)">📋 Open</a>
+          <a href="${generatorUrl}" target="_blank" class="rep-action-btn call" style="background:var(--primary)">📋 Open</a>
         </div>
       </div>
       
@@ -4197,6 +4205,7 @@ function renderPackCustomerCard(x, today) {
         <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="记一笔:打了没接,下次 +1 天">📞 没接 · 明天打</button>
         <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px" title="详细记录:选结果 / 指定合同 / 自定下次日期">📝 详细记录</button>
         <button class="btn btn-sm btn-outline" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="客户选定哪台 / 成交 / 不跟了 — 逐张设合同状态">📌 结案 / 状态</button>
+        ${latest ? `<button class="btn btn-sm btn-outline" onclick="openContractPDF('${latest.contractNo}')" style="font-size:11px;border-color:#0b6bcb;color:#0b6bcb" title="预览最新合同 ${latest.contractNo} 的 PDF(新分页)">👁 预览 PDF</button>` : ''}
       </div>
     </div>
   `;
