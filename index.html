@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.70</title>
+<title>Sen Labels — Contract Generator v10.71</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -132,6 +132,16 @@ button{cursor:pointer;font-family:inherit}
 .modal .close-btn{float:right;background:none;border:none;font-size:20px;color:#888;cursor:pointer;margin-top:-4px}
 #preview-panel{flex:1;background:#ccc;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;display:flex;flex-direction:column;align-items:center}
 #preview-panel h3{color:#555;font-size:12px;text-align:center;margin-bottom:12px;letter-spacing:.5px;text-transform:uppercase}
+/* v10.71: clean PDF-style preview mode (opened from CRM via ?preview=) */
+body.cp-preview-only #topbar,
+body.cp-preview-only #form-panel,
+body.cp-preview-only #mobile-preview-toggle,
+body.cp-preview-only #preview-panel>h3{display:none!important}
+body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!important;padding:24px 0!important}
+body.cp-preview-only #app{display:block!important}
+#cp-preview-bar{position:fixed;top:10px;right:14px;z-index:99999;display:flex;gap:8px}
+#cp-preview-bar button{font:600 13px system-ui,sans-serif;padding:8px 14px;border:none;border-radius:6px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+@media print{#cp-preview-bar{display:none!important}}
 #contract-paper{background:#fff;width:794px;max-width:100%;padding:10mm 14mm;box-shadow:0 2px 20px rgba(0,0,0,.15);font-family:'Times New Roman',Times,serif;font-size:10.5pt;line-height:1.35;color:#000}
 .cp-header-wrap{display:flex;align-items:center;background:#fff;border-radius:4px 4px 0 0;padding:4mm 6mm;margin-bottom:0;gap:5mm;border-top:5px solid #1e3a5f;border-bottom:1px solid #dce6f0}
 .cp-logo{height:18mm;width:auto;flex-shrink:0;border-radius:3px;padding:0}
@@ -337,7 +347,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.70</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.71</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1061,7 +1071,20 @@ function handleCrmUrlParams() {
   const contractNo = params.get('contract');
   const autofill = params.get('autofill') === 'true';
   const loadFlag = params.get('load') === 'true';
-  
+
+  // v10.71: ?preview=<contractNo> → load contract silently and show clean PDF-style preview
+  const previewNo = params.get('preview');
+  if (previewNo) {
+    let tries = 12;
+    const go = () => {
+      if (typeof gsUrl !== 'undefined' && gsUrl) loadFromLibrary(previewNo, { silent: true, preview: true });
+      else if (tries-- > 0) setTimeout(go, 300);
+      else _previewLoadError(previewNo, '后端 URL 未配置,无法加载合同。请先在 Generator 设置里配置 Google Sheets URL。');
+    };
+    go();
+    return;
+  }
+
   if (customer && autofill) {
     // Pre-fill customer name
     document.getElementById('f-company').value = customer;
@@ -4457,19 +4480,21 @@ async function searchLibrary() {
 function escAttr(s) { return String(s||'').replace(/'/g,"\\'"); }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-async function loadFromLibrary(contractNo) {
-  if (!gsUrl) return;
+async function loadFromLibrary(contractNo, opts) {
+  opts = opts || {};
+  if (!gsUrl) { if (opts.silent) _previewLoadError(contractNo, '后端 URL 未配置'); return; }
   const statusEl = document.getElementById('library-status');
   statusEl.textContent = `Loading ${contractNo}...`;
   try {
     const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
     const data = await resp.json();
     if (!data.ok || !data.state) {
+      if (opts.silent) { _previewLoadError(contractNo, data.error || '没有找到此合同的存档(可能是旧合同,请先在 Generator 用 Save Record 重存一次)'); return; }
       alert('❌ Could not load contract: ' + (data.error || 'No state found.\n\nThis contract was saved before the Library update. Please re-save it using Save Record first.'));
       statusEl.textContent = 'Load failed';
       return;
     }
-    if (!confirm(`Load contract ${contractNo}?\nThis will overwrite the current form.`)) return;
+    if (!opts.silent && !confirm(`Load contract ${contractNo}?\nThis will overwrite the current form.`)) return;
     // Load state same as Paste JSON
     state = data.state;
     normalizeState(state);
@@ -4503,12 +4528,36 @@ async function loadFromLibrary(contractNo) {
     setTimeout(() => renderRemarkItems(), 50);
     renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
     renderCwItems(); reloadImageThumbs(); updatePreview(); switchTabDirect('basic');
-    closeLibrary();
-    alert(`✅ Loaded: ${contractNo}`);
+    if (!opts.silent) { closeLibrary(); alert(`✅ Loaded: ${contractNo}`); }
+    if (opts.preview) enterPreviewMode();
   } catch(e) {
+    if (opts.silent) { _previewLoadError(contractNo, e.message); return; }
     alert('Error: ' + e.message);
     statusEl.textContent = 'Load failed';
   }
+}
+
+// v10.71: clean PDF-style preview mode (opened from CRM via ?preview=<contractNo> in a new tab).
+// Hides the editor + toolbar, shows only the rendered contract page, plus a floating Save-PDF / Close bar.
+function enterPreviewMode() {
+  document.body.classList.add('cp-preview-only');
+  if (!document.getElementById('cp-preview-bar')) {
+    const bar = document.createElement('div');
+    bar.id = 'cp-preview-bar';
+    bar.innerHTML =
+      '<button style="background:#e67e00;color:#fff" onclick="doPrint()" title="保存 / 打印这张合同的 PDF">🖨️ 保存 PDF</button>' +
+      '<button style="background:#555;color:#fff" onclick="window.close()" title="关闭这个预览分页">✕ 关闭</button>';
+    document.body.appendChild(bar);
+  }
+  window.scrollTo(0, 0);
+}
+function _previewLoadError(contractNo, msg) {
+  document.body.classList.remove('cp-preview-only');
+  document.body.innerHTML = '<div style="padding:48px;font-family:system-ui,sans-serif;text-align:center;color:#333">'
+    + '<div style="font-size:40px">📄</div>'
+    + '<h2 style="color:#c0392b">无法预览合同 ' + (contractNo || '') + '</h2>'
+    + '<p style="color:#666;max-width:520px;margin:8px auto">' + (msg || '') + '</p>'
+    + '<button onclick="window.close()" style="margin-top:12px;padding:8px 16px;border:none;border-radius:6px;background:#555;color:#fff;cursor:pointer">关闭</button></div>';
 }
 
 async function testLibraryConnection() {
