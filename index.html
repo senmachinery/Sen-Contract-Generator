@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.67</title>
+<title>Sen Labels — Contract Generator v10.68</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -337,7 +337,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.67</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.68</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5081,8 +5081,12 @@ function loadMachineFromDB(idx) {
   // After panel is rebuilt, restore all specs
   setTimeout(() => {
     // Re-assign extraSpecs and cwItems (onMachineTypeChange may have cleared them)
-    M().extraSpecs = (m.extraSpecs || []).map(s => ({ label: s.label, value: s.value }));
+    M().extraSpecs = (m.extraSpecs || []).map(s => ({
+      label: s.label, value: s.value,
+      bold: s.bold || (String(s.label||'').replace(/^[~#]+/,'').trim().toLowerCase() === 'model')
+    }));
     M().cwItems    = (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty || '', val: c.val || '' }));
+    M().optItems   = (m.optItems || []).map(o => ({ desc: o.desc, qty: o.qty || '', val: o.val || '' }));
 
     // Re-save customTitle to state (DOM rebuild clears it)
     M().customTitle = m.modelName || '';
@@ -5104,9 +5108,10 @@ function loadMachineFromDB(idx) {
     const wrap = document.getElementById('extra-specs-wrap');
     if (wrap) wrap.style.display = 'block';
 
-    // Render specs and come-with
+    // Render specs, come-with and optional items
     renderSpecRowsUI(M().extraSpecs);
     renderCwItems();
+    renderOptItems();
     calcPrice();
     updatePreview();
     switchTabDirect('machine');
