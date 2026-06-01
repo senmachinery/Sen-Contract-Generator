@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.68</title>
+<title>Sen Labels — Contract Generator v10.69</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -337,7 +337,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.68</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.69</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -4881,7 +4881,11 @@ async function saveCurrentMachineToSheetDB() {
     refPrice,
     cwItems:     (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty, val: c.val })),
     optItems:    (m.optItems || []).map(o => ({ desc: o.desc, qty: o.qty, val: o.val })),
-    extraSpecs:  (m.extraSpecs || []).map(s => ({ label: s.label, value: s.value, bold: s.bold||false }))
+    extraSpecs:  (m.extraSpecs || []).map(s => ({
+      label: s.label, value: s.value,
+      bold: s.bold || false, boldLabel: s.boldLabel || false,
+      underLabel: s.underLabel || false, underValue: s.underValue || false
+    }))
   };
 
   statusEl.textContent = 'Saving...';
@@ -5053,9 +5057,9 @@ function loadMachineFromDB(idx) {
   machine.sellPrice    = m.refPrice || 0;
   machine._finalPrice  = m.refPrice || 0;
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
-    label: s.label,
-    value: s.value,
-    bold: s.bold || s.label.replace(/^[~#]+/,'').trim().toLowerCase() === 'model'
+    label: s.label, value: s.value,
+    bold: s.bold || false, boldLabel: s.boldLabel || false,
+    underLabel: s.underLabel || false, underValue: s.underValue || false
   }));
   machine.images = (m.images || []).filter(Boolean);
   machine.cwItems      = (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty || '', val: c.val || '' }));
@@ -5083,7 +5087,8 @@ function loadMachineFromDB(idx) {
     // Re-assign extraSpecs and cwItems (onMachineTypeChange may have cleared them)
     M().extraSpecs = (m.extraSpecs || []).map(s => ({
       label: s.label, value: s.value,
-      bold: s.bold || (String(s.label||'').replace(/^[~#]+/,'').trim().toLowerCase() === 'model')
+      bold: s.bold || false, boldLabel: s.boldLabel || false,
+      underLabel: s.underLabel || false, underValue: s.underValue || false
     }));
     M().cwItems    = (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty || '', val: c.val || '' }));
     M().optItems   = (m.optItems || []).map(o => ({ desc: o.desc, qty: o.qty || '', val: o.val || '' }));
