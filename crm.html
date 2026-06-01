@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.6</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.7</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -1302,6 +1302,7 @@ function renderCustomerDetail(c, followups) {
         <div class="meta-row" style="margin-top:4px">
           👤 负责代理: <strong>${c.defaultRep ? escapeHtml(c.defaultRep) : '<span style="color:var(--text-muted);font-weight:400">未指定</span>'}</strong>
           <span onclick="openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="设定/更改负责代理">✏️ 设定代理</span>
+          <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;margin-left:10px;font-size:11px;padding:3px 10px" title="生成 WhatsApp 跟进话术">✍️ 生成跟进话术</button>
         </div>
       </div>
       <div style="text-align:right">
@@ -4319,6 +4320,195 @@ function buildPackDocHTML(forWord) {
 
 
 // ─── Add Follow-up Modal ───────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// v2.7: SMART FOLLOW-UP SCRIPTS (WhatsApp 跟进话术)
+// 模板打底,按客户国家自动选语言,按状态自动判断场景。AI 优化按钮以后加。
+// ═══════════════════════════════════════════════════════════════════
+
+// 国家 → 语言 (没列到的默认英文)
+function langForCountry(country) {
+  const c = (country || '').toLowerCase();
+  if (c.includes('china') || c.includes('taiwan') || c.includes('中国') || c.includes('台湾') || c.includes('hong kong')) return 'zh';
+  if (c.includes('malaysia') || c.includes('马来')) return 'ms';   // 马来西亚:英文+马来文都给
+  // 日韩越泰等:模板用英文打底,AI优化时再翻译
+  return 'en';
+}
+
+// 判断这个客户当前处于哪个场景
+function detectScenario(customer, followups) {
+  const today = new Date().toISOString().split('T')[0];
+  const fups = followups || [];
+  const overdue = fups.filter(f => { const d = toIsoDate(f.nextFollowupDate); return d && d < today && f.status !== 'completed'; });
+  // 有逾期跟进,且有活跃报价 → 报价后没回
+  const hasQuotePending = (customer.contracts || []).some(ct =>
+    ['Quotation Sent','Quoted','Negotiation','Pending'].some(s => (ct.status||'').includes(s)));
+  const hasActiveContract = (customer.activeContracts || 0) > 0;
+  // 多久没动静
+  const lastDate = customer.lastDate || '';
+  const daysSinceLast = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : 999;
+  // 成交过
+  const hasClosed = (customer.contracts || []).some(ct => ['Closed (Paid)','Delivered'].includes(ct.status));
+
+  if (hasQuotePending && overdue.length > 0) return 'quote_no_reply';   // 报价后没回
+  if (hasQuotePending) return 'quote_no_reply';
+  if (hasClosed && daysSinceLast > 180) return 'reactivate';            // 老客户很久没买
+  if (!hasActiveContract && hasClosed) return 'reactivate';
+  if (hasActiveContract) return 'quote_no_reply';
+  return 'reactivate';
+}
+
+// 话术模板库: scenario → lang → [3个版本]
+// 占位符: {name}=联系人, {machine}=机器, {company}=公司
+const SCRIPT_TEMPLATES = {
+  quote_no_reply: {
+    en: [
+      { label:'温和提醒', text:"Hi {name}, just following up on the quotation we sent for the {machine}. Do let me know if you have any questions — happy to help! 😊" },
+      { label:'制造紧迫', text:"Hi {name}, hope you're well! We currently have a unit ready for early delivery on the {machine}. Would you like to reserve it before stock runs low?" },
+      { label:'直接问决定', text:"Hi {name}, may I check if you've had a chance to review our quotation for the {machine}? Any concerns on price or specs — I'm happy to work something out. 🙏" }
+    ],
+    zh: [
+      { label:'温和提醒', text:"您好 {name},想跟进一下之前发您的 {machine} 报价,有任何问题随时联系我,很乐意为您解答 😊" },
+      { label:'制造紧迫', text:"您好 {name},我们目前有一台 {machine} 现货可以尽快交货,需要的话可以帮您预留,以免缺货~" },
+      { label:'直接问决定', text:"您好 {name},不知道您看了我们 {machine} 的报价没有?价格或规格上有任何顾虑都可以跟我说,我们再商量 🙏" }
+    ],
+    ms: [
+      { label:'温和提醒(BM)', text:"Hi {name}, ingin follow up tentang sebut harga untuk {machine} yang kami hantar. Jika ada sebarang soalan, boleh hubungi saya 😊" },
+      { label:'制造紧迫(BM)', text:"Hi {name}, kami ada satu unit {machine} sedia untuk penghantaran awal. Nak saya tempahkan untuk anda sebelum stok habis?" },
+      { label:'直接问决定(BM)', text:"Hi {name}, boleh saya tahu jika anda sudah sempat semak sebut harga {machine} kami? Sebarang kebimbangan tentang harga, boleh kita bincang 🙏" }
+    ]
+  },
+  reactivate: {
+    en: [
+      { label:'问近况', text:"Hi {name}, it's been a while! How's business at {company}? We've just brought in some new label machinery models — would love to update you if you're expanding. 😊" },
+      { label:'报新机型', text:"Hi {name}, hope all is well! We recently launched upgraded models with better speed and lower running cost. Worth a quick look if you're planning new capacity?" },
+      { label:'重新连接', text:"Hi {name}, just checking in! Any new label printing projects on your side this year? Always happy to support {company} with machinery or spare parts. 🙏" }
+    ],
+    zh: [
+      { label:'问近况', text:"您好 {name},好久没联系了!{company} 最近生意如何?我们刚到了几款新的标签机型,如果您有扩产计划,很乐意跟您介绍 😊" },
+      { label:'报新机型', text:"您好 {name},近来可好!我们最近推出了升级机型,速度更快、运行成本更低,如果您打算增加产能,值得看看~" },
+      { label:'重新连接', text:"您好 {name},问候一下!今年贵司有新的标签印刷项目吗?机器或配件方面随时可以支持 {company} 🙏" }
+    ],
+    ms: [
+      { label:'问近况(BM)', text:"Hi {name}, dah lama tak berhubung! Macam mana bisnes {company}? Kami baru dapat beberapa model mesin label baru — boleh update jika anda nak kembangkan 😊" },
+      { label:'报新机型(BM)', text:"Hi {name}, harap semua baik! Kami baru lancarkan model naik taraf dengan kelajuan lebih baik dan kos operasi lebih rendah. Berbaloi untuk tengok!" },
+      { label:'重新连接(BM)', text:"Hi {name}, sekadar bertanya khabar! Ada projek percetakan label baru tahun ini? Sentiasa sedia bantu {company} dengan mesin atau alat ganti 🙏" }
+    ]
+  },
+  inquiry: {
+    en: [
+      { label:'先回应+要信息', text:"Hi {name}, thank you for your interest in our {machine}! To prepare an accurate quotation, may I know: new or refurbished? Your monthly print volume? And target width/colours? 😊" },
+      { label:'热情+约时间', text:"Hi {name}, great to hear from you! I'd love to recommend the right machine for your needs. Are you free for a quick call/chat to go through the details?" },
+      { label:'直接给方向', text:"Hi {name}, thanks for reaching out! Based on what you described, our {machine} could be a good fit. Shall I prepare a full quotation with specs? 🙏" }
+    ],
+    zh: [
+      { label:'先回应+要信息', text:"您好 {name},感谢您对我们 {machine} 的兴趣!为了给您准确报价,想了解一下:要新机还是翻新?每月印量大概多少?目标宽度和颜色数? 😊" },
+      { label:'热情+约时间', text:"您好 {name},很高兴收到您的询问!我想帮您推荐最合适的机器,方便的话能简单通个话/聊一下细节吗?" },
+      { label:'直接给方向', text:"您好 {name},谢谢您的咨询!根据您描述的需求,我们的 {machine} 应该挺合适,要我帮您准备一份完整的规格报价吗? 🙏" }
+    ],
+    ms: [
+      { label:'先回应+要信息(BM)', text:"Hi {name}, terima kasih atas minat terhadap {machine} kami! Untuk sebut harga tepat, boleh saya tahu: baru atau refurbished? Volum cetakan bulanan? Lebar/warna sasaran? 😊" },
+      { label:'热情+约时间(BM)', text:"Hi {name}, gembira dapat berita dari anda! Saya nak cadangkan mesin yang sesuai. Ada masa untuk borak/call ringkas tentang butirannya?" },
+      { label:'直接给方向(BM)', text:"Hi {name}, terima kasih kerana menghubungi! Berdasarkan keperluan anda, {machine} kami mungkin sesuai. Nak saya sediakan sebut harga lengkap? 🙏" }
+    ]
+  },
+  after_sale: {
+    en: [
+      { label:'交货关怀', text:"Hi {name}, hope the {machine} is running well! Any questions on operation or maintenance, our team is always here to help. 😊" },
+      { label:'问满意度', text:"Hi {name}, just checking in after delivery — is everything working smoothly with the {machine}? Your feedback means a lot to us! 🙏" },
+      { label:'推配件/保养', text:"Hi {name}, hope all is good at {company}! A reminder that we supply spare parts and servicing for your machine — let me know if you ever need support." }
+    ],
+    zh: [
+      { label:'交货关怀', text:"您好 {name},希望 {machine} 运行顺利!操作或保养上有任何问题,我们团队随时为您服务 😊" },
+      { label:'问满意度', text:"您好 {name},交货后跟进一下 — {machine} 用起来一切顺利吗?您的反馈对我们很重要! 🙏" },
+      { label:'推配件/保养', text:"您好 {name},希望 {company} 一切都好!提醒一下,我们提供机器的配件和保养服务,有需要随时联系我~" }
+    ],
+    ms: [
+      { label:'交货关怀(BM)', text:"Hi {name}, harap {machine} berfungsi dengan baik! Sebarang soalan tentang operasi atau penyelenggaraan, pasukan kami sedia membantu 😊" },
+      { label:'问满意度(BM)', text:"Hi {name}, sekadar bertanya selepas penghantaran — semua lancar dengan {machine}? Maklum balas anda amat bermakna! 🙏" },
+      { label:'推配件/保养(BM)', text:"Hi {name}, harap semua baik di {company}! Peringatan bahawa kami bekalkan alat ganti dan servis untuk mesin anda — hubungi saya jika perlu." }
+    ]
+  }
+};
+
+const SCENARIO_LABELS = {
+  quote_no_reply: '🔴 报价后没回',
+  reactivate: '💤 老客户激活',
+  inquiry: '📞 询价回应',
+  after_sale: '✅ 成交后关怀'
+};
+
+let SCRIPT_MODAL_STATE = { company:'', scenario:'', lang:'' };
+
+function openScriptModal(company) {
+  const c = STATE.customers.find(x => x.company === company);
+  if (!c) { showToast('找不到客户', 'error'); return; }
+  const followups = STATE.followups[company] || [];
+  const scenario = detectScenario(c, followups);
+  const lang = langForCountry(c.country);
+  SCRIPT_MODAL_STATE = { company, scenario, lang };
+
+  $('modal-title').textContent = `✍️ 跟进话术 — ${getDisplayName(company)}`;
+  $('modal-body').innerHTML = buildScriptModalBody(c, scenario, lang);
+  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">关闭</button>`;
+  $('modal-overlay').classList.add('show');
+}
+
+function buildScriptModalBody(c, scenario, lang) {
+  const name = c.attn || getDisplayName(c.company) || 'there';
+  const firstName = (name.split(/\s+/)[0]) || name;
+  const machine = (c.latestMachine || (c.contracts[0] && c.contracts[0].machine) || 'our machine').replace(/\s*\(.*$/, '').substring(0, 50);
+  const fill = (t) => t.replace(/\{name\}/g, firstName).replace(/\{machine\}/g, machine).replace(/\{company\}/g, getDisplayName(c.company));
+
+  const scenarioPicker = Object.keys(SCENARIO_LABELS).map(s =>
+    `<option value="${s}" ${s===scenario?'selected':''}>${SCENARIO_LABELS[s]}</option>`).join('');
+  const langPicker = [['en','English'],['zh','中文'],['ms','Bahasa Melayu']].map(([v,n]) =>
+    `<option value="${v}" ${v===lang?'selected':''}>${n}</option>`).join('');
+
+  const templates = (SCRIPT_TEMPLATES[scenario] && SCRIPT_TEMPLATES[scenario][lang]) || SCRIPT_TEMPLATES[scenario].en || [];
+  const wa = (c.tel || '').replace(/\D/g, '');
+
+  const cards = templates.map((tpl, i) => {
+    const msg = fill(tpl.text);
+    const waLink = wa.length >= 8 ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}` : '';
+    return `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#faf9ff">
+        <div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:5px">${escapeHtml(tpl.label)}</div>
+        <div id="script-text-${i}" style="font-size:13px;line-height:1.5;white-space:pre-wrap;color:#1a2433">${escapeHtml(msg)}</div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="copyText(document.getElementById('script-text-${i}').textContent, '已复制话术')" style="background:var(--info);color:#fff;font-size:11px">📋 复制</button>
+          ${waLink ? `<a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#25d366;color:#fff;font-size:11px;text-decoration:none">💬 直接发 WhatsApp</a>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <div>
+        <label style="font-size:10px;color:#999;display:block;margin-bottom:2px">场景</label>
+        <select id="script-scenario" onchange="refreshScriptModal()" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px">${scenarioPicker}</select>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#999;display:block;margin-bottom:2px">语言</label>
+        <select id="script-lang" onchange="refreshScriptModal()" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px">${langPicker}</select>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">💡 系统按客户状态和国家自动选了场景+语言,你也可以手动改。挑一个复制或直接发。</div>
+    ${cards || '<div class="empty">这个组合暂无模板</div>'}
+    <div style="font-size:11px;color:var(--text-muted);margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+      ✨ 之后会加「AI 优化」按钮,对重要客户可一键精修话术 (需要 Claude API)。
+    </div>`;
+}
+
+function refreshScriptModal() {
+  const c = STATE.customers.find(x => x.company === SCRIPT_MODAL_STATE.company);
+  if (!c) return;
+  const scenario = $('script-scenario').value;
+  const lang = $('script-lang').value;
+  SCRIPT_MODAL_STATE.scenario = scenario;
+  SCRIPT_MODAL_STATE.lang = lang;
+  $('modal-body').innerHTML = buildScriptModalBody(c, scenario, lang);
+}
+
 function openFollowupModal(customer) {
   const c = STATE.customers.find(x => x.company === customer);
   const today = new Date().toISOString().split('T')[0];
