@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.72</title>
+<title>Sen Labels — Contract Generator v10.73</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -346,7 +346,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.72</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.73</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1088,16 +1088,15 @@ function handleCrmUrlParams() {
     // Pre-fill customer name
     document.getElementById('f-company').value = customer;
     state.company = customer;
-    // v10.72: fill full customer header (addr/tel/email/attn/port) from their latest contract.
-    // (the old loadCustomerFromDB(name) call was a no-op — that function takes an array index, not a name)
-    const fromContract = params.get('fromcontract');
-    if (typeof gsUrl !== 'undefined' && gsUrl && fromContract) {
-      setTimeout(() => fillCustomerHeaderFromContract(fromContract), 400);
-    }
     updatePreview();
-    // Clean URL so refresh won't re-trigger
+    // Clean URL so refresh won't re-trigger (capture fromcontract first)
+    const fromContract = params.get('fromcontract');
     history.replaceState(null, '', window.location.pathname);
-    setTimeout(() => alert('✅ New quote for: ' + customer + '\n\nCustomer info pre-filled. You can now add machines, pricing, and save.'), 300);
+    // v10.73: fill full customer header from recent contracts / CustomerDB, then confirm
+    setTimeout(async () => {
+      if (typeof gsUrl !== 'undefined' && gsUrl) await fillCustomerHeaderFromContract(fromContract, customer);
+      alert('✅ New quote for: ' + customer + '\n\n客户资料已尽量自动填好,请检查后补充。现在可以加机器、定价、保存。');
+    }, 350);
   } else if (contractNo && loadFlag) {
     // Load existing contract from Library
     if (typeof openLibrary === 'function') {
@@ -4561,25 +4560,42 @@ function _previewLoadError(contractNo, msg) {
     + '<button onclick="window.close()" style="margin-top:12px;padding:8px 16px;border:none;border-radius:6px;background:#555;color:#fff;cursor:pointer">关闭</button></div>';
 }
 
-// v10.72: fill the customer header fields from a contract's saved state (used by CRM "New Quote").
-// Only fills fields that are still EMPTY, so it never overrides anything the user already typed.
-async function fillCustomerHeaderFromContract(contractNo) {
-  if (!gsUrl || !contractNo) return;
-  try {
-    const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
-    const data = await resp.json();
-    if (!data.ok || !data.state) return;
-    const s = data.state;
-    const setIf = (id, val) => { const el = document.getElementById(id); if (el && val && !(el.value || '').trim()) el.value = val; };
-    setIf('f-company', s.company);
-    setIf('f-addr',    s.addr);
-    setIf('f-tel',     s.tel);
-    setIf('f-fax',     s.fax);
-    setIf('f-email',   s.email);
-    setIf('f-attn',    s.attn);
-    setIf('f-port',    s.port);
-    if (typeof updatePreview === 'function') updatePreview();
-  } catch(e) {}
+// v10.73: fill the customer header (company/addr/tel/email/attn/fax/port) for CRM "New Quote".
+// Robust multi-source: tries each of the customer's recent contracts (comma-separated) until the
+// header is complete, then falls back to CustomerDB by name. Only fills EMPTY fields — never
+// overrides anything already typed. Contract numbers (not personal data) are what travels in the URL.
+async function fillCustomerHeaderFromContract(contractNos, company) {
+  if (!gsUrl) return;
+  const setIf = (id, val) => { const el = document.getElementById(id); if (el && val && !(el.value || '').trim()) el.value = val; };
+  const val = id => ((document.getElementById(id) || {}).value || '').trim();
+  const needMore = () => !val('f-addr') || !val('f-tel') || !val('f-email');
+  const fillFrom = src => {
+    if (!src) return;
+    setIf('f-company', src.company); setIf('f-addr', src.addr); setIf('f-tel', src.tel);
+    setIf('f-fax', src.fax); setIf('f-email', src.email); setIf('f-attn', src.attn); setIf('f-port', src.port);
+  };
+  // 1) Try the customer's recent contracts' saved states (whichever has a full To/Add/Tel/Email)
+  const list = String(contractNos || '').split(',').map(s => s.trim()).filter(Boolean);
+  for (const no of list) {
+    if (!needMore()) break;
+    try {
+      const r = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(no)}`);
+      const d = await r.json();
+      if (d.ok && d.state) fillFrom(d.state);
+    } catch (e) {}
+  }
+  // 2) Fallback: look the customer up in CustomerDB by name
+  if (needMore() && company) {
+    try {
+      const r = await fetch(`${gsUrl}?action=customerDB&q=${encodeURIComponent(company)}`);
+      const d = await r.json();
+      const lc = company.trim().toLowerCase();
+      const found = (d.customers || []).find(c => (c.company || '').trim().toLowerCase() === lc)
+                 || (d.customers || [])[0];
+      fillFrom(found);
+    } catch (e) {}
+  }
+  if (typeof updatePreview === 'function') updatePreview();
 }
 
 async function testLibraryConnection() {
