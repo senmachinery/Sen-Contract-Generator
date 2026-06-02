@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.74</title>
+<title>Sen Labels — Contract Generator v10.76</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -347,7 +347,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.74</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.76</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3063,7 +3063,7 @@ function buildContractHTML() {
     <div class="cp-sc-block">
       <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo)||'&nbsp;'}</div>
       <div>Date: ${dateStr}</div>
-      ${state.salesRep?`<div style="margin-top:1mm;font-size:9pt">Sales Rep: ${esc(state.salesRep)}${repCountryByName(state.salesRep)?' ('+esc(repCountryByName(state.salesRep))+')':''}</div>`:''}
+      ${state.salesRep?`<div style="margin-top:1mm;font-size:9pt">Sales Rep: ${esc(state.salesRep)}</div>`:''}
       ${revisedStr?`<div>${revisedStr}</div>`:''}
       ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
@@ -3236,7 +3236,7 @@ function buildContractHTML() {
     <div class="cp-sc-block">
       <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo)||'&nbsp;'}</div>
       <div>Date: ${dateStr}</div>
-      ${state.salesRep?`<div style="margin-top:1mm;font-size:9pt">Sales Rep: ${esc(state.salesRep)}${repCountryByName(state.salesRep)?' ('+esc(repCountryByName(state.salesRep))+')':''}</div>`:''}
+      ${state.salesRep?`<div style="margin-top:1mm;font-size:9pt">Sales Rep: ${esc(state.salesRep)}</div>`:''}
       ${revisedStr?`<div>${revisedStr}</div>`:''}
       ${state.notes?`<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>`:''}
     </div>
@@ -6742,16 +6742,23 @@ async function loadSalesReps() {
     __repsCache = data.reps;
     const dl = document.getElementById('sales-rep-list');
     if (dl) {
+      // v10.75: dropdown shows ONLY the clean name (no country label, no "(You)"/company parens)
       dl.innerHTML = data.reps.map(r =>
-        `<option value="${(r.name||'').replace(/"/g,'&quot;')}">${r.country ? r.country : ''}</option>`
+        `<option value="${cleanRepName(r.name).replace(/"/g,'&quot;')}"></option>`
       ).join('');
     }
   } catch(e) { /* reps are optional; ignore if unreachable */ }
 }
-// Look up a rep's country by name (for the hint + contract display)
+// v10.75: strip a trailing parenthetical from a rep name ("Max (You)"→"Max", "Mr. No (Sunrise)"→"Mr. No")
+function cleanRepName(name) {
+  return String(name || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+}
+// Look up a rep's country by name — robust to the cleaned name now shown in the field
 function repCountryByName(name) {
   if (!__repsCache || !name) return '';
-  const r = __repsCache.find(x => (x.name||'').toLowerCase() === name.toLowerCase());
+  const target = cleanRepName(name).toLowerCase();
+  const r = __repsCache.find(x => (x.name||'').toLowerCase() === name.toLowerCase())
+        || __repsCache.find(x => cleanRepName(x.name||'').toLowerCase() === target);
   return r ? (r.country||'') : '';
 }
 // Update the small hint under the Sales Rep field
