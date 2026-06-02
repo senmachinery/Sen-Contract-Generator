@@ -389,7 +389,7 @@
 </script>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.13</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.14</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -4316,14 +4316,19 @@ function buildContractStatusBody(c) {
         <div style="font-weight:600;font-size:13px">${escapeHtml(ct.contractNo)}</div>
         <div style="font-size:12px;color:var(--text-secondary);margin:2px 0">${escapeHtml((ct.machine||'').substring(0,80))}</div>
         <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(ct.currency||'')} ${Number(ct.amount||0).toLocaleString()} · 现状: <b>${escapeHtml(ct.status||'')}</b></div>
-        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Closed (Paid)','${coAttr}')" ${won?'disabled':''} style="background:#2e7d32;color:#fff;font-size:11px${won?';opacity:.5':''}">✅ 成交 (选了这台)</button>
           <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Lost','${coAttr}')" ${lost?'disabled':''} style="background:#c0392b;color:#fff;font-size:11px${lost?';opacity:.5':''}">🚫 不跟了 (Lost)</button>
+          ${isTerminal ? `<select onchange="if(this.value){setContractStatus('${ctAttr}',this.value,'${coAttr}');this.value='';}" title="点错了?把这张合同改回活跃状态" style="font-size:11px;padding:5px 6px;border:1px solid #f0a020;border-radius:4px;color:#b86b00;background:#fff;cursor:pointer">
+            <option value="">↩️ 重开 / 改回…</option>
+            <option value="Quotation Sent">↩️ 改回「报价中 Quotation Sent」</option>
+            <option value="Sales Contract">↩️ 改回「销售合同 Sales Contract」</option>
+          </select>` : ''}
         </div>
       </div>`;
   }).join('');
   return `
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">💡 报了好几台、客户最后选定其中一台时:把选中那张标「成交」,其余没选上的标「不跟了」。<br>一旦这个客户没有任何活跃合同,就会自动从跟进清单消失。</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">💡 报了好几台、客户最后选定其中一台时:把选中那张标「成交」,其余没选上的标「不跟了」。<br>一旦这个客户没有任何活跃合同,就会自动从跟进清单消失。<br>👉 点错了?已结案 / 不跟了的合同上会出现「↩️ 重开 / 改回」,可以撤销、改回活跃状态。</div>
     ${cards}`;
 }
 
