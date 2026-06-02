@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.73</title>
+<title>Sen Labels — Contract Generator v10.74</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -312,7 +312,8 @@ function mobileTab(tab) {
 </script>
 </head>
 <body>
-<div id="pw-overlay">
+<!-- v10.74: Generator password gate disabled (gate moved to CRM). Overlay kept but hidden. -->
+<div id="pw-overlay" style="display:none">
   <div id="pw-box">
     <div id="pw-logo">Sen Labels</div>
     <div id="pw-sub">Contract Generator — Staff Only</div>
@@ -346,7 +347,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.73</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.74</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -355,7 +356,7 @@ function mobileTab(tab) {
     <button class="btn btn-outline btn-sm" onclick="openSettings()">&#9881; Settings</button>
     <button class="btn btn-success btn-sm" onclick="saveToSheets()">&#128190; Save Record</button>
     <button class="btn btn-sm" onclick="openLibrary()" style="background:#6a1b9a;color:#fff">&#128218; Library</button>
-    <a href="crm.html" target="_self" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM">&#128101; CRM</a>
+    <a href="crm.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)">&#128101; CRM</a>
     <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff">&#128295; Machine DB</button>
     <button class="btn btn-orange btn-sm" onclick="doPrint()">&#128424; Print / PDF</button>
     <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true)" style="background:#217346">&#128196; Export Excel</button>
