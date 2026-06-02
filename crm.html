@@ -345,7 +345,7 @@
 <body>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.11</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.12</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -1273,9 +1273,12 @@ async function selectCustomer(companyName) {
 }
 
 function renderCustomerDetail(c, followups) {
-  // Build encoded URL for "New Quote" button (v2.11: include latest contract so Generator auto-fills full customer info)
-  const _latestCt = (c.contracts || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
-  const newQuoteUrl = `index.html?customer=${encodeURIComponent(c.company)}&autofill=true${_latestCt ? '&fromcontract=' + encodeURIComponent(_latestCt.contractNo) : ''}`;
+  // Build encoded URL for "New Quote" button (v2.12: pass up to 5 recent contract numbers so the
+  // Generator can find one with a full customer header to auto-fill from)
+  const _recentCtNos = (c.contracts || []).slice()
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .slice(0, 5).map(ct => ct.contractNo).filter(Boolean).join(',');
+  const newQuoteUrl = `index.html?customer=${encodeURIComponent(c.company)}&autofill=true${_recentCtNos ? '&fromcontract=' + encodeURIComponent(_recentCtNos) : ''}`;
   const today = new Date().toISOString().split('T')[0];
   
   // v1.4: Get display name (may be overridden)
