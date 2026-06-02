@@ -38,6 +38,9 @@
   .content { padding: 18px; max-width: 1400px; margin: 0 auto; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
+  .kanban-col.dnd-over { outline: 2px dashed var(--primary); outline-offset: -4px; background: rgba(44,82,130,.06); }
+  .kanban-card[draggable="true"] { cursor: grab; }
+  .kanban-card[draggable="true"]:active { cursor: grabbing; }
   
   .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px; }
   
@@ -389,7 +392,7 @@
 </script>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.14</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.16</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
@@ -402,8 +405,8 @@
 </div>
 
 <div class="tab-bar">
-  <button class="tab" data-tab="snapshot">📸 Today</button>
-  <button class="tab active" data-tab="crm">👥 CRM <span class="count" id="crm-count">—</span></button>
+  <button class="tab active" data-tab="snapshot">📸 Today</button>
+  <button class="tab" data-tab="crm">👥 CRM <span class="count" id="crm-count">—</span></button>
   <button class="tab" data-tab="pipeline">📊 Pipeline <span class="count" id="pipeline-count">—</span></button>
   <button class="tab" data-tab="inquiries">📞 Inquiries <span class="count" id="inquiries-count">—</span></button>
   <button class="tab" data-tab="tasks">✅ Tasks <span class="count" id="tasks-count">—</span></button>
@@ -416,7 +419,7 @@
 
   <!-- CRM TAB -->
   <!-- SNAPSHOT TAB (v1.7 Phase 6) -->
-  <div class="tab-content" id="tab-snapshot">
+  <div class="tab-content active" id="tab-snapshot">
     <div id="snapshot-header" class="snapshot-header">
       <div>
         <div class="snapshot-greeting" id="snapshot-greeting">📸 Today's Snapshot</div>
@@ -427,7 +430,7 @@
     <div id="snapshot-content"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building today's snapshot...</div></div></div>
   </div>
 
-  <div class="tab-content active" id="tab-crm">
+  <div class="tab-content" id="tab-crm">
     <div id="quick-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
       <!-- Filled by updateQuickFilterCounts() -->
     </div>
@@ -596,6 +599,11 @@
         <button class="btn btn-sm" onclick="downloadPackWord()" style="background:#2b579a;color:#fff">📄 Download Word</button>
         <button class="btn btn-sm" onclick="copyPackContactsToClipboard()" style="background:var(--info);color:#fff">📋 Copy Names + Tels</button>
         <button class="btn btn-sm" onclick="copyPackForWhatsApp()" style="background:#25d366;color:#fff">💬 Copy for WhatsApp</button>
+        <span style="border-left:1px solid var(--border);height:20px;margin:0 4px"></span>
+        <span style="font-size:11px;color:var(--text-muted)">⏰ 批量设下次(勾选的):</span>
+        <button class="btn btn-sm" onclick="batchSetNextFollowup(1)" style="background:#00897b;color:#fff;font-size:11px" title="把勾选客户的下次跟进都设为明天">明天</button>
+        <button class="btn btn-sm" onclick="batchSetNextFollowup(3)" style="background:#00897b;color:#fff;font-size:11px" title="把勾选客户的下次跟进都设为 3 天后">3天</button>
+        <button class="btn btn-sm" onclick="batchSetNextFollowup(7)" style="background:#00897b;color:#fff;font-size:11px" title="把勾选客户的下次跟进都设为 1 周后">1周</button>
       </div>
       <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">💡 下面清单可以取消勾选不需要跟进的客户,只有勾选的会进 Word / PDF / 复制</div>
     </div>
@@ -1328,6 +1336,10 @@ function renderCustomerDetail(c, followups) {
   // v1.4: Get display name (may be overridden)
   const displayName = getDisplayName(c.company);
   const isRenamed = displayName !== c.company;
+  // v2.15: one-tap WhatsApp / call
+  const telRaw = ((c.tel || '') + '').trim();
+  const waNum  = telRaw.replace(/\D/g, '');
+  const telNum = telRaw.replace(/[^\d+]/g, '');
   const showAddressWarning = !isRenamed && looksLikeAddress(c.company);
   
   // Compute overdue / upcoming follow-ups
@@ -1351,6 +1363,7 @@ function renderCustomerDetail(c, followups) {
           👤 负责代理: <strong>${c.defaultRep ? escapeHtml(c.defaultRep) : '<span style="color:var(--text-muted);font-weight:400">未指定</span>'}</strong>
           <span onclick="openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="设定/更改负责代理">✏️ 设定代理</span>
           <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;margin-left:10px;font-size:11px;padding:3px 10px" title="生成 WhatsApp 跟进话术">✍️ 生成跟进话术</button>
+          ${telRaw ? `<a href="https://wa.me/${waNum}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#25d366;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="WhatsApp ${escapeHtml(telRaw)}(自动带跟进话术)">💬 WhatsApp</a><a href="tel:${telNum}" class="btn btn-sm" style="background:#0b6bcb;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="拨打 ${escapeHtml(telRaw)}">📞 拨号</a>` : ''}
         </div>
       </div>
       <div style="text-align:right">
@@ -1399,7 +1412,10 @@ function renderCustomerDetail(c, followups) {
       📋 Contracts (${c.contracts.length})
     </div>
     ${c.contracts.length === 0 ? '<div class="empty">No contracts yet</div>' :
-      c.contracts.map(ct => `
+      c.contracts.map(ct => {
+        const _cf = followups.filter(f => f.contractNo === ct.contractNo && f.nextFollowupDate);
+        const _nextF = _cf.map(f => f.nextFollowupDate).filter(d => d >= today).sort()[0] || '';
+        return `
         <div class="contract-row" onclick="openContractInGenerator('${ct.contractNo}')">
           <div class="contract-info">
             <div class="contract-no">${ct.contractNo}</div>
@@ -1410,23 +1426,24 @@ function renderCustomerDetail(c, followups) {
               <span style="font-size:11px;margin-left:6px">👤 ${ct.salesRep ? escapeHtml(ct.salesRep) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(c.defaultRep)+' (默认)</span>' : '<span style="color:var(--text-muted)">未指定</span>')}</span>
               <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="设定此合同的代理">✏️</span>
               <button onclick="event.stopPropagation();openContractPDF('${ct.contractNo.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="预览这张合同的 PDF(新分页,不离开 CRM)">👁 预览 PDF</button>
+              ${_nextF ? `<span style="font-size:11px;margin-left:8px;color:#2e7d32;font-weight:600" title="下次跟进日期">📅 下次 ${fmtDate(_nextF)}</span>` : ''}
             </div>
+            ${contractActionBar(ct, c.company)}
           </div>
           <div class="contract-amount">${fmtMoney(ct.amount, ct.currency)}</div>
         </div>
-      `).join('')
+      `}).join('')
     }
     
     <div class="section-title">
       💬 Follow-ups (${followups.length})
       <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')">+ Add Follow-up</button>
     </div>
-    <div class="quick-fu-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">
+    <div class="quick-fu-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 4px">
       <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="客户没接电话 → 明天再跟">📞 没接 → 明天</button>
       <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="已读不回 / 没回复 → 3天后再跟">💬 没回 → 3天后</button>
-      <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','done')" title="跟进完成 → 设下次日期">✅ 完成 → 设日期</button>
-      <button class="btn btn-sm" style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" title="客户选定哪台 / 成交 / 不跟了 — 逐张设合同状态">📌 结案 / 状态</button>
     </div>
+    <div style="font-size:11px;color:var(--text-muted);margin:0 0 10px">💡 每张合同的「📅 下次跟进 / ✅ 成交 / 🚫 Lost」按钮就在上面合同列表里 ↑</div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
       followups.map(f => {
         const isOverdue = f.nextFollowupDate && f.nextFollowupDate < today;
@@ -1753,7 +1770,7 @@ function renderPipeline() {
         .join(' · ');
       
       return `
-        <div class="kanban-col ${group.cssClass}">
+        <div class="kanban-col ${group.cssClass}" ondragover="event.preventDefault();event.dataTransfer.dropEffect='move'" ondragenter="this.classList.add('dnd-over')" ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('dnd-over')" ondrop="this.classList.remove('dnd-over');onKanbanDrop(event,'${group.id}')">
           <div class="kanban-col-header">
             <div class="kanban-col-title">
               <span>${group.title}</span>
@@ -1811,7 +1828,7 @@ function renderKanbanCard(c) {
   const agingStatus = getContractAgingStatus(c);  // v1.7
   
   return `
-    <div class="kanban-card ${cardClass}" onclick="openContractInGenerator('${c.contractNo}')" title="${c.contractNo} — ${escapeHtml(c.machine)}">
+    <div class="kanban-card ${cardClass}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${c.contractNo}');event.dataTransfer.effectAllowed='move'" onclick="openContractInGenerator('${c.contractNo}')" title="${c.contractNo} — ${escapeHtml(c.machine)}">
       <div class="kanban-card-company">${flag} ${showWarn ? '<span style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}${renderAgingTag(agingStatus)}</div>
       <div class="kanban-card-machine">${escapeHtml(c.machine || '—')}</div>
       <div class="kanban-card-amount">${fmtMoney(c.amount, c.currency)}</div>
@@ -1820,6 +1837,7 @@ function renderKanbanCard(c) {
         ${isStuck ? `<span class="kanban-card-stuck-tag">⚠ ${days}d STUCK</span>` :
           (days !== null ? `<span>${daysAgoText(c.date)}</span>` : '<span>—</span>')}
       </div>
+      ${contractActionBar(c, c.company)}
     </div>
   `;
 }
@@ -3873,6 +3891,12 @@ function renderSnapshot() {
               <div class="snapshot-item">
                 <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(dispName)}</div>
                 <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
+                  <button onclick="waWithScript('${x.customer.company.replace(/'/g, "\\'")}')" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp(带话术)">💬 WhatsApp</button>
+                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="顺延 3 天">⏰ +3天</button>
+                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',7)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="顺延 1 周">⏰ +1周</button>
+                  <button onclick="selectCustomer('${x.customer.company.replace(/'/g, "\\'")}');document.querySelector('[data-tab=&quot;crm&quot;]').click()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text-secondary);cursor:pointer" title="打开这个客户">👤 打开</button>
+                </div>
               </div>
             `;
           }).join('')
@@ -4210,7 +4234,7 @@ function renderPackCustomerCard(x, today) {
           ${latest ? `<div class="pack-customer-meta" style="margin-top:2px">📋 Latest: <strong>${latest.contractNo}</strong> — ${escapeHtml((latest.machine||'').substring(0,60))}</div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
-          ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="WhatsApp ${tel}">💬 WhatsApp</a>` : ''}
+          ${waLink ? `<a href="${waLink}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="rep-action-btn whatsapp" title="WhatsApp ${escapeHtml(tel)}(自动带跟进话术)">💬 WhatsApp</a>` : ''}
           ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Email ${email}">📧 Email</a>` : ''}
           <a href="${generatorUrl}" target="_blank" class="rep-action-btn call" style="background:var(--primary)">📋 Open</a>
         </div>
@@ -4251,6 +4275,8 @@ function renderPackCustomerCard(x, today) {
         <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;font-size:11px" title="挑一条话术,复制或直接发 WhatsApp(带预填文字)">✍️ 话术 / WhatsApp</button>
         <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" style="background:#00897b;color:#fff;font-size:11px" title="记一笔:已发消息还没回,下次跟进自动设 +3 天">💬 没回 · 3天后跟</button>
         <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="记一笔:打了没接,下次 +1 天">📞 没接 · 明天打</button>
+        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',3)" style="background:#8d6e63;color:#fff;font-size:11px" title="把下次跟进顺延 3 天(不记录联系)">⏰ +3天</button>
+        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',7)" style="background:#6d4c41;color:#fff;font-size:11px" title="把下次跟进顺延 1 周">⏰ +1周</button>
         <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px" title="详细记录:选结果 / 指定合同 / 自定下次日期">📝 详细记录</button>
         <button class="btn btn-sm btn-outline" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="客户选定哪台 / 成交 / 不跟了 — 逐张设合同状态">📌 结案 / 状态</button>
         ${latest ? `<button class="btn btn-sm btn-outline" onclick="openContractPDF('${latest.contractNo}')" style="font-size:11px;border-color:#0b6bcb;color:#0b6bcb" title="预览最新合同 ${latest.contractNo} 的 PDF(新分页)">👁 预览 PDF</button>` : ''}
@@ -4337,22 +4363,201 @@ async function setContractStatus(contractNo, status, company) {
   try {
     const r = await apiPost('crm_setContractStatus', { contractNo, status });
     if (!r.ok) throw new Error(r.error || '更新失败');
-    // Update local state so the pack + modal reflect it immediately (no full reload needed)
+    // Update local state in BOTH places so every view reflects it immediately
     const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo);
     if (ct) ct.status = status;
-    const cust = (STATE.customers || []).find(x => x.company === company);
-    if (cust) {
-      const terminal = ['Closed (Paid)','Delivered','Lost','Cancelled'];
-      cust.activeContracts = (cust.contracts || []).filter(x => !terminal.includes(x.status)).length;
-      // backend may have cleared reminders if no active deal is left → re-fetch this customer's followups
-      try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; } catch(e) {}
+    if (company) {
+      const cu = (STATE.customers || []).find(x => x.company === company);
+      if (cu) { const cc = (cu.contracts || []).find(x => x.contractNo === contractNo); if (cc) cc.status = status; }
     }
     showToast(`✅ 已更新为 ${status}`, 'success');
-    if (cust) $('modal-body').innerHTML = buildContractStatusBody(cust);  // refresh modal
-    renderPack();                                                          // refresh pack behind it
+    await refreshAfterChange(company);
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
   }
+}
+
+// ───── v2.15: per-contract quick actions (used on contract rows + pipeline cards) ─────
+function _tabActive(id) { const el = document.getElementById(id); return !!(el && el.classList.contains('active')); }
+
+// Refresh whatever views are currently visible after a status / follow-up change.
+async function refreshAfterChange(company) {
+  if (company) { try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; } catch (e) {} }
+  const cust = company ? (STATE.customers || []).find(x => x.company === company) : null;
+  if (cust) {
+    const terminal = ['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled'];
+    cust.activeContracts = (cust.contracts || []).filter(x => !terminal.includes(x.status)).length;
+  }
+  const modalOpen = document.getElementById('modal-overlay') && document.getElementById('modal-overlay').classList.contains('show');
+  const inStatusModal = modalOpen && /结案|更新状态/.test(($('modal-title') && $('modal-title').textContent) || '');
+  if (inStatusModal && cust) { $('modal-body').innerHTML = buildContractStatusBody(cust); }
+  // Customer detail view (only when no modal covering it)
+  if (cust && STATE.activeCustomer === company && !modalOpen) {
+    renderCustomerDetail(cust, STATE.followups[company] || []);
+  }
+  if (_tabActive('tab-pipeline') && typeof renderPipeline === 'function') renderPipeline();
+  if (_tabActive('tab-packs') && typeof renderPack === 'function') renderPack();
+  if (_tabActive('tab-snapshot') && typeof renderSnapshot === 'function') renderSnapshot();
+}
+
+// The little action bar shown on each contract (rows + kanban cards).
+function contractActionBar(ct, company) {
+  const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
+  const coAttr = (company || '').replace(/'/g, "\\'");
+  const won  = ct.status === 'Closed (Paid)' || ct.status === 'Delivered';
+  const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
+  const base = 'font-size:11px;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid';
+  if (won || lost) {
+    return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px">
+      <span style="font-size:11px;font-weight:600;color:${won ? '#2e7d32' : '#c0392b'}">${won ? '✅ 已成交' : '🚫 已结束 ('+escapeHtml(ct.status)+')'}</span>
+      <select onchange="if(this.value){reopenContract('${ctAttr}','${coAttr}',this.value);this.value='';}" style="font-size:11px;padding:4px 6px;border:1px solid #f0a020;border-radius:5px;color:#b86b00;background:#fff;cursor:pointer">
+        <option value="">↩️ 重开…</option>
+        <option value="Quotation Sent">改回 报价中</option>
+        <option value="Sales Contract">改回 销售合同</option>
+      </select></div>`;
+  }
+  return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
+    <button onclick="quickNextFollowup('${ctAttr}','${coAttr}')" style="${base} #90caf9;background:#e3f2fd;color:#1565c0" title="一键设下次跟进日期">📅 下次跟进</button>
+    <button onclick="markWon('${ctAttr}','${coAttr}')" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="客户选了这台 → 成交">✅ 成交</button>
+    <button onclick="markLost('${ctAttr}','${coAttr}')" style="${base} #f5c6cb;background:#fdecea;color:#c0392b" title="这张不跟了 → Lost">🚫 Lost</button>
+  </div>`;
+}
+
+function markWon(contractNo, company)  { if (confirm('把这张合同标为「成交 Closed (Paid)」?')) setContractStatus(contractNo, 'Closed (Paid)', company); }
+function markLost(contractNo, company) { if (confirm('把这张合同标为「Lost(不跟了)」?')) setContractStatus(contractNo, 'Lost', company); }
+function reopenContract(contractNo, company, status) { setContractStatus(contractNo, status, company); }
+
+// One-tap "set next follow-up date" — no notes required. Syncs to the Follow-up list.
+function quickNextFollowup(contractNo, company) {
+  const base = new Date();
+  const iso  = d => d.toISOString().split('T')[0];
+  const plus = n => iso(new Date(base.getTime() + n * 86400000));
+  const ca = contractNo.replace(/'/g, "\\'");
+  const oa = company.replace(/'/g, "\\'");
+  const chips = [['明天', plus(1)], ['3 天后', plus(3)], ['1 周后', plus(7)], ['2 周后', plus(14)], ['1 个月后', plus(30)]];
+  $('modal-title').textContent = `📅 设下次跟进 — ${contractNo}`;
+  $('modal-body').innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">点一下即可,无需填写内容。会自动同步到「跟进清单 / Follow-up」。</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      ${chips.map(([lbl, d]) => `<button class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:13px;padding:9px 14px;line-height:1.3" onclick="saveQuickNext('${ca}','${oa}','${d}')">${lbl}<br><span style="font-size:10px;opacity:.7">${fmtDate(d)}</span></button>`).join('')}
+    </div>
+    <div class="form-row">
+      <label>或选自订日期</label>
+      <div style="display:flex;gap:8px">
+        <input type="date" id="qnext-date" value="${plus(7)}" style="flex:1">
+        <button class="btn btn-primary" onclick="saveQuickNext('${ca}','${oa}', document.getElementById('qnext-date').value)">设定</button>
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:12px">
+      <a href="#" onclick="event.preventDefault();closeModal();openFollowupModal('${oa}')" style="color:var(--info)">需要写跟进内容?改用完整表单 →</a>
+    </div>`;
+  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">取消</button>`;
+  $('modal-overlay').classList.add('show');
+}
+
+async function saveQuickNext(contractNo, company, isoDate) {
+  if (!isoDate) { showToast('请选择日期', 'error'); return; }
+  const today = new Date().toISOString().split('T')[0];
+  const fu = { customer: company, date: today, type: 'Follow-up', contractNo,
+    description: '📅 已跟进 — 下次跟进 ' + fmtDate(isoDate), outcome: '',
+    nextFollowupDate: isoDate, supersede: true };
+  showToast('⏳ 记录中…', '');
+  try {
+    const r = await apiPost('crm_addFollowup', { followup: fu });
+    if (!r.ok) throw new Error(r.error || '保存失败');
+    closeModal();
+    showToast('✅ 下次跟进 ' + fmtDate(isoDate), 'success');
+    await refreshAfterChange(company);
+  } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+}
+
+// ════════ v2.16: powerful CRM helpers ════════
+
+// ---- F4: open WhatsApp with the auto-detected follow-up script pre-filled ----
+function defaultScriptText(company) {
+  const c = STATE.customers.find(x => x.company === company);
+  if (!c) return '';
+  const followups = STATE.followups[company] || [];
+  let scenario = 'followup', lang = 'en';
+  try { scenario = detectScenario(c, followups); } catch (e) {}
+  try { lang = langForCountry(c.country); } catch (e) {}
+  const name = c.attn || getDisplayName(company) || 'there';
+  const firstName = (name.split(/\s+/)[0]) || name;
+  const machine = ((c.latestMachine || (c.contracts && c.contracts[0] && c.contracts[0].machine) || 'our machine') + '').replace(/\s*\(.*$/, '').substring(0, 50);
+  const tset = SCRIPT_TEMPLATES[scenario] || {};
+  const templates = tset[lang] || tset.en || [];
+  const raw = (templates[0] && templates[0].text) || 'Hi {name}, just following up on {machine}. Let me know if you have any questions 😊';
+  return raw.replace(/\{name\}/g, firstName).replace(/\{machine\}/g, machine).replace(/\{company\}/g, getDisplayName(company));
+}
+function waWithScript(company) {
+  const c = STATE.customers.find(x => x.company === company);
+  if (!c) { showToast('找不到客户', 'error'); return; }
+  const wa = ((c.tel || '') + '').replace(/\D/g, '');
+  if (wa.length < 8) { showToast('这个客户没有有效电话号码', 'error'); return; }
+  const msg = defaultScriptText(company);
+  window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ---- F2: one-tap snooze (push the next follow-up date forward) ----
+async function snoozeFollowup(company, days) {
+  const c = STATE.customers.find(x => x.company === company);
+  const latest = c && (c.contracts || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+  const nextDate = new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const fu = { customer: company, date: today, type: 'Follow-up', contractNo: latest ? latest.contractNo : '',
+    description: '⏰ 顺延跟进 → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
+  showToast('⏳ 顺延中…', '');
+  try {
+    const r = await apiPost('crm_addFollowup', { followup: fu });
+    if (!r.ok) throw new Error(r.error || '失败');
+    showToast('✅ 顺延到 ' + fmtDate(nextDate), 'success');
+    await refreshAfterChange(company);
+  } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+}
+
+// ---- F3: batch — set next follow-up date for all CHECKED customers in the pack ----
+async function batchSetNextFollowup(days) {
+  const { rows } = gatherPackData(true);
+  if (!rows.length) { showToast('没有勾选的客户', 'error'); return; }
+  const label = days === 1 ? '明天' : (days + ' 天后');
+  if (!confirm(`把勾选的 ${rows.length} 个客户的下次跟进都设为「${label}」?`)) return;
+  const nextDate = new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  let ok = 0, fail = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const x = rows[i];
+    const co = x.customer.company;
+    const latest = (x.customer.contracts || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    const fu = { customer: co, date: today, type: 'Follow-up', contractNo: latest ? latest.contractNo : '',
+      description: '⏰ 批量设定下次跟进 → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
+    showToast(`⏳ 批量设定中… ${i + 1}/${rows.length}`, '');
+    try {
+      const r = await apiPost('crm_addFollowup', { followup: fu });
+      if (r.ok) { ok++; STATE.followups[co] = [{ id: 'tmp' + i, customer: co, date: today, type: 'Follow-up', contractNo: fu.contractNo, description: fu.description, outcome: '', nextFollowupDate: nextDate, status: '' }]; }
+      else fail++;
+    } catch (e) { fail++; }
+  }
+  showToast(`✅ 完成 ${ok} 个${fail ? (' · ' + fail + ' 失败') : ''} — 下次跟进 ${fmtDate(nextDate)}`, 'success');
+  renderPack();
+}
+
+// ---- F1: drag a pipeline card into a column to change its status ----
+function kanbanStatusForGroup(groupId) {
+  if (groupId === 'closed') return 'Closed (Paid)';
+  if (groupId === 'lost') return 'Lost';
+  const g = STAGE_GROUPS.find(x => x.id === groupId);
+  return g ? g.statuses[0] : null;
+}
+function onKanbanDrop(e, groupId) {
+  e.preventDefault();
+  const no = e.dataTransfer.getData('text/plain');
+  if (!no) return;
+  const ct = (STATE.contracts || []).find(x => x.contractNo === no);
+  if (!ct) { showToast('找不到合同', 'error'); return; }
+  const status = kanbanStatusForGroup(groupId);
+  if (!status || ct.status === status) { renderPipeline(); return; }
+  if ((groupId === 'closed' || groupId === 'lost') && !confirm(`把合同 ${no} 标为「${status}」?`)) { renderPipeline(); return; }
+  setContractStatus(no, status, ct.company);
 }
 
 function copyPackContactsToClipboard() {
@@ -4867,7 +5072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Connection test
   if (STATE.appsScriptUrl) {
     const ok = await testConnection();
-    if (ok) await refreshData();
+    if (ok) { await refreshData(); try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(e){} }
   } else {
     $('setup-banner').style.display = 'flex';
     $('conn-status').innerHTML = '⚠ Not configured';
