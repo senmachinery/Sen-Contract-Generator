@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.78</title>
+<title>Sen Labels — Contract Generator v10.79</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -347,7 +347,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.78</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.79</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -364,6 +364,7 @@ function mobileTab(tab) {
     <button class="btn btn-outline btn-sm" onclick="saveStateJSON()" title="Save full contract data as .json for future re-editing">&#128190; Save JSON</button>
     <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file">&#128194; Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this)"></label>
     <button class="btn btn-outline btn-sm" onclick="openPasteModal()" title="Paste JSON text to load contract (iPad friendly)">&#128203; Paste JSON</button>
+    <button class="btn btn-sm" onclick="openAppendMachineModal()" title="Paste a single machine's JSON to ADD it to the current contract (does not overwrite)" style="background:#2e7d32;color:#fff">&#10133; Add Machine</button>
     <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff">&#128203; Duplicate</button>
     <button class="btn btn-primary btn-sm" onclick="newContract()">&#xFF0B; New Contract</button>
   </div>
@@ -825,6 +826,28 @@ function mobileTab(tab) {
       <button class="btn btn-outline" onclick="closePasteModal()">Cancel</button>
     </div>
     <div id="paste-json-result" style="margin-top:10px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- ADD MACHINE (JSON) MODAL -->
+<div class="modal-overlay" id="append-machine-modal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeAppendMachineModal()">&#215;</button>
+    <h2>&#10133; Add Machine (JSON)</h2>
+    <div class="alert alert-info" style="margin-bottom:12px;font-size:12px">
+      Paste <strong>one machine</strong> (or several) below and click <strong>Add</strong>.
+      This <strong>appends</strong> the machine to the end of the current contract — your existing machines and customer details are <strong>NOT</strong> changed.<br>
+      Accepts a single machine object, an array of machines, or a full contract file (only its machines get added).
+    </div>
+    <div class="field-group">
+      <label>Paste machine JSON here</label>
+      <textarea id="append-machine-text" rows="12" placeholder='{"machineType":"other","condition":"Refurbished","customTitle":"...", "extraSpecs":[...], ...}' style="font-family:monospace;font-size:11px;resize:vertical"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" onclick="appendMachinesFromJSON()">&#10133; Add to Contract</button>
+      <button class="btn btn-outline" onclick="closeAppendMachineModal()">Cancel</button>
+    </div>
+    <div id="append-machine-result" style="margin-top:10px;font-size:12px"></div>
   </div>
 </div>
 
@@ -3845,6 +3868,50 @@ async function uploadSignedPDF() {
     }
   };
   fileInput.click();
+}
+
+// ── Add Machine from JSON: APPEND (not replace) one or more machines ─────────
+function openAppendMachineModal() {
+  const t = document.getElementById('append-machine-text'); if (t) t.value = '';
+  const r = document.getElementById('append-machine-result'); if (r) r.innerHTML = '';
+  document.getElementById('append-machine-modal').classList.add('show');
+}
+function closeAppendMachineModal() {
+  document.getElementById('append-machine-modal').classList.remove('show');
+}
+function appendMachinesFromJSON() {
+  const raw = (document.getElementById('append-machine-text').value || '').trim();
+  const resultEl = document.getElementById('append-machine-result');
+  if (!raw) { resultEl.innerHTML = '<span class="red">&#10060; Nothing pasted yet.</span>'; return; }
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch(e) { resultEl.innerHTML = '<span class="red">&#10060; Invalid JSON: ' + esc(e.message) + '</span>'; return; }
+  // Accept: a single machine object, an array of machines, or a full contract ({machines:[...]}).
+  let incoming;
+  if (Array.isArray(parsed)) incoming = parsed;
+  else if (parsed && Array.isArray(parsed.machines)) incoming = parsed.machines;
+  else if (parsed && typeof parsed === 'object') incoming = [parsed];
+  else { resultEl.innerHTML = '<span class="red">&#10060; Unrecognized format — paste a machine object or an array of machines.</span>'; return; }
+  incoming = incoming.filter(m => m && typeof m === 'object');
+  if (!incoming.length) { resultEl.innerHTML = '<span class="red">&#10060; No machine found in the pasted text.</span>'; return; }
+  // Append — header and existing machines are untouched.
+  if (!Array.isArray(state.machines)) state.machines = [];
+  saveCurrentMachineToState();
+  const startIdx = state.machines.length;
+  incoming.forEach(m => state.machines.push(m));
+  normalizeState(state);              // fills defaults on the new machines (idempotent on existing)
+  state.activeMachineIdx = startIdx;  // jump to the first newly added machine
+  renderMachineTabs();
+  loadMachineIntoForm();
+  renderCwItems();
+  renderOptItems();
+  reloadImageThumbs();
+  updateMachineLabels();
+  calcPrice();
+  updatePreview();
+  const last = startIdx + incoming.length;
+  resultEl.innerHTML = '<span style="color:#2e7d32">&#10003; Added ' + incoming.length + ' machine(s) — now Machine ' + (startIdx + 1) + (incoming.length > 1 ? ('–' + last) : '') + '. Existing machines kept.</span>';
+  setTimeout(closeAppendMachineModal, 1000);
 }
 
 function normalizeState(s) {
