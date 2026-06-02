@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.76</title>
+<title>Sen Labels — Contract Generator v10.78</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -347,7 +347,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.76</span></h1>
+    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.78</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1195,54 +1195,72 @@ function doMachineTabMove(fromIdx, toIdx) {
 }
 
 function startMachineTabDrag(e, btn, idx, isTouch) {
-  e.preventDefault();
   const bar = btn.parentNode;
-  btn.style.opacity = '0.5';
-  btn.style.transform = 'scale(1.05)';
-
   const moveEv = isTouch ? 'touchmove' : 'mousemove';
   const upEv   = isTouch ? 'touchend'  : 'mouseup';
+  const startX = isTouch ? e.touches[0].clientX : e.clientX;
+  const startY = isTouch ? e.touches[0].clientY : e.clientY;
+  const DRAG_THRESHOLD = 6; // px — below this counts as a click (no reorder)
+  // Touch only reaches here after a 300ms long-press, so treat it as an intentional drag right away.
+  let dragging = isTouch;
+  if (isTouch) { btn.style.opacity = '0.5'; btn.style.transform = 'scale(1.05)'; }
 
-  function getClientX(e2) { return isTouch ? e2.touches[0].clientX : e2.clientX; }
-
-  function onMove(e2) {
-    e2.preventDefault();
-    const cx = getClientX(e2);
-    const tabs = [...bar.querySelectorAll('.m-tab')];
-    tabs.forEach(t => t.classList.remove('drag-over'));
-    for (const t of tabs) {
+  function pt(e2, end) {
+    const s = isTouch ? (end ? e2.changedTouches[0] : e2.touches[0]) : e2;
+    return { x: s.clientX, y: s.clientY };
+  }
+  // Hit-test requires the cursor to be inside the tab box on BOTH axes.
+  // Tabs can wrap onto multiple rows, so an X-only test would falsely match a tab sitting directly below.
+  function hitIdx(x, y) {
+    for (const t of bar.querySelectorAll('.m-tab')) {
       if (t === btn) continue;
       const r = t.getBoundingClientRect();
-      if (cx >= r.left && cx <= r.right) {
-        t.classList.add('drag-over');
-        break;
-      }
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return parseInt(t.dataset.idx);
+    }
+    return idx;
+  }
+  function clearHi() { [...bar.querySelectorAll('.m-tab')].forEach(t => t.classList.remove('drag-over')); }
+
+  function onMove(e2) {
+    const p = pt(e2, false);
+    if (!dragging) {
+      // ignore tiny movements — only a real drag past the threshold reorders
+      if (Math.abs(p.x - startX) < DRAG_THRESHOLD && Math.abs(p.y - startY) < DRAG_THRESHOLD) return;
+      dragging = true;
+      btn.style.opacity = '0.5';
+      btn.style.transform = 'scale(1.05)';
+    }
+    e2.preventDefault();
+    const over = hitIdx(p.x, p.y);
+    clearHi();
+    if (over !== idx) {
+      const t = bar.querySelector('.m-tab[data-idx="' + over + '"]');
+      if (t) t.classList.add('drag-over');
     }
   }
 
   function onUp(e2) {
-    btn.style.opacity = '';
-    btn.style.transform = '';
+    cleanup();
+    if (!dragging) return; // pure click — the click/tap handler switches machines, no reorder
+    const p = pt(e2, true);
+    const toIdx = hitIdx(p.x, p.y);
+    if (toIdx !== idx) doMachineTabMove(idx, toIdx);
+  }
+  // iPad/iOS can interrupt a touch (system gesture, incoming call, palm rejection) with
+  // touchcancel instead of touchend. Clean up so listeners don't leak and block page scroll.
+  function onCancel() { cleanup(); }
+  function cleanup() {
     document.removeEventListener(moveEv, onMove);
     document.removeEventListener(upEv, onUp);
-
-    const cx = isTouch ? e2.changedTouches[0].clientX : e2.clientX;
-    const tabs = [...bar.querySelectorAll('.m-tab')];
-    tabs.forEach(t => t.classList.remove('drag-over'));
-    let toIdx = idx;
-    for (const t of tabs) {
-      if (t === btn) continue;
-      const r = t.getBoundingClientRect();
-      if (cx >= r.left && cx <= r.right) {
-        toIdx = parseInt(t.dataset.idx);
-        break;
-      }
-    }
-    if (toIdx !== idx) doMachineTabMove(idx, toIdx);
+    if (isTouch) document.removeEventListener('touchcancel', onCancel);
+    btn.style.opacity = '';
+    btn.style.transform = '';
+    clearHi();
   }
 
   document.addEventListener(moveEv, onMove, { passive: false });
   document.addEventListener(upEv, onUp);
+  if (isTouch) document.addEventListener('touchcancel', onCancel);
 }
 
 function shortTitle(m) {
