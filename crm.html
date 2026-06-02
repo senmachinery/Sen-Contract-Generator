@@ -340,12 +340,56 @@
     .filter-bar { padding: 10px; }
     .filter-bar select, .filter-bar input { font-size: 16px; }
   }
+#pw-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a5f 0%,#2c6fad 100%);z-index:99999;display:flex;align-items:center;justify-content:center}
+#pw-box{background:#fff;border-radius:8px;padding:40px;width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
+#pw-logo{font-size:22pt;font-weight:700;color:#1e3a5f;margin-bottom:4px}
+#pw-sub{font-size:10pt;color:#888;margin-bottom:24px}
+#pw-input{width:100%;box-sizing:border-box;padding:10px 14px;border:2px solid #dce6f0;border-radius:6px;font-size:14pt;text-align:center;letter-spacing:3px;margin-bottom:12px;outline:none}
+#pw-input:focus{border-color:#1e3a5f}
+#pw-btn{width:100%;padding:10px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;font-size:13pt;font-weight:600;cursor:pointer}
+#pw-btn:hover{background:#2c6fad}
+#pw-error{color:#c0392b;font-size:11pt;margin-top:8px;min-height:18px}
 </style>
 </head>
 <body>
+<!-- v2.13: CRM is staff-only — password gate (session-based) -->
+<div id="pw-overlay">
+  <div id="pw-box">
+    <div id="pw-logo">Sen Labels</div>
+    <div id="pw-sub">CRM &mdash; Staff Only</div>
+    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPW()">
+    <button id="pw-btn" onclick="checkPW()">Enter</button>
+    <div id="pw-error"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var OK = 'Senlabels123123';
+  if (sessionStorage.getItem('sen_crm_auth') === '1') {
+    document.addEventListener('DOMContentLoaded', function(){
+      var ov = document.getElementById('pw-overlay'); if (ov) ov.style.display = 'none';
+    });
+  } else {
+    document.addEventListener('DOMContentLoaded', function(){
+      var inp = document.getElementById('pw-input'); if (inp) inp.focus();
+    });
+  }
+  window.checkPW = function(){
+    var val = document.getElementById('pw-input').value;
+    if (val === OK) {
+      sessionStorage.setItem('sen_crm_auth', '1');
+      document.getElementById('pw-overlay').style.display = 'none';
+    } else {
+      document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-input').focus();
+    }
+  };
+})();
+</script>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.12</span></h1>
+  <h1>👥 Sen Labels CRM <span class="version">v2.13</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
     <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
