@@ -4,19 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sen Labels — CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --primary: #1a3a5c; --primary-light: #2c5282; --accent: #00897b;
-    --bg: #f5f7fa; --card: #ffffff; --border: #e1e8ed;
-    --text: #2d3748; --text-muted: #718096; --text-faint: #a0aec0;
-    --success: #38a169; --warning: #d69e2e; --danger: #e53e3e;
-    --info: #3182ce; --purple: #805ad5;
-    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.08), 0 2px 4px -1px rgba(0,0,0,.04);
-    --radius: 8px; --radius-sm: 4px;
+    --primary: #143047; --primary-light: #27557d; --accent: #16324a;
+    --bg: #eef1f4; --card: #ffffff; --border: #e3e8ee;
+    --text: #1c2b39; --text-muted: #54657a; --text-faint: #8696a8; --text-secondary: #3a4a5c;
+    --success: #0f8a54; --warning: #b5740d; --danger: #c0392b;
+    --info: #1f63c9; --purple: #6d3fd1;
+    --brand-red: #d8392b; --brand-red-soft: #fcece9;
+    --shadow: 0 1px 2px rgba(16,40,64,.06), 0 1px 1px rgba(16,40,64,.04);
+    --shadow-md: 0 2px 8px rgba(16,40,64,.08), 0 1px 2px rgba(16,40,64,.05);
+    --radius: 12px; --radius-sm: 8px;
   }
-  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  body { font-family: 'IBM Plex Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .mono, .kanban-card-amount, .contract-amount, .stat-value, .snapshot-value { font-family: 'IBM Plex Mono',monospace; font-variant-numeric: tabular-nums; }
   
   .topbar { background: var(--primary); color: #fff; padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: var(--shadow-md); position: sticky; top: 0; z-index: 100; }
   .topbar h1 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
@@ -352,9 +357,130 @@
 #pw-btn{width:100%;padding:10px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;font-size:13pt;font-weight:600;cursor:pointer}
 #pw-btn:hover{background:#2c6fad}
 #pw-error{color:#c0392b;font-size:11pt;margin-top:8px;min-height:18px}
+
+/* ============================================================
+   REDESIGN LAYER — visual only, overrides above. No JS touched.
+   ============================================================ */
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-0.125em;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+
+/* Topbar */
+.topbar{background:var(--primary);border-bottom:1px solid rgba(255,255,255,.06);padding:0 18px;height:56px;}
+.topbar h1{font-size:16px;font-weight:600;letter-spacing:-0.01em;gap:11px;}
+.topbar h1 .version{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;opacity:.55;}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(140deg,var(--primary-light),#0e2536);display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);}
+.brand-mark .ic{width:18px;height:18px;color:#fff;stroke-width:1.6;}
+.topbar h1 .brand-sen{color:#ff6f60;}
+.topbar-btn{border-radius:8px;font-weight:600;font-size:12.5px;padding:7px 12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);display:inline-flex;align-items:center;gap:6px;}
+.topbar-btn .ic{width:15px;height:15px;}
+.topbar-btn:hover{background:rgba(255,255,255,.18);}
+.topbar-btn.primary{background:#fff;color:var(--primary);border-color:#fff;}
+.topbar-btn.primary:hover{background:#eef2f6;}
+
+/* Tabs */
+.tab-bar{padding:0 14px;gap:2px;}
+.tab{display:inline-flex;align-items:center;gap:7px;padding:14px 14px 12px;font-weight:500;}
+.tab .ic{width:16px;height:16px;color:var(--text-faint);}
+.tab:hover .ic{color:var(--primary);}
+.tab.active{border-bottom-color:var(--brand-red);font-weight:600;}
+.tab.active .ic{color:var(--brand-red);}
+.tab .count{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.tab.active .count{background:var(--primary);}
+
+/* Buttons */
+.btn{border-radius:8px;font-weight:600;gap:6px;}
+.btn .ic{width:16px;height:16px;}
+.btn-outline{border-color:var(--border);color:var(--primary);background:#fff;}
+.btn-outline:hover{border-color:var(--primary-light);background:var(--bg);}
+.btn-whatsapp{background:#1faa59;}
+
+/* Quick-filter chips */
+.qf-chip{border-radius:8px;font-weight:600;padding:7px 12px;gap:6px;}
+.qf-chip .ic{width:14px;height:14px;}
+.qf-chip.active{background:var(--primary);border-color:var(--primary);}
+.qf-chip.qf-overdue.active{background:var(--danger);}
+.qf-chip.qf-hot{border-color:var(--warning);color:var(--warning);}
+.qf-chip.qf-hot.active{background:var(--warning);}
+
+/* Cards & inputs */
+.card{box-shadow:var(--shadow);border-color:var(--border);}
+.filter-bar{box-shadow:var(--shadow);border:1px solid var(--border);}
+.filter-bar input:focus,.filter-bar select:focus,.form-row input:focus,.form-row textarea:focus,.form-row select:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(39,85,125,.12);}
+
+/* Pills — refined semantic tones */
+.pill{border-radius:20px;font-weight:600;padding:3px 9px;}
+.pill-success{background:#e6f4ec;color:#0f8a54;}
+.pill-warning{background:#fbf1de;color:#b5740d;}
+.pill-danger{background:#fbeae8;color:#c0392b;}
+.pill-info{background:#e8f0fc;color:#1f63c9;}
+.pill-purple{background:#efeafc;color:#6d3fd1;}
+.pill-gray{background:#eef1f4;color:#5b6b7d;}
+.pill-orange{background:#fdeee4;color:#c2410c;}
+
+/* Stat / snapshot numbers */
+.stat-value{font-size:30px;font-weight:600;letter-spacing:-0.02em;color:var(--primary);}
+.stat-card{border-radius:12px;border:1px solid var(--border);border-top:none;position:relative;overflow:hidden;padding:15px 16px;}
+.stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary-light);}
+.stat-card.success::before{background:var(--success);} .stat-card.warning::before{background:var(--warning);}
+.stat-card.info::before{background:var(--info);} .stat-card.danger::before{background:var(--danger);}
+.snapshot-greeting{font-size:20px;letter-spacing:-0.01em;}
+.snapshot-section,.dashboard-section{border-radius:12px;border:1px solid var(--border);}
+
+/* Kanban — cleaner columns */
+.kanban-col{background:var(--card);border:1px solid var(--border);}
+.kanban-card{border-radius:10px;border:1px solid var(--border);border-left:3px solid transparent;background:#fbfcfd;}
+.kanban-card-amount{color:var(--primary);}
+.kanban-col-title{font-weight:600;}
+
+/* Customer list / detail */
+.customer-item.active{background:#eef3f8;border-left-color:var(--brand-red);}
+.customer-detail h2,.customer-detail .meta-row{letter-spacing:-0.01em;}
+
+/* Cold / aging tags refined */
+.cold-tag.cold{background:#e8f0f6;color:#356a93;}
+.cold-tag.frozen{background:#efeafc;color:#6d3fd1;}
+
+/* Inquiry status badges refined */
+.inquiry-status-badge.pending{background:#fbf1de;color:#b5740d;}
+.inquiry-status-badge.overdue{background:#fbeae8;color:#c0392b;}
+.inquiry-status-badge.converted{background:#e6f4ec;color:#0f8a54;}
+
+/* Toasts */
+.toast{border-radius:10px;}
 </style>
+
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-kanban" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="13" rx="1.5"/><rect x="15" y="3" width="6" height="9" rx="1.5"/><path d="M9 21V3M15 21V3"/></symbol>
+  <symbol id="i-phone-in" viewBox="0 0 24 24"><path d="M16 2v4h4M21 3l-5 5"/><path d="M22 16.9v2.5a2 2 0 0 1-2.2 2 19 19 0 0 1-8.3-2.9 18.5 18.5 0 0 1-5.7-5.7A19 19 0 0 1 2.9 4.6 2 2 0 0 1 4.9 2.4h2.5a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.4 10a15 15 0 0 0 5.6 5.6l1.2-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-check-sq" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6" rx="1"/><rect x="12" y="7" width="3" height="10" rx="1"/><rect x="17" y="13" width="3" height="4" rx="1"/></symbol>
+  <symbol id="i-badge" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 21v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1"/><rect x="3" y="3" width="18" height="18" rx="3"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M16.5 9.4 7.5 4.2M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5z"/><path d="M8.5 9.2c0 3.4 2.9 6.3 6.3 6.3.5 0 1-.5 1-1.1 0-.3-.2-.5-.4-.7l-1.3-.6c-.3-.1-.5 0-.7.2l-.4.5c-.9-.4-1.7-1.2-2.1-2.1l.5-.4c.2-.2.3-.5.2-.7l-.6-1.3c-.1-.3-.4-.4-.7-.4-.6 0-1.1.5-1.1 1z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v2.5a2 2 0 0 1-2.2 2 19 19 0 0 1-8.3-2.9 18.5 18.5 0 0 1-5.7-5.7A19 19 0 0 1 2.9 4.6 2 2 0 0 1 4.9 2.4h2.5a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.4 10a15 15 0 0 0 5.6 5.6l1.2-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4M4 4h13l-2 4 2 4H4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h11M4 12h7M4 18h13"/><circle cx="18" cy="6" r="2"/><circle cx="13" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2s5 4.5 5 10a5 5 0 0 1-10 0c0-1.8 1-3 1-3s-1 4 2 4c1.8 0 2-2 0-4 0-3 2-7 2-7z"/></symbol>
+  <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2v20M4 7l16 10M20 7 4 17M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-recycle" viewBox="0 0 24 24"><path d="M7 19H4.8a2 2 0 0 1-1.7-3l1.3-2.2M17 19h2.2a2 2 0 0 0 1.7-3l-1-1.7M12 5l1.5 2.6M9 19l1.5-2.6h3L15 19M14 5h-4l-1 1.7"/></symbol>
+</svg>
 <!-- v2.13: CRM is staff-only — password gate (session-based) -->
 <div id="pw-overlay">
   <div id="pw-box">
@@ -392,27 +518,27 @@
 </script>
 
 <div class="topbar">
-  <h1>👥 Sen Labels CRM <span class="version">v2.16</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.19</span></h1>
   <div class="topbar-right">
-    <span id="conn-status" class="topbar-btn">⚙ Connecting...</span>
-    <a href="index.html" class="topbar-btn primary">📋 Open Generator</a>
+    <span id="conn-status" class="topbar-btn">Connecting…</span>
+    <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
   </div>
 </div>
 
 <div id="setup-banner" class="setup-banner" style="display:none">
   <span><strong>⚠ Not configured.</strong> Please set up Apps Script URL.</span>
-  <button class="btn btn-sm" onclick="openSettings()">⚙ Settings</button>
+  <button class="btn btn-sm" onclick="openSettings()"><svg class="ic"><use href="#i-settings"/></svg> Settings</button>
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" data-tab="snapshot">📸 Today</button>
-  <button class="tab" data-tab="crm">👥 CRM <span class="count" id="crm-count">—</span></button>
-  <button class="tab" data-tab="pipeline">📊 Pipeline <span class="count" id="pipeline-count">—</span></button>
-  <button class="tab" data-tab="inquiries">📞 Inquiries <span class="count" id="inquiries-count">—</span></button>
-  <button class="tab" data-tab="tasks">✅ Tasks <span class="count" id="tasks-count">—</span></button>
-  <button class="tab" data-tab="dashboard">📈 Dashboard</button>
-  <button class="tab" data-tab="reps">👨‍💼 Sales Reps <span class="count" id="reps-count">—</span></button>
-  <button class="tab" data-tab="packs">📨 Follow-up Packs</button>
+  <button class="tab active" data-tab="snapshot"><svg class="ic"><use href="#i-sun"/></svg> Today</button>
+  <button class="tab" data-tab="crm"><svg class="ic"><use href="#i-users"/></svg> CRM <span class="count" id="crm-count">—</span></button>
+  <button class="tab" data-tab="pipeline"><svg class="ic"><use href="#i-kanban"/></svg> Pipeline <span class="count" id="pipeline-count">—</span></button>
+  <button class="tab" data-tab="inquiries"><svg class="ic"><use href="#i-phone-in"/></svg> Inquiries <span class="count" id="inquiries-count">—</span></button>
+  <button class="tab" data-tab="tasks"><svg class="ic"><use href="#i-check-sq"/></svg> Tasks <span class="count" id="tasks-count">—</span></button>
+  <button class="tab" data-tab="dashboard"><svg class="ic"><use href="#i-chart"/></svg> Dashboard</button>
+  <button class="tab" data-tab="reps"><svg class="ic"><use href="#i-badge"/></svg> Sales Reps <span class="count" id="reps-count">—</span></button>
+  <button class="tab" data-tab="packs"><svg class="ic"><use href="#i-package"/></svg> Follow-up Packs</button>
 </div>
 
 <div class="content">
@@ -422,10 +548,10 @@
   <div class="tab-content active" id="tab-snapshot">
     <div id="snapshot-header" class="snapshot-header">
       <div>
-        <div class="snapshot-greeting" id="snapshot-greeting">📸 Today's Snapshot</div>
+        <div class="snapshot-greeting" id="snapshot-greeting">Today's Snapshot</div>
         <div class="snapshot-date" id="snapshot-date"></div>
       </div>
-      <button class="btn btn-sm" onclick="renderSnapshot()" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)">🔄 Refresh</button>
+      <button class="btn btn-sm" onclick="renderSnapshot()" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)"><svg class="ic"><use href="#i-refresh"></use></svg> Refresh</button>
     </div>
     <div id="snapshot-content"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building today's snapshot...</div></div></div>
   </div>
@@ -437,7 +563,7 @@
     <div class="filter-bar">
       <div class="grow">
         <label>Search</label>
-        <input type="text" id="crm-search" placeholder="🔍 Search customer name..." style="width:100%">
+        <input type="text" id="crm-search" placeholder="Search customer name…" style="width:100%">
       </div>
       <div>
         <label>Country</label>
@@ -445,7 +571,7 @@
           <option value="">All Countries</option>
         </select>
       </div>
-      <button class="btn btn-sm btn-outline" id="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+      <button class="btn btn-sm btn-outline" id="refresh-btn" onclick="refreshData()"><svg class="ic"><use href="#i-refresh"></use></svg> Refresh</button>
     </div>
     
     <div class="crm-layout">
@@ -464,7 +590,7 @@
   <!-- PIPELINE TAB (v1.3 Kanban) -->
   <div class="tab-content" id="tab-pipeline">
     <div class="pipeline-filters" style="background:#fff;padding:10px 12px;border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px">
-      <strong style="color:var(--primary)">📊 Pipeline</strong>
+      <strong style="color:var(--primary)"><svg class="ic"><use href="#i-kanban"></use></svg> Pipeline</strong>
       <div style="flex:1"></div>
       <select id="pipeline-country-filter" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
         <option value="">All Countries</option>
@@ -475,7 +601,7 @@
       <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
         <input type="checkbox" id="show-lost" style="margin:0"> Show Lost
       </label>
-      <button class="btn btn-sm btn-outline" onclick="refreshData()" title="Reload from Sheets">🔄</button>
+      <button class="btn btn-sm btn-outline" onclick="refreshData()" title="Reload from Sheets"><svg class="ic"><use href="#i-refresh"></use></svg></button>
     </div>
     
     <div class="kanban-board" id="kanban-board">
@@ -487,18 +613,18 @@
     <div class="card" style="padding:12px;margin-bottom:14px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div>
-          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0">📞 Customer Inquiries</h3>
+          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0"><svg class="ic"><use href="#i-phone-in"></use></svg> Customer Inquiries</h3>
           <div style="font-size:11px;color:var(--text-muted)">Track inquiries waiting for quotes — never forget a customer who asked</div>
         </div>
         <button class="btn" onclick="openNewInquiryModal()" style="background:var(--accent);color:#fff">+ New Inquiry</button>
       </div>
       <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="qf-chip active" data-inq-filter="pending" onclick="setInquiryFilter('pending')">⏳ Pending <span id="inq-cnt-pending">0</span></button>
-        <button class="qf-chip" data-inq-filter="overdue" onclick="setInquiryFilter('overdue')">🚨 Overdue <span id="inq-cnt-overdue">0</span></button>
-        <button class="qf-chip" data-inq-filter="converted" onclick="setInquiryFilter('converted')">✅ Converted <span id="inq-cnt-converted">0</span></button>
+        <button class="qf-chip active" data-inq-filter="pending" onclick="setInquiryFilter('pending')"><svg class="ic"><use href="#i-clock"></use></svg> Pending <span id="inq-cnt-pending">0</span></button>
+        <button class="qf-chip" data-inq-filter="overdue" onclick="setInquiryFilter('overdue')"><svg class="ic"><use href="#i-alert"></use></svg> Overdue <span id="inq-cnt-overdue">0</span></button>
+        <button class="qf-chip" data-inq-filter="converted" onclick="setInquiryFilter('converted')"><svg class="ic"><use href="#i-check"></use></svg> Converted <span id="inq-cnt-converted">0</span></button>
         <button class="qf-chip" data-inq-filter="all" onclick="setInquiryFilter('all')">All</button>
-        <button class="btn btn-sm" onclick="printInquiries()" style="background:#1a3a5c;color:#fff" title="打印目前清单发给老板">🖨 Print List</button>
-        <input type="text" id="inquiry-search" placeholder="🔍 Search..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;margin-left:auto;min-width:160px">
+        <button class="btn btn-sm" onclick="printInquiries()" style="background:var(--primary);color:#fff" title="Print the current list"><svg class="ic"><use href="#i-doc"></use></svg> Print List</button>
+        <input type="text" id="inquiry-search" placeholder="Search…" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;margin-left:auto;min-width:160px">
       </div>
     </div>
     <div id="inquiries-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading inquiries...</div></div></div>
@@ -508,11 +634,11 @@
     <div class="card" style="padding:12px;margin-bottom:14px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="qf-chip active" data-task-filter="pending" onclick="setTaskFilter('pending')">📋 Pending <span id="tf-pending">0</span></button>
-          <button class="qf-chip" data-task-filter="overdue" onclick="setTaskFilter('overdue')">🚨 Overdue <span id="tf-overdue">0</span></button>
-          <button class="qf-chip" data-task-filter="today" onclick="setTaskFilter('today')">📅 Today <span id="tf-today">0</span></button>
-          <button class="qf-chip" data-task-filter="week" onclick="setTaskFilter('week')">🗓 This Week <span id="tf-week">0</span></button>
-          <button class="qf-chip" data-task-filter="done" onclick="setTaskFilter('done')">✓ Done <span id="tf-done">0</span></button>
+          <button class="qf-chip active" data-task-filter="pending" onclick="setTaskFilter('pending')"><svg class="ic"><use href="#i-check-sq"></use></svg> Pending <span id="tf-pending">0</span></button>
+          <button class="qf-chip" data-task-filter="overdue" onclick="setTaskFilter('overdue')"><svg class="ic"><use href="#i-alert"></use></svg> Overdue <span id="tf-overdue">0</span></button>
+          <button class="qf-chip" data-task-filter="today" onclick="setTaskFilter('today')"><svg class="ic"><use href="#i-cal"></use></svg> Today <span id="tf-today">0</span></button>
+          <button class="qf-chip" data-task-filter="week" onclick="setTaskFilter('week')"><svg class="ic"><use href="#i-cal"></use></svg> This Week <span id="tf-week">0</span></button>
+          <button class="qf-chip" data-task-filter="done" onclick="setTaskFilter('done')"><svg class="ic"><use href="#i-check"></use></svg> Done <span id="tf-done">0</span></button>
           <button class="qf-chip" data-task-filter="all" onclick="setTaskFilter('all')">All</button>
         </div>
         <button class="btn" onclick="openNewTaskModal()" style="background:var(--accent);color:#fff">+ New Task</button>
@@ -541,12 +667,12 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-right:4px">Filter:</span>
-          <button class="qf-chip active" data-rep-filter="active" onclick="setRepFilter('active')">✅ Active <span id="rep-cnt-active">0</span></button>
+          <button class="qf-chip active" data-rep-filter="active" onclick="setRepFilter('active')"><svg class="ic"><use href="#i-check"></use></svg> Active <span id="rep-cnt-active">0</span></button>
           <button class="qf-chip" data-rep-filter="all" onclick="setRepFilter('all')">All</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <input type="text" id="rep-search" placeholder="🔍 Search rep or country..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:180px">
-          <button class="btn btn-sm" onclick="openRepModal()" style="background:var(--accent);color:#fff">+ 新增代理 Add Rep</button>
+          <input type="text" id="rep-search" placeholder="Search rep or country…" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:180px">
+          <button class="btn btn-sm" onclick="openRepModal()" style="background:var(--accent);color:#fff">+ Add Rep</button>
         </div>
       </div>
     </div>
@@ -557,55 +683,55 @@
     <div class="card" style="padding:12px;margin-bottom:14px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div>
-          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0">📨 Agent Follow-up Pack — 代理跟进清单</h3>
-          <div style="font-size:11px;color:var(--text-muted)">筛选客户 → 打包成清单给代理/销售去跟进 (打印 / PDF / Word / 复制)</div>
+          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0"><svg class="ic"><use href="#i-package"></use></svg> Agent Follow-up Pack</h3>
+          <div style="font-size:11px;color:var(--text-muted)">Filter customers → bundle a list for agents / sales to follow up (Print / PDF / Word / Copy)</div>
         </div>
       </div>
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div>
-          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">👤 销售/代理</label>
+          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">Sales / Agent</label>
           <select id="pack-rep-filter" onchange="onPackRepChange()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:160px">
-            <option value="">All / 全部</option>
+            <option value="">All</option>
           </select>
         </div>
         <div>
-          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">🌍 国家</label>
+          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">Country</label>
           <select id="pack-country-filter" onchange="renderPack()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:130px">
             <option value="">All Countries</option>
           </select>
         </div>
         <div>
-          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">📅 周期</label>
+          <label style="font-size:10px;color:#999;display:block;margin-bottom:3px">Period</label>
           <select id="pack-period-filter" onchange="renderPack()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:130px">
-            <option value="week">本周 + 逾期 This Week</option>
-            <option value="overdue">只看逾期 Overdue Only</option>
-            <option value="month">本月 + 逾期 This Month</option>
-            <option value="all">全部待跟进 All Pending</option>
-            <option value="everyone">全部活跃客户 (含没排跟进的)</option>
+            <option value="week">This Week + Overdue</option>
+            <option value="overdue">Overdue Only</option>
+            <option value="month">This Month + Overdue</option>
+            <option value="all">All Pending</option>
+            <option value="everyone">All Active Customers</option>
           </select>
         </div>
       </div>
       <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">
-        <label style="cursor:pointer"><input type="checkbox" id="pack-include-inquiries" onchange="renderPack()" checked> 包含询价 (Inquiries)</label>
+        <label style="cursor:pointer"><input type="checkbox" id="pack-include-inquiries" onchange="renderPack()" checked> Include Inquiries</label>
         &nbsp;&nbsp;
-        <label style="cursor:pointer"><input type="checkbox" id="pack-unassigned-only" onchange="onPackUnassignedToggle()"> 只看未分配代理的客户 (我直接对接的)</label>
+        <label style="cursor:pointer"><input type="checkbox" id="pack-unassigned-only" onchange="onPackUnassignedToggle()"> Unassigned customers only (I handle directly)</label>
       </div>
       <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;align-items:center">
-        <span style="font-size:12px;color:var(--text-muted);margin-right:4px">已选 <strong id="pack-pick-count">0 / 0</strong></span>
-        <button class="btn btn-sm btn-outline" onclick="packSelectAll(true)" style="font-size:11px">全选</button>
-        <button class="btn btn-sm btn-outline" onclick="packSelectAll(false)" style="font-size:11px">全不选</button>
+        <span style="font-size:12px;color:var(--text-muted);margin-right:4px">Selected <strong id="pack-pick-count">0 / 0</strong></span>
+        <button class="btn btn-sm btn-outline" onclick="packSelectAll(true)" style="font-size:11px">Select All</button>
+        <button class="btn btn-sm btn-outline" onclick="packSelectAll(false)" style="font-size:11px">Clear</button>
         <span style="border-left:1px solid var(--border);height:20px;margin:0 4px"></span>
-        <button class="btn btn-sm" onclick="printPack()" style="background:var(--primary);color:#fff">🖨 Print / PDF</button>
-        <button class="btn btn-sm" onclick="downloadPackWord()" style="background:#2b579a;color:#fff">📄 Download Word</button>
-        <button class="btn btn-sm" onclick="copyPackContactsToClipboard()" style="background:var(--info);color:#fff">📋 Copy Names + Tels</button>
-        <button class="btn btn-sm" onclick="copyPackForWhatsApp()" style="background:#25d366;color:#fff">💬 Copy for WhatsApp</button>
+        <button class="btn btn-sm" onclick="printPack()" style="background:var(--primary);color:#fff"><svg class="ic"><use href="#i-doc"></use></svg> Print / PDF</button>
+        <button class="btn btn-sm" onclick="downloadPackWord()" style="background:#2b579a;color:#fff"><svg class="ic"><use href="#i-doc"></use></svg> Download Word</button>
+        <button class="btn btn-sm" onclick="copyPackContactsToClipboard()" style="background:var(--info);color:#fff"><svg class="ic"><use href="#i-users"></use></svg> Copy Names + Tels</button>
+        <button class="btn btn-sm" onclick="copyPackForWhatsApp()" style="background:#25d366;color:#fff"><svg class="ic"><use href="#i-wa"></use></svg> Copy for WhatsApp</button>
         <span style="border-left:1px solid var(--border);height:20px;margin:0 4px"></span>
-        <span style="font-size:11px;color:var(--text-muted)">⏰ 批量设下次(勾选的):</span>
-        <button class="btn btn-sm" onclick="batchSetNextFollowup(1)" style="background:#00897b;color:#fff;font-size:11px" title="把勾选客户的下次跟进都设为明天">明天</button>
-        <button class="btn btn-sm" onclick="batchSetNextFollowup(3)" style="background:#00897b;color:#fff;font-size:11px" title="把勾选客户的下次跟进都设为 3 天后">3天</button>
-        <button class="btn btn-sm" onclick="batchSetNextFollowup(7)" style="background:#00897b;color:#fff;font-size:11px" title="把勾选客户的下次跟进都设为 1 周后">1周</button>
+        <span style="font-size:11px;color:var(--text-muted)"><svg class="ic"><use href="#i-clock"></use></svg> Bulk set next follow-up (selected):</span>
+        <button class="btn btn-sm" onclick="batchSetNextFollowup(1)" style="background:#00897b;color:#fff;font-size:11px" title="Set next follow-up to tomorrow for selected">Tomorrow</button>
+        <button class="btn btn-sm" onclick="batchSetNextFollowup(3)" style="background:#00897b;color:#fff;font-size:11px" title="Set next follow-up to +3 days for selected">+3 days</button>
+        <button class="btn btn-sm" onclick="batchSetNextFollowup(7)" style="background:#00897b;color:#fff;font-size:11px" title="Set next follow-up to +1 week for selected">+1 week</button>
       </div>
-      <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">💡 下面清单可以取消勾选不需要跟进的客户,只有勾选的会进 Word / PDF / 复制</div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Tip: uncheck any customer you don't need to follow up — only checked ones go into Word / PDF / Copy.</div>
     </div>
     <div id="pack-summary" style="margin-bottom:14px"></div>
     <div id="pack-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building pack...</div></div></div>
@@ -1360,10 +1486,10 @@ function renderCustomerDetail(c, followups) {
           ${isRenamed ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Original name (in Google Sheet): ${escapeHtml(c.company)}</div>` : ''}
         </div>
         <div class="meta-row" style="margin-top:4px">
-          👤 负责代理: <strong>${c.defaultRep ? escapeHtml(c.defaultRep) : '<span style="color:var(--text-muted);font-weight:400">未指定</span>'}</strong>
-          <span onclick="openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="设定/更改负责代理">✏️ 设定代理</span>
-          <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;margin-left:10px;font-size:11px;padding:3px 10px" title="生成 WhatsApp 跟进话术">✍️ 生成跟进话术</button>
-          ${telRaw ? `<a href="https://wa.me/${waNum}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#25d366;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="WhatsApp ${escapeHtml(telRaw)}(自动带跟进话术)">💬 WhatsApp</a><a href="tel:${telNum}" class="btn btn-sm" style="background:#0b6bcb;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="拨打 ${escapeHtml(telRaw)}">📞 拨号</a>` : ''}
+          <svg class="ic" style="color:var(--text-muted)"><use href="#i-users"></use></svg> Account agent: <strong>${c.defaultRep ? escapeHtml(c.defaultRep) : '<span style="color:var(--text-muted);font-weight:400">Not set</span>'}</strong>
+          <span onclick="openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Set / change account agent"><svg class="ic"><use href="#i-edit"></use></svg> Set agent</span>
+          <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;margin-left:10px;font-size:11px;padding:3px 10px" title="Generate WhatsApp follow-up script"><svg class="ic"><use href="#i-edit"></use></svg> Generate script</button>
+          ${telRaw ? `<a href="https://wa.me/${waNum}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#25d366;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="WhatsApp ${escapeHtml(telRaw)} (auto-fills follow-up script)"><svg class="ic"><use href="#i-wa"></use></svg> WhatsApp</a><a href="tel:${telNum}" class="btn btn-sm" style="background:#0b6bcb;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="Call ${escapeHtml(telRaw)}"><svg class="ic"><use href="#i-phone"></use></svg> Call</a>` : ''}
         </div>
       </div>
       <div style="text-align:right">
@@ -1403,13 +1529,13 @@ function renderCustomerDetail(c, followups) {
         <div style="font-size:13px;font-weight:600">Make a new quote for this customer?</div>
         <div style="font-size:11px;opacity:.8;margin-top:2px">Opens Generator with customer info ready</div>
       </div>
-      <a href="${newQuoteUrl}" target="_blank" class="btn btn-success" style="background:#ffd54f;color:#1a3a5c;text-decoration:none">
-        📋 New Quote
+      <a href="${newQuoteUrl}" target="_blank" class="btn btn-success" style="background:#fff;color:var(--primary);text-decoration:none">
+        <svg class="ic"><use href="#i-doc"></use></svg> New Quote
       </a>
     </div>
     
     <div class="section-title">
-      📋 Contracts (${c.contracts.length})
+      <span><svg class="ic"><use href="#i-doc"></use></svg> Contracts (${c.contracts.length})</span>
     </div>
     ${c.contracts.length === 0 ? '<div class="empty">No contracts yet</div>' :
       c.contracts.map(ct => {
@@ -1423,10 +1549,10 @@ function renderCustomerDetail(c, followups) {
             <div style="margin-top:4px">
               <span class="pill ${statusColor(ct.status)}">${ct.status}</span>
               <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
-              <span style="font-size:11px;margin-left:6px">👤 ${ct.salesRep ? escapeHtml(ct.salesRep) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(c.defaultRep)+' (默认)</span>' : '<span style="color:var(--text-muted)">未指定</span>')}</span>
-              <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="设定此合同的代理">✏️</span>
-              <button onclick="event.stopPropagation();openContractPDF('${ct.contractNo.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="预览这张合同的 PDF(新分页,不离开 CRM)">👁 预览 PDF</button>
-              ${_nextF ? `<span style="font-size:11px;margin-left:8px;color:#2e7d32;font-weight:600" title="下次跟进日期">📅 下次 ${fmtDate(_nextF)}</span>` : ''}
+              <span style="font-size:11px;margin-left:6px"><svg class="ic"><use href="#i-users"></use></svg> ${ct.salesRep ? escapeHtml(ct.salesRep) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(c.defaultRep)+' (default)</span>' : '<span style="color:var(--text-muted)">Not set</span>')}</span>
+              <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="Set agent for this contract"><svg class="ic"><use href="#i-edit"></use></svg></span>
+              <button onclick="event.stopPropagation();openContractPDF('${ct.contractNo.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="Preview this contract's PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>
+              ${_nextF ? `<span style="font-size:11px;margin-left:8px;color:#2e7d32;font-weight:600" title="Next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Next ${fmtDate(_nextF)}</span>` : ''}
             </div>
             ${contractActionBar(ct, c.company)}
           </div>
@@ -1436,14 +1562,14 @@ function renderCustomerDetail(c, followups) {
     }
     
     <div class="section-title">
-      💬 Follow-ups (${followups.length})
+      <span><svg class="ic"><use href="#i-phone-in"></use></svg> Follow-ups (${followups.length})</span>
       <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')">+ Add Follow-up</button>
     </div>
     <div class="quick-fu-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 4px">
-      <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="客户没接电话 → 明天再跟">📞 没接 → 明天</button>
-      <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="已读不回 / 没回复 → 3天后再跟">💬 没回 → 3天后</button>
+      <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="No answer → follow up tomorrow"><svg class="ic"><use href="#i-phone"></use></svg> No answer → tomorrow</button>
+      <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="No reply → follow up in 3 days"><svg class="ic"><use href="#i-wa"></use></svg> No reply → +3 days</button>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin:0 0 10px">💡 每张合同的「📅 下次跟进 / ✅ 成交 / 🚫 Lost」按钮就在上面合同列表里 ↑</div>
+    <div style="font-size:11px;color:var(--text-muted);margin:0 0 10px">Tip: the Follow-up / Won / Lost buttons for each contract are in the contract list above ↑</div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
       followups.map(f => {
         const isOverdue = f.nextFollowupDate && f.nextFollowupDate < today;
@@ -1505,15 +1631,15 @@ function openContractRepEditor(contractNo) {
   const reps = (REPS_STATE.reps || []);
   const cur = ct ? ct.salesRep : '';
   const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${cur === r.name ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
-  $('modal-title').textContent = `合同负责代理 — ${contractNo}`;
+  $('modal-title').textContent = `Contract agent — ${contractNo}`;
   $('modal-body').innerHTML = `
     <div class="form-row">
-      <label>这张合同由哪个 Sales Rep 负责</label>
+      <label>Which Sales Rep handles this contract</label>
       <select id="contract-rep-select">
-        <option value="">— 不指定 (用客户默认) —</option>
+        <option value="">— Unassigned (use customer default) —</option>
         ${repOpts}
       </select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 合同自己指定的代理会盖过客户默认代理。如果在 Generator 忘了填,可以在这里补。</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 A contract-level agent overrides the customer's default. If you forgot to set it in the Generator, you can add it here.</div>
     </div>
   `;
   $('modal-footer').innerHTML = `
@@ -1533,7 +1659,7 @@ async function saveContractRep(contractNo) {
     if (ct) ct.salesRep = rep;
     if (rep) CONTRACT_REP[contractNo] = rep; else delete CONTRACT_REP[contractNo];
     closeModal();
-    showToast(rep ? `✅ 合同代理设为 ${rep}` : '✅ 已清除合同代理', 'success');
+    showToast(rep ? `✅ Contract agent set to ${rep}` : '✅ Contract agent cleared', 'success');
     // Refresh the customer detail if open
     if (ct && ct.company) await selectCustomer(ct.company);
   } catch (e) {
@@ -1545,15 +1671,15 @@ function openCustomerRepEditor(company) {
   const c = STATE.customers.find(x => x.company === company);
   const reps = (REPS_STATE.reps || []);
   const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${c && c.defaultRep === r.name ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
-  $('modal-title').textContent = `负责代理 — ${getDisplayName(company)}`;
+  $('modal-title').textContent = `Account agent — ${getDisplayName(company)}`;
   $('modal-body').innerHTML = `
     <div class="form-row">
-      <label>选择负责这个客户的 Sales Rep</label>
+      <label>Choose the Sales Rep for this customer</label>
       <select id="cust-rep-select">
-        <option value="">— 不指定 / 清除 —</option>
+        <option value="">— Unassigned / clear —</option>
         ${repOpts}
       </select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 设定后,这个客户的合同在打包筛选时会归到这个代理 (合同自己有指定的除外)</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 Once set, this customer's contracts are grouped under this agent in the pack filter (unless a contract specifies its own)</div>
     </div>
   `;
   $('modal-footer').innerHTML = `
@@ -1573,7 +1699,7 @@ async function saveCustomerRep(company) {
     const cust = STATE.customers.find(x => x.company === company);
     if (cust) cust.defaultRep = rep;
     closeModal();
-    showToast(rep ? `✅ 负责代理设为 ${rep}` : '✅ 已清除负责代理', 'success');
+    showToast(rep ? `✅ Account agent set to ${rep}` : '✅ Account agent cleared', 'success');
     await selectCustomer(company);  // refresh detail
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
@@ -1700,7 +1826,7 @@ function openContractInGenerator(contractNo) {
 
 // v2.10: open a clean PDF-style preview of a contract in a NEW tab (no editor UI, keeps CRM open)
 function openContractPDF(contractNo) {
-  if (!contractNo) { showToast('此客户暂无合同可预览', 'error'); return; }
+  if (!contractNo) { showToast('This customer has no contract to preview', 'error'); return; }
   window.open(`index.html?preview=${encodeURIComponent(contractNo)}`, '_blank');
 }
 
@@ -2498,18 +2624,18 @@ function setRepFilter(filter) {
 // Open the add/edit rep modal. Pass a rep id to edit, or nothing to add new.
 function openRepModal(repId) {
   const editing = repId ? (REPS_STATE.reps || []).find(r => r.id === repId) : null;
-  $('modal-title').textContent = editing ? `编辑代理 — ${editing.name}` : '新增 Sales Rep';
+  $('modal-title').textContent = editing ? `Edit agent — ${editing.name}` : 'New Sales Rep';
   $('modal-body').innerHTML = `
     <div class="form-row">
-      <label>姓名 Name *</label>
+      <label>Name *</label>
       <input type="text" id="rep-f-name" value="${editing ? escapeHtml(editing.name||'') : ''}" placeholder="e.g. Wilson">
     </div>
     <div class="form-row">
-      <label>负责国家/地区 Country <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(多个用逗号: Malaysia, Singapore)</span></label>
+      <label>Country <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(separate with commas: Malaysia, Singapore)</span></label>
       <input type="text" id="rep-f-country" value="${editing ? escapeHtml(editing.country||'') : ''}" placeholder="e.g. Malaysia, Singapore">
     </div>
     <div class="form-row">
-      <label>WhatsApp / 电话</label>
+      <label>WhatsApp / Phone</label>
       <input type="text" id="rep-f-whatsapp" value="${editing ? escapeHtml(editing.whatsapp||'') : ''}" placeholder="e.g. 60129881898">
     </div>
     <div class="form-row">
@@ -2517,10 +2643,10 @@ function openRepModal(repId) {
       <input type="text" id="rep-f-email" value="${editing ? escapeHtml(editing.email||'') : ''}" placeholder="e.g. wilson@example.com">
     </div>
     <div class="form-row">
-      <label>备注 Notes</label>
+      <label>Notes</label>
       <textarea id="rep-f-notes" placeholder="optional">${editing ? escapeHtml(editing.notes||'') : ''}</textarea>
     </div>
-    ${editing ? `<div class="form-row"><label style="cursor:pointer"><input type="checkbox" id="rep-f-active" ${editing.isActive !== false ? 'checked' : ''}> Active (取消勾选 = 停用此代理)</label></div>` : ''}
+    ${editing ? `<div class="form-row"><label style="cursor:pointer"><input type="checkbox" id="rep-f-active" ${editing.isActive !== false ? 'checked' : ''}> Active (uncheck = deactivate this agent)</label></div>` : ''}
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -2531,7 +2657,7 @@ function openRepModal(repId) {
 
 async function saveRep(repId) {
   const name = ($('rep-f-name').value || '').trim();
-  if (!name) { showToast('请填写姓名', 'error'); return; }
+  if (!name) { showToast('Please enter a name', 'error'); return; }
   const rep = {
     name: name,
     country: ($('rep-f-country').value || '').trim(),
@@ -2547,7 +2673,7 @@ async function saveRep(repId) {
     else { r = await apiPost('crm_addRep', { rep }); }
     if (!r.ok) throw new Error(r.error || 'Save failed');
     closeModal();
-    showToast(repId ? '✅ 代理已更新' : '✅ 代理已新增', 'success');
+    showToast(repId ? '✅ Agent updated' : '✅ Agent added', 'success');
     REPS_STATE.loaded = false;
     await loadReps();   // refresh list
   } catch (e) {
@@ -2644,9 +2770,9 @@ function renderRepCard(r) {
       </div>
       <div class="rep-actions">
         ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="Open WhatsApp">💬 WhatsApp</a>` : ''}
-        ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Send email">📧 Email</a>` : ''}
+        ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Send email"><svg class="ic"><use href="#i-mail"></use></svg> Email</a>` : ''}
         ${wa ? `<button class="rep-action-btn copy" onclick="copyText('${wa}', 'Phone copied')" title="Copy phone">📋 ${wa}</button>` : ''}
-        <button class="rep-action-btn" onclick="openRepModal('${escapeHtml((r.id||'').replace(/'/g,"\\'"))}')" style="background:var(--primary);color:#fff" title="编辑">✏️ Edit</button>
+        <button class="rep-action-btn" onclick="openRepModal('${escapeHtml((r.id||'').replace(/'/g,"\\'"))}')" style="background:var(--primary);color:#fff" title="Edit">✏️ Edit</button>
       </div>
     </div>
   `;
@@ -2938,7 +3064,7 @@ function smartParseContact(text) {
   for (let i = 0; i < lines.length; i++) {
     if (companyRe.test(lines[i]) && !result.company) {
       // Clean up — remove leading labels like "Company:"
-      let co = lines[i].replace(/^(company|co|name)\s*[:：]\s*/i, '').trim();
+      let co = lines[i].replace(/^(company|co|name)\s*[:\uff1a]\s*/i, '').trim();
       result.company = co;
       usedLines.add(i);
     }
@@ -2951,11 +3077,11 @@ function smartParseContact(text) {
     const line = lines[i];
     if (emailRe.test(line)) { emailRe.lastIndex = 0; continue; }
     // Explicit Attn:
-    const attnMatch = line.match(/(?:attn|attention|contact|pic)\s*[:：]\s*(.+)/i);
+    const attnMatch = line.match(/(?:attn|attention|contact|pic)\s*[:\uff1a]\s*(.+)/i);
     if (attnMatch && !result.attn) { result.attn = attnMatch[1].trim(); usedLines.add(i); continue; }
     // Title-based (person name + role)
     if (titleRe.test(line) && !result.attn && line.length < 60 && !companyRe.test(line)) {
-      result.attn = line.replace(/^(attn|contact|name)\s*[:：]\s*/i, '').trim();
+      result.attn = line.replace(/^(attn|contact|name)\s*[:\uff1a]\s*/i, '').trim();
       usedLines.add(i);
     }
   }
@@ -3223,10 +3349,10 @@ function printInquiries() {
     return (b.inquiryDate||'').localeCompare(a.inquiryDate||'');
   });
 
-  if (!list.length) { showToast('没有 inquiry 可打印', 'error'); return; }
+  if (!list.length) { showToast('No inquiries to print', 'error'); return; }
 
   const today = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const filterLabel = { pending:'Pending (等报价)', overdue:'Overdue (逾期)', converted:'Converted (已报价)', all:'All' }[INQUIRIES_STATE.filter] || 'All';
+  const filterLabel = { pending:'Pending', overdue:'Overdue', converted:'Converted', all:'All' }[INQUIRIES_STATE.filter] || 'All';
 
   let rows = '';
   list.forEach((inq, idx) => {
@@ -3261,7 +3387,7 @@ function printInquiries() {
   </style></head><body>
     <div class="head">
       <div>
-        <h1>📞 Customer Inquiries — 待报价清单</h1>
+        <h1>📞 Customer Inquiries — Awaiting-quote list</h1>
         <div class="sub">Sen Labels Machinery Sdn Bhd</div>
       </div>
       <div class="meta">
@@ -3281,12 +3407,12 @@ function printInquiries() {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div class="footer">— 此清单由 Sen Labels CRM 自动产生 · 共 ${list.length} 个客户等待报价 —</div>
+    <div class="footer">— Auto-generated by Sen Labels CRM · ${list.length} customers awaiting quotation —</div>
     <button class="noprint" onclick="window.print()" style="position:fixed;top:10px;right:10px;padding:10px 18px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨 Print / Save PDF</button>
   </body></html>`;
 
   const win = window.open('', '_blank');
-  if (!win) { showToast('请允许弹出视窗以打印', 'error'); return; }
+  if (!win) { showToast('Please allow pop-ups to print', 'error'); return; }
   win.document.write(html);
   win.document.close();
   setTimeout(() => { try { win.print(); } catch(e){} }, 400);
@@ -3892,10 +4018,10 @@ function renderSnapshot() {
                 <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(dispName)}</div>
                 <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
                 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
-                  <button onclick="waWithScript('${x.customer.company.replace(/'/g, "\\'")}')" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp(带话术)">💬 WhatsApp</button>
-                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="顺延 3 天">⏰ +3天</button>
-                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',7)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="顺延 1 周">⏰ +1周</button>
-                  <button onclick="selectCustomer('${x.customer.company.replace(/'/g, "\\'")}');document.querySelector('[data-tab=&quot;crm&quot;]').click()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text-secondary);cursor:pointer" title="打开这个客户">👤 打开</button>
+                  <button onclick="waWithScript('${x.customer.company.replace(/'/g, "\\'")}')" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp (with script)">💬 WhatsApp</button>
+                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 3 days">⏰ +3d</button>
+                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',7)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 1 week">⏰ +1wk</button>
+                  <button onclick="selectCustomer('${x.customer.company.replace(/'/g, "\\'")}');document.querySelector('[data-tab=&quot;crm&quot;]').click()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text-secondary);cursor:pointer" title="Open this customer">👤 Open</button>
                 </div>
               </div>
             `;
@@ -4061,7 +4187,7 @@ function initPackCountryFilter() {
   if (repSel) {
     const cur = repSel.value;
     const reps = (STATE.salesReps || []).filter(r => r.isActive !== false);
-    repSel.innerHTML = '<option value="">All / 全部</option>' +
+    repSel.innerHTML = '<option value="">All</option>' +
       reps.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
     repSel.value = cur;
   }
@@ -4135,7 +4261,7 @@ function gatherPackData(onlyChecked) {
     const inquiries = includeInq ? ((INQUIRIES_STATE && INQUIRIES_STATE.inquiries || []).filter(i => i.customer === customer.company && !i.converted)) : [];
 
     if (period === 'everyone') {
-      // "全部活跃客户": include any customer with at least one ACTIVE (not closed/lost) contract,
+      // "Everyone active": include any customer with at least one ACTIVE (not closed/lost) contract,
       // even if they have no scheduled follow-up. This surfaces the customers you never set a reminder for.
       const hasActive = (customer.activeContracts || 0) > 0 ||
         (customer.contracts || []).some(ct => !['Closed (Paid)','Delivered','Lost','Cancelled'].includes(ct.status));
@@ -4162,12 +4288,12 @@ function gatherPackData(onlyChecked) {
     upcoming: rows.reduce((s,x)=>s+x.upcoming.length,0),
     inquiries: rows.reduce((s,x)=>s+x.inquiries.length,0)
   };
-  const periodLabel = { week:'本周 + 逾期', overdue:'只看逾期', month:'本月 + 逾期', all:'全部待跟进', everyone:'全部活跃客户' }[period] || period;
+  const periodLabel = { week:'This Week + Overdue', overdue:'Overdue Only', month:'This Month + Overdue', all:'All Pending', everyone:'All Active Customers' }[period] || period;
   let scopeLabel = 'All Customers';
   if (PACK_STATE.repName) {
     const rep = (STATE.salesReps || []).find(r => r.name === PACK_STATE.repName);
     scopeLabel = PACK_STATE.repName + (rep && rep.country ? ' (' + rep.country + ')' : '');
-  } else if (PACK_STATE.unassignedOnly) scopeLabel = '未分配代理 / 我直接对接';
+  } else if (PACK_STATE.unassignedOnly) scopeLabel = 'Unassigned / handled directly';
   else if (PACK_STATE.country) scopeLabel = PACK_STATE.country;
   return { rows, counts, periodLabel, scopeLabel, today };
 }
@@ -4196,7 +4322,7 @@ function renderPack() {
       <div class="empty" style="padding:40px;text-align:center;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow)">
         <div style="font-size:42px;margin-bottom:8px">🎉</div>
         <div style="color:var(--success);font-weight:600;font-size:14px">All caught up!</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">这个筛选下没有要跟进的客户 — 换个筛选试试</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">No customers to follow up — try another filter</div>
       </div>`;
     return;
   }
@@ -4222,7 +4348,7 @@ function renderPackCustomerCard(x, today) {
     <div class="pack-customer-card ${isOverdue ? 'overdue' : ''}">
       <div class="pack-customer-header">
         <div style="flex-shrink:0;padding-top:2px">
-          <input type="checkbox" class="pack-pick" data-company="${escapeHtml(c.company)}" ${PACK_UNCHECKED.has(c.company) ? '' : 'checked'} onchange="onPackPickToggle(this)" style="width:18px;height:18px;cursor:pointer" title="勾选 = 放进清单">
+          <input type="checkbox" class="pack-pick" data-company="${escapeHtml(c.company)}" ${PACK_UNCHECKED.has(c.company) ? '' : 'checked'} onchange="onPackPickToggle(this)" style="width:18px;height:18px;cursor:pointer" title="Tick = include in pack">
         </div>
         <div style="flex:1;min-width:0">
           <div class="pack-customer-name">${c.flag} ${escapeHtml(displayName)}</div>
@@ -4234,9 +4360,9 @@ function renderPackCustomerCard(x, today) {
           ${latest ? `<div class="pack-customer-meta" style="margin-top:2px">📋 Latest: <strong>${latest.contractNo}</strong> — ${escapeHtml((latest.machine||'').substring(0,60))}</div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
-          ${waLink ? `<a href="${waLink}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="rep-action-btn whatsapp" title="WhatsApp ${escapeHtml(tel)}(自动带跟进话术)">💬 WhatsApp</a>` : ''}
-          ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Email ${email}">📧 Email</a>` : ''}
-          <a href="${generatorUrl}" target="_blank" class="rep-action-btn call" style="background:var(--primary)">📋 Open</a>
+          ${waLink ? `<a href="${waLink}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="rep-action-btn whatsapp" title="WhatsApp ${escapeHtml(tel)} (auto-fills follow-up script)">💬 WhatsApp</a>` : ''}
+          ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Email ${email}"><svg class="ic"><use href="#i-mail"></use></svg> Email</a>` : ''}
+          <a href="${generatorUrl}" target="_blank" class="rep-action-btn call" style="background:var(--primary)"><svg class="ic"><use href="#i-doc"></use></svg> Open</a>
         </div>
       </div>
       
@@ -4258,28 +4384,28 @@ function renderPackCustomerCard(x, today) {
         ${(x.inquiries||[]).map(inq => `
           <div class="pack-followup-item">
             <span class="pack-followup-icon">📞</span>
-            <span style="color:var(--info);font-weight:600">询价 Inquiry</span>
+            <span style="color:var(--info);font-weight:600">Inquiry</span>
             <span style="color:var(--text-secondary)">— ${escapeHtml((inq.machine || '').substring(0,70))}${inq.quantity ? ' × '+escapeHtml(inq.quantity) : ''}${inq.budget ? ' · '+escapeHtml(inq.budget) : ''}</span>
           </div>
         `).join('')}
         ${x.noFollowup ? `
           <div class="pack-followup-item">
             <span class="pack-followup-icon">⚪</span>
-            <span style="color:var(--text-muted);font-weight:600">尚未排跟进</span>
-            <span style="color:var(--text-secondary)">— 这个客户有合同但没设过跟进提醒,建议联系</span>
+            <span style="color:var(--text-muted);font-weight:600">No follow-up scheduled</span>
+            <span style="color:var(--text-secondary)">— Has contracts but no follow-up reminder set, suggest reaching out</span>
           </div>
         ` : ''}
       </div>
 
       <div class="pack-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
-        <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;font-size:11px" title="挑一条话术,复制或直接发 WhatsApp(带预填文字)">✍️ 话术 / WhatsApp</button>
-        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" style="background:#00897b;color:#fff;font-size:11px" title="记一笔:已发消息还没回,下次跟进自动设 +3 天">💬 没回 · 3天后跟</button>
-        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="记一笔:打了没接,下次 +1 天">📞 没接 · 明天打</button>
-        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',3)" style="background:#8d6e63;color:#fff;font-size:11px" title="把下次跟进顺延 3 天(不记录联系)">⏰ +3天</button>
-        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',7)" style="background:#6d4c41;color:#fff;font-size:11px" title="把下次跟进顺延 1 周">⏰ +1周</button>
-        <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px" title="详细记录:选结果 / 指定合同 / 自定下次日期">📝 详细记录</button>
-        <button class="btn btn-sm btn-outline" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="客户选定哪台 / 成交 / 不跟了 — 逐张设合同状态">📌 结案 / 状态</button>
-        ${latest ? `<button class="btn btn-sm btn-outline" onclick="openContractPDF('${latest.contractNo}')" style="font-size:11px;border-color:#0b6bcb;color:#0b6bcb" title="预览最新合同 ${latest.contractNo} 的 PDF(新分页)">👁 预览 PDF</button>` : ''}
+        <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;font-size:11px" title="Pick a script — copy or send via WhatsApp (pre-filled)">✍️ Script / WhatsApp</button>
+        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" style="background:#00897b;color:#fff;font-size:11px" title="Log: message sent, no reply yet — next follow-up auto-set +3 days">💬 No reply · in 3d</button>
+        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="Log: called, no answer — next +1 day">📞 No answer · call tomorrow</button>
+        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',3)" style="background:#8d6e63;color:#fff;font-size:11px" title="Snooze next follow-up by 3 days (no contact logged)">⏰ +3d</button>
+        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',7)" style="background:#6d4c41;color:#fff;font-size:11px" title="Snooze next follow-up by 1 week">⏰ +1wk</button>
+        <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px" title="Detailed log: pick outcome / specify contract / custom next date">📝 Detailed log</button>
+        <button class="btn btn-sm btn-outline" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="Which one the customer picked / Won / Lost — set status per contract">📌 Close / Status</button>
+        ${latest ? `<button class="btn btn-sm btn-outline" onclick="openContractPDF('${latest.contractNo}')" style="font-size:11px;border-color:#0b6bcb;color:#0b6bcb" title="Preview the latest contract ${latest.contractNo}  PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>` : ''}
       </div>
     </div>
   `;
@@ -4290,7 +4416,7 @@ function renderPackCustomerCard(x, today) {
 // pack card (not the CRM detail panel), so the existing quickFollowup flow is untouched.
 async function packQuickFollowup(company, kind) {
   const c = (STATE.customers || []).find(x => x.company === company);
-  if (!c) { showToast('找不到客户', 'error'); return; }
+  if (!c) { showToast('Customer not found', 'error'); return; }
   if (kind === 'done') { openFollowupModal(company); return; }  // detailed flow refreshes the pack on save
   const today = new Date().toISOString().split('T')[0];
   let nextDays, type, desc, outcome;
@@ -4301,7 +4427,7 @@ async function packQuickFollowup(company, kind) {
   const latest = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
   const contractNo = latest ? latest.contractNo : '';
   const fu = { customer: company, date: today, type, contractNo, description: desc, outcome, nextFollowupDate: nextDate, supersede: true };
-  showToast('⏳ 记录中…', '');
+  showToast('⏳ Saving…', '');
   try {
     const r = await apiPost('crm_addFollowup', { followup: fu });
     if (!r.ok) throw new Error(r.error || 'Save failed');
@@ -4310,27 +4436,27 @@ async function packQuickFollowup(company, kind) {
       const fr = await apiGet('crm_getFollowups', { customer: company });
       STATE.followups[company] = fr.followups || [];
     } catch (e) { /* non-fatal: card refreshes on next full sync */ }
-    showToast(`✅ 已记录 — 下次跟进 ${fmtDate(nextDate)}`, 'success');
+    showToast(`✅ Logged — next follow-up ${fmtDate(nextDate)}`, 'success');
     renderPack();
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
   }
 }
 
-// ───── v2.9: 结案 / 状态 — set each contract's status (customer picks the one they bought) ─────
+// ───── v2.9: Close / Status — set each contract's status (customer picks the one they bought) ─────
 function openContractStatusModal(company) {
   const c = (STATE.customers || []).find(x => x.company === company);
-  if (!c) { showToast('找不到客户', 'error'); return; }
-  $('modal-title').textContent = `📌 结案 / 更新状态 — ${getDisplayName(company)}`;
+  if (!c) { showToast('Customer not found', 'error'); return; }
+  $('modal-title').textContent = `📌 Close / Update Status — ${getDisplayName(company)}`;
   $('modal-body').innerHTML = buildContractStatusBody(c);
-  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">关闭</button>`;
+  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">Close</button>`;
   $('modal-overlay').classList.add('show');
 }
 
 function buildContractStatusBody(c) {
   const terminal = ['Closed (Paid)','Delivered','Lost','Cancelled'];
   const contracts = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
-  if (!contracts.length) return '<div class="empty">这个客户还没有合同记录</div>';
+  if (!contracts.length) return '<div class="empty">This customer has no contracts yet</div>';
   const coAttr = c.company.replace(/'/g, "\\'");
   const cards = contracts.map(ct => {
     const won = ct.status === 'Closed (Paid)' || ct.status === 'Delivered';
@@ -4341,28 +4467,28 @@ function buildContractStatusBody(c) {
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px${isTerminal ? ';opacity:.65;background:#fafafa' : ''}">
         <div style="font-weight:600;font-size:13px">${escapeHtml(ct.contractNo)}</div>
         <div style="font-size:12px;color:var(--text-secondary);margin:2px 0">${escapeHtml((ct.machine||'').substring(0,80))}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(ct.currency||'')} ${Number(ct.amount||0).toLocaleString()} · 现状: <b>${escapeHtml(ct.status||'')}</b></div>
+        <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(ct.currency||'')} ${Number(ct.amount||0).toLocaleString()} · Current: <b>${escapeHtml(ct.status||'')}</b></div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Closed (Paid)','${coAttr}')" ${won?'disabled':''} style="background:#2e7d32;color:#fff;font-size:11px${won?';opacity:.5':''}">✅ 成交 (选了这台)</button>
-          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Lost','${coAttr}')" ${lost?'disabled':''} style="background:#c0392b;color:#fff;font-size:11px${lost?';opacity:.5':''}">🚫 不跟了 (Lost)</button>
-          ${isTerminal ? `<select onchange="if(this.value){setContractStatus('${ctAttr}',this.value,'${coAttr}');this.value='';}" title="点错了?把这张合同改回活跃状态" style="font-size:11px;padding:5px 6px;border:1px solid #f0a020;border-radius:4px;color:#b86b00;background:#fff;cursor:pointer">
-            <option value="">↩️ 重开 / 改回…</option>
-            <option value="Quotation Sent">↩️ 改回「报价中 Quotation Sent」</option>
-            <option value="Sales Contract">↩️ 改回「销售合同 Sales Contract」</option>
+          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Closed (Paid)','${coAttr}')" ${won?'disabled':''} style="background:#2e7d32;color:#fff;font-size:11px${won?';opacity:.5':''}">✅ Won (picked this)</button>
+          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Lost','${coAttr}')" ${lost?'disabled':''} style="background:#c0392b;color:#fff;font-size:11px${lost?';opacity:.5':''}">🚫 Lost</button>
+          ${isTerminal ? `<select onchange="if(this.value){setContractStatus('${ctAttr}',this.value,'${coAttr}');this.value='';}" title="Clicked by mistake? Reopen this contract" style="font-size:11px;padding:5px 6px;border:1px solid #f0a020;border-radius:4px;color:#b86b00;background:#fff;cursor:pointer">
+            <option value="">↩️ Reopen / change back…</option>
+            <option value="Quotation Sent">↩️ Back to Quotation Sent</option>
+            <option value="Sales Contract">↩️ Back to Sales Contract</option>
           </select>` : ''}
         </div>
       </div>`;
   }).join('');
   return `
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">💡 报了好几台、客户最后选定其中一台时:把选中那张标「成交」,其余没选上的标「不跟了」。<br>一旦这个客户没有任何活跃合同,就会自动从跟进清单消失。<br>👉 点错了?已结案 / 不跟了的合同上会出现「↩️ 重开 / 改回」,可以撤销、改回活跃状态。</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">💡 Quoted several machines and the customer finally picked one? Mark that one Won and the rest Lost.<br>Once this customer has no active contracts, they drop off the follow-up list automatically.<br>👉 Clicked by mistake? Closed / Lost contracts show a "↩️ Reopen / change back" option to undo and return them to active.</div>
     ${cards}`;
 }
 
 async function setContractStatus(contractNo, status, company) {
-  showToast('⏳ 更新中…', '');
+  showToast('⏳ Updating…', '');
   try {
     const r = await apiPost('crm_setContractStatus', { contractNo, status });
-    if (!r.ok) throw new Error(r.error || '更新失败');
+    if (!r.ok) throw new Error(r.error || 'Update failed');
     // Update local state in BOTH places so every view reflects it immediately
     const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo);
     if (ct) ct.status = status;
@@ -4370,7 +4496,7 @@ async function setContractStatus(contractNo, status, company) {
       const cu = (STATE.customers || []).find(x => x.company === company);
       if (cu) { const cc = (cu.contracts || []).find(x => x.contractNo === contractNo); if (cc) cc.status = status; }
     }
-    showToast(`✅ 已更新为 ${status}`, 'success');
+    showToast(`✅ Updated to ${status}`, 'success');
     await refreshAfterChange(company);
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
@@ -4389,7 +4515,7 @@ async function refreshAfterChange(company) {
     cust.activeContracts = (cust.contracts || []).filter(x => !terminal.includes(x.status)).length;
   }
   const modalOpen = document.getElementById('modal-overlay') && document.getElementById('modal-overlay').classList.contains('show');
-  const inStatusModal = modalOpen && /结案|更新状态/.test(($('modal-title') && $('modal-title').textContent) || '');
+  const inStatusModal = modalOpen && /Update Status/.test(($('modal-title') && $('modal-title').textContent) || '');
   if (inStatusModal && cust) { $('modal-body').innerHTML = buildContractStatusBody(cust); }
   // Customer detail view (only when no modal covering it)
   if (cust && STATE.activeCustomer === company && !modalOpen) {
@@ -4409,22 +4535,22 @@ function contractActionBar(ct, company) {
   const base = 'font-size:11px;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid';
   if (won || lost) {
     return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px">
-      <span style="font-size:11px;font-weight:600;color:${won ? '#2e7d32' : '#c0392b'}">${won ? '✅ 已成交' : '🚫 已结束 ('+escapeHtml(ct.status)+')'}</span>
+      <span style="font-size:11px;font-weight:600;color:${won ? '#2e7d32' : '#c0392b'}">${won ? 'Won' : 'Closed ('+escapeHtml(ct.status)+')'}</span>
       <select onchange="if(this.value){reopenContract('${ctAttr}','${coAttr}',this.value);this.value='';}" style="font-size:11px;padding:4px 6px;border:1px solid #f0a020;border-radius:5px;color:#b86b00;background:#fff;cursor:pointer">
-        <option value="">↩️ 重开…</option>
-        <option value="Quotation Sent">改回 报价中</option>
-        <option value="Sales Contract">改回 销售合同</option>
+        <option value="">Reopen…</option>
+        <option value="Quotation Sent">Back to Quotation</option>
+        <option value="Sales Contract">Back to Sales Contract</option>
       </select></div>`;
   }
   return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-    <button onclick="quickNextFollowup('${ctAttr}','${coAttr}')" style="${base} #90caf9;background:#e3f2fd;color:#1565c0" title="一键设下次跟进日期">📅 下次跟进</button>
-    <button onclick="markWon('${ctAttr}','${coAttr}')" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="客户选了这台 → 成交">✅ 成交</button>
-    <button onclick="markLost('${ctAttr}','${coAttr}')" style="${base} #f5c6cb;background:#fdecea;color:#c0392b" title="这张不跟了 → Lost">🚫 Lost</button>
+    <button onclick="quickNextFollowup('${ctAttr}','${coAttr}')" style="${base} #90caf9;background:#e3f2fd;color:#1565c0" title="Set next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Follow-up</button>
+    <button onclick="markWon('${ctAttr}','${coAttr}')" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="Customer chose this → Won"><svg class="ic"><use href="#i-check"></use></svg> Won</button>
+    <button onclick="markLost('${ctAttr}','${coAttr}')" style="${base} #f5c6cb;background:#fdecea;color:#c0392b" title="Drop this one → Lost"><svg class="ic"><use href="#i-x"></use></svg> Lost</button>
   </div>`;
 }
 
-function markWon(contractNo, company)  { if (confirm('把这张合同标为「成交 Closed (Paid)」?')) setContractStatus(contractNo, 'Closed (Paid)', company); }
-function markLost(contractNo, company) { if (confirm('把这张合同标为「Lost(不跟了)」?')) setContractStatus(contractNo, 'Lost', company); }
+function markWon(contractNo, company)  { if (confirm('Mark this contract as Won (Closed / Paid)?')) setContractStatus(contractNo, 'Closed (Paid)', company); }
+function markLost(contractNo, company) { if (confirm('Mark this contract as Lost?')) setContractStatus(contractNo, 'Lost', company); }
 function reopenContract(contractNo, company, status) { setContractStatus(contractNo, status, company); }
 
 // One-tap "set next follow-up date" — no notes required. Syncs to the Follow-up list.
@@ -4434,39 +4560,39 @@ function quickNextFollowup(contractNo, company) {
   const plus = n => iso(new Date(base.getTime() + n * 86400000));
   const ca = contractNo.replace(/'/g, "\\'");
   const oa = company.replace(/'/g, "\\'");
-  const chips = [['明天', plus(1)], ['3 天后', plus(3)], ['1 周后', plus(7)], ['2 周后', plus(14)], ['1 个月后', plus(30)]];
-  $('modal-title').textContent = `📅 设下次跟进 — ${contractNo}`;
+  const chips = [['Tomorrow', plus(1)], ['In 3 days', plus(3)], ['In 1 week', plus(7)], ['In 2 weeks', plus(14)], ['In 1 month', plus(30)]];
+  $('modal-title').textContent = `📅 Set next follow-up — ${contractNo}`;
   $('modal-body').innerHTML = `
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">点一下即可,无需填写内容。会自动同步到「跟进清单 / Follow-up」。</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">One tap — no text needed. Auto-syncs to the follow-up list.</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
       ${chips.map(([lbl, d]) => `<button class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:13px;padding:9px 14px;line-height:1.3" onclick="saveQuickNext('${ca}','${oa}','${d}')">${lbl}<br><span style="font-size:10px;opacity:.7">${fmtDate(d)}</span></button>`).join('')}
     </div>
     <div class="form-row">
-      <label>或选自订日期</label>
+      <label>Or pick a custom date</label>
       <div style="display:flex;gap:8px">
         <input type="date" id="qnext-date" value="${plus(7)}" style="flex:1">
-        <button class="btn btn-primary" onclick="saveQuickNext('${ca}','${oa}', document.getElementById('qnext-date').value)">设定</button>
+        <button class="btn btn-primary" onclick="saveQuickNext('${ca}','${oa}', document.getElementById('qnext-date').value)">Set</button>
       </div>
     </div>
     <div style="margin-top:14px;font-size:12px">
-      <a href="#" onclick="event.preventDefault();closeModal();openFollowupModal('${oa}')" style="color:var(--info)">需要写跟进内容?改用完整表单 →</a>
+      <a href="#" onclick="event.preventDefault();closeModal();openFollowupModal('${oa}')" style="color:var(--info)">Need to write follow-up notes? Switch to full form →</a>
     </div>`;
-  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">取消</button>`;
+  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>`;
   $('modal-overlay').classList.add('show');
 }
 
 async function saveQuickNext(contractNo, company, isoDate) {
-  if (!isoDate) { showToast('请选择日期', 'error'); return; }
+  if (!isoDate) { showToast('Please select a date', 'error'); return; }
   const today = new Date().toISOString().split('T')[0];
   const fu = { customer: company, date: today, type: 'Follow-up', contractNo,
-    description: '📅 已跟进 — 下次跟进 ' + fmtDate(isoDate), outcome: '',
+    description: '📅 Followed up — next follow-up ' + fmtDate(isoDate), outcome: '',
     nextFollowupDate: isoDate, supersede: true };
-  showToast('⏳ 记录中…', '');
+  showToast('⏳ Saving…', '');
   try {
     const r = await apiPost('crm_addFollowup', { followup: fu });
-    if (!r.ok) throw new Error(r.error || '保存失败');
+    if (!r.ok) throw new Error(r.error || 'Save failed');
     closeModal();
-    showToast('✅ 下次跟进 ' + fmtDate(isoDate), 'success');
+    showToast('✅ Next follow-up ' + fmtDate(isoDate), 'success');
     await refreshAfterChange(company);
   } catch (e) { showToast('Failed: ' + e.message, 'error'); }
 }
@@ -4474,6 +4600,15 @@ async function saveQuickNext(contractNo, company, isoDate) {
 // ════════ v2.16: powerful CRM helpers ════════
 
 // ---- F4: open WhatsApp with the auto-detected follow-up script pre-filled ----
+function scriptSalutation(c, lang) {
+  const raw = ((c && c.attn) || '').trim();
+  if (!raw) return lang === 'id' ? 'Bapak/Ibu' : 'there';
+  // attn already carries an honorific (Mr./Mrs./Dr./Pak/Bu/...) -> use as given
+  if (/^(mr|mrs|ms|mdm|madam|miss|dr|prof|sir|pak|bu|ibu|bapak|sdr|sdri)\.?\s+/i.test(raw)) return raw;
+  // otherwise: honorific + first given name (Mr. Felix / Pak Felix)
+  const first = raw.split(/\s+/)[0];
+  return (lang === 'id' ? 'Pak ' : 'Mr. ') + first;
+}
 function defaultScriptText(company) {
   const c = STATE.customers.find(x => x.company === company);
   if (!c) return '';
@@ -4481,19 +4616,18 @@ function defaultScriptText(company) {
   let scenario = 'followup', lang = 'en';
   try { scenario = detectScenario(c, followups); } catch (e) {}
   try { lang = langForCountry(c.country); } catch (e) {}
-  const name = c.attn || getDisplayName(company) || 'there';
-  const firstName = (name.split(/\s+/)[0]) || name;
+  const sal = scriptSalutation(c, lang);
   const machine = ((c.latestMachine || (c.contracts && c.contracts[0] && c.contracts[0].machine) || 'our machine') + '').replace(/\s*\(.*$/, '').substring(0, 50);
   const tset = SCRIPT_TEMPLATES[scenario] || {};
   const templates = tset[lang] || tset.en || [];
   const raw = (templates[0] && templates[0].text) || 'Hi {name}, just following up on {machine}. Let me know if you have any questions 😊';
-  return raw.replace(/\{name\}/g, firstName).replace(/\{machine\}/g, machine).replace(/\{company\}/g, getDisplayName(company));
+  return raw.replace(/\{name\}/g, sal).replace(/\{machine\}/g, machine).replace(/\{company\}/g, getDisplayName(company));
 }
 function waWithScript(company) {
   const c = STATE.customers.find(x => x.company === company);
-  if (!c) { showToast('找不到客户', 'error'); return; }
+  if (!c) { showToast('Customer not found', 'error'); return; }
   const wa = ((c.tel || '') + '').replace(/\D/g, '');
-  if (wa.length < 8) { showToast('这个客户没有有效电话号码', 'error'); return; }
+  if (wa.length < 8) { showToast('This customer has no valid phone number', 'error'); return; }
   const msg = defaultScriptText(company);
   window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank');
 }
@@ -4505,12 +4639,12 @@ async function snoozeFollowup(company, days) {
   const nextDate = new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
   const fu = { customer: company, date: today, type: 'Follow-up', contractNo: latest ? latest.contractNo : '',
-    description: '⏰ 顺延跟进 → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
-  showToast('⏳ 顺延中…', '');
+    description: '⏰ Snoozed follow-up → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
+  showToast('⏳ Snoozing…', '');
   try {
     const r = await apiPost('crm_addFollowup', { followup: fu });
-    if (!r.ok) throw new Error(r.error || '失败');
-    showToast('✅ 顺延到 ' + fmtDate(nextDate), 'success');
+    if (!r.ok) throw new Error(r.error || 'Failed');
+    showToast('✅ Snoozed to ' + fmtDate(nextDate), 'success');
     await refreshAfterChange(company);
   } catch (e) { showToast('Failed: ' + e.message, 'error'); }
 }
@@ -4518,9 +4652,9 @@ async function snoozeFollowup(company, days) {
 // ---- F3: batch — set next follow-up date for all CHECKED customers in the pack ----
 async function batchSetNextFollowup(days) {
   const { rows } = gatherPackData(true);
-  if (!rows.length) { showToast('没有勾选的客户', 'error'); return; }
-  const label = days === 1 ? '明天' : (days + ' 天后');
-  if (!confirm(`把勾选的 ${rows.length} 个客户的下次跟进都设为「${label}」?`)) return;
+  if (!rows.length) { showToast('No customers selected', 'error'); return; }
+  const label = days === 1 ? 'tomorrow' : ('in ' + days + ' days');
+  if (!confirm(`Set next follow-up to ${label} for all ${rows.length} selected customers?`)) return;
   const nextDate = new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
   let ok = 0, fail = 0;
@@ -4529,15 +4663,15 @@ async function batchSetNextFollowup(days) {
     const co = x.customer.company;
     const latest = (x.customer.contracts || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
     const fu = { customer: co, date: today, type: 'Follow-up', contractNo: latest ? latest.contractNo : '',
-      description: '⏰ 批量设定下次跟进 → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
-    showToast(`⏳ 批量设定中… ${i + 1}/${rows.length}`, '');
+      description: '⏰ Bulk-set next follow-up → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
+    showToast(`⏳ Saving… ${i + 1}/${rows.length}`, '');
     try {
       const r = await apiPost('crm_addFollowup', { followup: fu });
       if (r.ok) { ok++; STATE.followups[co] = [{ id: 'tmp' + i, customer: co, date: today, type: 'Follow-up', contractNo: fu.contractNo, description: fu.description, outcome: '', nextFollowupDate: nextDate, status: '' }]; }
       else fail++;
     } catch (e) { fail++; }
   }
-  showToast(`✅ 完成 ${ok} 个${fail ? (' · ' + fail + ' 失败') : ''} — 下次跟进 ${fmtDate(nextDate)}`, 'success');
+  showToast(`✅ Done ${ok}${fail ? (' · ' + fail + ' failed') : ''} — next follow-up ${fmtDate(nextDate)}`, 'success');
   renderPack();
 }
 
@@ -4553,10 +4687,10 @@ function onKanbanDrop(e, groupId) {
   const no = e.dataTransfer.getData('text/plain');
   if (!no) return;
   const ct = (STATE.contracts || []).find(x => x.contractNo === no);
-  if (!ct) { showToast('找不到合同', 'error'); return; }
+  if (!ct) { showToast('Contract not found', 'error'); return; }
   const status = kanbanStatusForGroup(groupId);
   if (!status || ct.status === status) { renderPipeline(); return; }
-  if ((groupId === 'closed' || groupId === 'lost') && !confirm(`把合同 ${no} 标为「${status}」?`)) { renderPipeline(); return; }
+  if ((groupId === 'closed' || groupId === 'lost') && !confirm(`Mark contract ${no} as \"${status}\"?`)) { renderPipeline(); return; }
   setContractStatus(no, status, ct.company);
 }
 
@@ -4578,7 +4712,7 @@ function copyPackContactsToClipboard() {
 function copyPackForWhatsApp() {
   const { rows, periodLabel, scopeLabel } = gatherPackData(true);
   const lines = [];
-  lines.push(`*Sen Labels — 跟进清单*`);
+  lines.push(`*Sen Labels — Follow-up List*`);
   lines.push(`${scopeLabel} · ${periodLabel} · ${new Date().toLocaleDateString()}`);
   lines.push('');
   rows.forEach((x, i) => {
@@ -4588,19 +4722,19 @@ function copyPackForWhatsApp() {
     if (c.attn) lines.push(`   👤 ${c.attn}`);
     if (c.tel) lines.push(`   📱 ${c.tel}`);
     const tasks = [];
-    x.overdue.forEach(f => tasks.push('逾期: ' + (f.description||'').substring(0,60)));
+    x.overdue.forEach(f => tasks.push('Overdue: ' + (f.description||'').substring(0,60)));
     x.upcoming.forEach(f => tasks.push((f.description||'').substring(0,60)));
-    x.inquiries.forEach(inq => tasks.push('询价: ' + (inq.machine||'').substring(0,50)));
+    x.inquiries.forEach(inq => tasks.push('Inquiry: ' + (inq.machine||'').substring(0,50)));
     tasks.forEach(t => lines.push(`   • ${t}`));
     lines.push('');
   });
-  copyText(lines.join('\n'), `💬 已复制 ${rows.length} 个客户 (可贴到 WhatsApp)`);
+  copyText(lines.join('\n'), `💬 Copied ${rows.length} customers (paste into WhatsApp)`);
 }
 
 function printPack() {
   const html = buildPackDocHTML();
   const win = window.open('', '_blank');
-  if (!win) { showToast('请允许弹出视窗', 'error'); return; }
+  if (!win) { showToast('Please allow pop-ups', 'error'); return; }
   win.document.write(html);
   win.document.close();
   setTimeout(() => { try { win.print(); } catch(e){} }, 400);
@@ -4616,7 +4750,7 @@ function downloadPackWord() {
   const a = document.createElement('a');
   a.href = url; a.download = fname; document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
-  showToast('📄 Word 文件已下载', 'success');
+  showToast('📄 Word File downloaded', 'success');
 }
 
 // Build the printable / Word document HTML for the current pack
@@ -4629,13 +4763,13 @@ function buildPackDocHTML(forWord) {
     const tel = c.tel || '';
     const wa = tel.replace(/\D/g,'');
     const waLink = wa.length >= 8 ? `https://wa.me/${wa}` : '';
-    const urgency = x.overdue.length > 0 ? '🔴 逾期 Overdue' : (x.inquiries.length ? '📞 询价 Inquiry' : '🟡 本周 This Week');
+    const urgency = x.overdue.length > 0 ? '🔴 Overdue' : (x.inquiries.length ? '📞 Inquiry' : '🟡 This Week');
     // What to follow up
     const items = [];
-    x.overdue.forEach(f => items.push(`<span style="color:#c0392b">[逾期 ${daysAgoText(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
+    x.overdue.forEach(f => items.push(`<span style="color:#c0392b">[Overdue ${daysAgoText(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
     x.upcoming.forEach(f => items.push(`<span style="color:#e67e00">[${fmtDate(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
-    x.inquiries.forEach(inq => items.push(`<span style="color:#1565c0">[询价]</span> ${escapeHtml((inq.machine||'').substring(0,70))}${inq.quantity?' × '+escapeHtml(inq.quantity):''}${inq.budget?' · 预算 '+escapeHtml(inq.budget):''}`));
-    if (x.noFollowup) items.push(`<span style="color:#999">[尚未排跟进 — 建议联系]</span>`);
+    x.inquiries.forEach(inq => items.push(`<span style="color:#1565c0">[Inquiry]</span> ${escapeHtml((inq.machine||'').substring(0,70))}${inq.quantity?' × '+escapeHtml(inq.quantity):''}${inq.budget?' · Budget '+escapeHtml(inq.budget):''}`));
+    if (x.noFollowup) items.push(`<span style="color:#999">[No follow-up scheduled — suggest reaching out]</span>`);
     // Machine / contracts (what to quote)
     const machines = (c.contracts || []).slice(0,3).map(ct => `${escapeHtml(ct.contractNo)}: ${escapeHtml((ct.machine||'').substring(0,50))}${ct.amount?' ('+escapeHtml(ct.currency||'')+' '+Number(ct.amount).toLocaleString()+')':''}`);
     const rowBg = x.overdue.length > 0 ? ' style="background:#fff5f5"' : '';
@@ -4666,27 +4800,27 @@ function buildPackDocHTML(forWord) {
   </style></head><body>
     <div class="head">
       <div>
-        <h1>📨 Sen Labels — 跟进工作清单 Follow-up Pack</h1>
-        <div class="sub">负责: ${escapeHtml(scopeLabel)} &nbsp;|&nbsp; ${escapeHtml(periodLabel)}</div>
+        <h1>📨 Sen Labels — Follow-up Pack</h1>
+        <div class="sub">Agent: ${escapeHtml(scopeLabel)} &nbsp;|&nbsp; ${escapeHtml(periodLabel)}</div>
       </div>
       <div class="meta">
-        日期 Date: ${dateStr}<br>
-        ${counts.customers} 客户 · 🔴 ${counts.overdue} 逾期 · 📅 ${counts.upcoming} 本周 · 📞 ${counts.inquiries} 询价
+        Date: ${dateStr}<br>
+        ${counts.customers} customers · 🔴 ${counts.overdue} overdue · 📅 ${counts.upcoming} this week · 📞 ${counts.inquiries} inquiries
       </div>
     </div>
     <table>
       <thead><tr>
         <th style="width:25px">#</th>
-        <th style="width:16%">客户 Customer</th>
-        <th style="width:14%">联系人 Contact</th>
-        <th style="width:9%">状态</th>
-        <th style="width:26%">要跟进 To Follow Up</th>
-        <th style="width:20%">相关报价 Quotes/Machine</th>
-        <th>跟进结果 Result (手写)</th>
+        <th style="width:16%">Customer</th>
+        <th style="width:14%">Contact</th>
+        <th style="width:9%">Status</th>
+        <th style="width:26%">To Follow Up</th>
+        <th style="width:20%">Quotes / Machine</th>
+        <th>Result (handwritten)</th>
       </tr></thead>
-      <tbody>${rowsHTML || '<tr><td colspan="7" style="text-align:center;padding:20px">没有要跟进的客户</td></tr>'}</tbody>
+      <tbody>${rowsHTML || '<tr><td colspan="7" style="text-align:center;padding:20px">No customers to follow up</td></tr>'}</tbody>
     </table>
-    <div class="footer">— Sen Labels Machinery Sdn Bhd · 此清单由 CRM 产生,请跟进后填写结果回报 —</div>
+    <div class="footer">— Sen Labels Machinery Sdn Bhd · Generated by CRM — please fill in the result after following up —</div>
     ${forWord ? '' : '<button class="noprint" onclick="window.print()" style="position:fixed;top:10px;right:10px;padding:10px 18px;background:#1a3a5c;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨 Print / Save PDF</button>'}
   </body></html>`;
 }
@@ -4694,147 +4828,125 @@ function buildPackDocHTML(forWord) {
 
 // ─── Add Follow-up Modal ───────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════
-// v2.7: SMART FOLLOW-UP SCRIPTS (WhatsApp 跟进话术)
-// 模板打底,按客户国家自动选语言,按状态自动判断场景。AI 优化按钮以后加。
+// v2.7: SMART FOLLOW-UP SCRIPTS (WhatsApp follow-up scripts)
+// Template-based; auto-selects language by country and scenario by status. AI polish button to be added later.
 // ═══════════════════════════════════════════════════════════════════
 
-// 国家 → 语言 (没列到的默认英文)
+// Country -> language (defaults to English if not listed)
 function langForCountry(country) {
   const c = (country || '').toLowerCase();
-  if (c.includes('china') || c.includes('taiwan') || c.includes('中国') || c.includes('台湾') || c.includes('hong kong')) return 'zh';
-  if (c.includes('malaysia') || c.includes('马来')) return 'ms';   // 马来西亚:英文+马来文都给
-  // 日韩越泰等:模板用英文打底,AI优化时再翻译
+  if (c.includes('indonesia')) return 'id';   // Indonesia -> Bahasa Indonesia
+  // everything else (Malaysia, China, Taiwan, Korea, Japan, Vietnam, Thailand, ...) -> English
   return 'en';
 }
 
-// 判断这个客户当前处于哪个场景
+// Determine which scenario this customer is currently in
 function detectScenario(customer, followups) {
   const today = new Date().toISOString().split('T')[0];
   const fups = followups || [];
   const overdue = fups.filter(f => { const d = toIsoDate(f.nextFollowupDate); return d && d < today && f.status !== 'completed'; });
-  // 有逾期跟进,且有活跃报价 → 报价后没回
+  // Has overdue follow-up and an active quote -> quote with no reply
   const hasQuotePending = (customer.contracts || []).some(ct =>
     ['Quotation Sent','Quoted','Negotiation','Pending'].some(s => (ct.status||'').includes(s)));
   const hasActiveContract = (customer.activeContracts || 0) > 0;
-  // 多久没动静
+  // How long since last activity
   const lastDate = customer.lastDate || '';
   const daysSinceLast = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : 999;
-  // 成交过
+  // Has closed a deal before
   const hasClosed = (customer.contracts || []).some(ct => ['Closed (Paid)','Delivered'].includes(ct.status));
 
-  if (hasQuotePending && overdue.length > 0) return 'quote_no_reply';   // 报价后没回
+  if (hasQuotePending && overdue.length > 0) return 'quote_no_reply';   // quote, no reply
   if (hasQuotePending) return 'quote_no_reply';
-  if (hasClosed && daysSinceLast > 180) return 'reactivate';            // 老客户很久没买
+  if (hasClosed && daysSinceLast > 180) return 'reactivate';            // long-time customer, no recent purchase
   if (!hasActiveContract && hasClosed) return 'reactivate';
   if (hasActiveContract) return 'quote_no_reply';
   return 'reactivate';
 }
 
-// 话术模板库: scenario → lang → [3个版本]
-// 占位符: {name}=联系人, {machine}=机器, {company}=公司
+// Script template library: scenario -> lang -> [3 variants]
+// Placeholders: {name}=contact, {machine}=machine, {company}=company
 const SCRIPT_TEMPLATES = {
   quote_no_reply: {
     en: [
-      { label:'温和提醒', text:"Hi {name}, just following up on the quotation we sent for the {machine}. Do let me know if you have any questions — happy to help! 😊" },
-      { label:'制造紧迫', text:"Hi {name}, hope you're well! We currently have a unit ready for early delivery on the {machine}. Would you like to reserve it before stock runs low?" },
-      { label:'直接问决定', text:"Hi {name}, may I check if you've had a chance to review our quotation for the {machine}? Any concerns on price or specs — I'm happy to work something out. 🙏" }
+      { label:'Gentle reminder', text:"Hi {name}, just following up on the quotation we sent for the {machine}. Do let me know if you have any questions — happy to help! 😊" },
+      { label:'Create urgency', text:"Hi {name}, hope you're well! We currently have a unit ready for early delivery on the {machine}. Would you like to reserve it before stock runs low?" },
+      { label:'Ask for decision', text:"Hi {name}, may I check if you've had a chance to review our quotation for the {machine}? Any concerns on price or specs — I'm happy to work something out. 🙏" }
     ],
-    zh: [
-      { label:'温和提醒', text:"您好 {name},想跟进一下之前发您的 {machine} 报价,有任何问题随时联系我,很乐意为您解答 😊" },
-      { label:'制造紧迫', text:"您好 {name},我们目前有一台 {machine} 现货可以尽快交货,需要的话可以帮您预留,以免缺货~" },
-      { label:'直接问决定', text:"您好 {name},不知道您看了我们 {machine} 的报价没有?价格或规格上有任何顾虑都可以跟我说,我们再商量 🙏" }
-    ],
-    ms: [
-      { label:'温和提醒(BM)', text:"Hi {name}, ingin follow up tentang sebut harga untuk {machine} yang kami hantar. Jika ada sebarang soalan, boleh hubungi saya 😊" },
-      { label:'制造紧迫(BM)', text:"Hi {name}, kami ada satu unit {machine} sedia untuk penghantaran awal. Nak saya tempahkan untuk anda sebelum stok habis?" },
-      { label:'直接问决定(BM)', text:"Hi {name}, boleh saya tahu jika anda sudah sempat semak sebut harga {machine} kami? Sebarang kebimbangan tentang harga, boleh kita bincang 🙏" }
+    id: [
+      { label:'Gentle reminder', text:"Halo {name}, saya ingin menindaklanjuti penawaran yang kami kirim untuk {machine}. Jika ada pertanyaan, jangan ragu menghubungi saya — dengan senang hati membantu! 😊" },
+      { label:'Create urgency', text:"Halo {name}, semoga sehat selalu! Saat ini kami ada satu unit {machine} yang siap untuk pengiriman lebih awal. Apakah ingin saya reservasikan sebelum stoknya habis?" },
+      { label:'Ask for decision', text:"Halo {name}, boleh saya tanya apakah sudah sempat meninjau penawaran kami untuk {machine}? Jika ada kekhawatiran soal harga atau spesifikasi, dengan senang hati kita diskusikan. 🙏" }
     ]
   },
   reactivate: {
     en: [
-      { label:'问近况', text:"Hi {name}, it's been a while! How's business at {company}? We've just brought in some new label machinery models — would love to update you if you're expanding. 😊" },
-      { label:'报新机型', text:"Hi {name}, hope all is well! We recently launched upgraded models with better speed and lower running cost. Worth a quick look if you're planning new capacity?" },
-      { label:'重新连接', text:"Hi {name}, just checking in! Any new label printing projects on your side this year? Always happy to support {company} with machinery or spare parts. 🙏" }
+      { label:'Check in', text:"Hi {name}, it's been a while! How's business at {company}? We've just brought in some new label machinery models — would love to update you if you're expanding. 😊" },
+      { label:'New models', text:"Hi {name}, hope all is well! We recently launched upgraded models with better speed and lower running cost. Worth a quick look if you're planning new capacity?" },
+      { label:'Reconnect', text:"Hi {name}, just checking in! Any new label printing projects on your side this year? Always happy to support {company} with machinery or spare parts. 🙏" }
     ],
-    zh: [
-      { label:'问近况', text:"您好 {name},好久没联系了!{company} 最近生意如何?我们刚到了几款新的标签机型,如果您有扩产计划,很乐意跟您介绍 😊" },
-      { label:'报新机型', text:"您好 {name},近来可好!我们最近推出了升级机型,速度更快、运行成本更低,如果您打算增加产能,值得看看~" },
-      { label:'重新连接', text:"您好 {name},问候一下!今年贵司有新的标签印刷项目吗?机器或配件方面随时可以支持 {company} 🙏" }
-    ],
-    ms: [
-      { label:'问近况(BM)', text:"Hi {name}, dah lama tak berhubung! Macam mana bisnes {company}? Kami baru dapat beberapa model mesin label baru — boleh update jika anda nak kembangkan 😊" },
-      { label:'报新机型(BM)', text:"Hi {name}, harap semua baik! Kami baru lancarkan model naik taraf dengan kelajuan lebih baik dan kos operasi lebih rendah. Berbaloi untuk tengok!" },
-      { label:'重新连接(BM)', text:"Hi {name}, sekadar bertanya khabar! Ada projek percetakan label baru tahun ini? Sentiasa sedia bantu {company} dengan mesin atau alat ganti 🙏" }
+    id: [
+      { label:'Check in', text:"Halo {name}, sudah lama tidak berhubungan! Bagaimana bisnis di {company}? Kami baru saja menghadirkan beberapa model mesin label baru — dengan senang hati memberi info jika sedang berkembang. 😊" },
+      { label:'New models', text:"Halo {name}, semoga semuanya baik! Kami baru meluncurkan model upgrade dengan kecepatan lebih tinggi dan biaya operasi lebih rendah. Layak dilihat jika berencana menambah kapasitas?" },
+      { label:'Reconnect', text:"Halo {name}, sekadar menyapa! Ada proyek cetak label baru tahun ini? Kami selalu siap mendukung {company} dengan mesin atau suku cadang. 🙏" }
     ]
   },
   inquiry: {
     en: [
-      { label:'先回应+要信息', text:"Hi {name}, thank you for your interest in our {machine}! To prepare an accurate quotation, may I know: new or refurbished? Your monthly print volume? And target width/colours? 😊" },
-      { label:'热情+约时间', text:"Hi {name}, great to hear from you! I'd love to recommend the right machine for your needs. Are you free for a quick call/chat to go through the details?" },
-      { label:'直接给方向', text:"Hi {name}, thanks for reaching out! Based on what you described, our {machine} could be a good fit. Shall I prepare a full quotation with specs? 🙏" }
+      { label:'Acknowledge + ask', text:"Hi {name}, thank you for your interest in our {machine}! To prepare an accurate quotation, may I know: new or refurbished? Your monthly print volume? And target width/colours? 😊" },
+      { label:'Warm + schedule', text:"Hi {name}, great to hear from you! I'd love to recommend the right machine for your needs. Are you free for a quick call/chat to go through the details?" },
+      { label:'Give direction', text:"Hi {name}, thanks for reaching out! Based on what you described, our {machine} could be a good fit. Shall I prepare a full quotation with specs? 🙏" }
     ],
-    zh: [
-      { label:'先回应+要信息', text:"您好 {name},感谢您对我们 {machine} 的兴趣!为了给您准确报价,想了解一下:要新机还是翻新?每月印量大概多少?目标宽度和颜色数? 😊" },
-      { label:'热情+约时间', text:"您好 {name},很高兴收到您的询问!我想帮您推荐最合适的机器,方便的话能简单通个话/聊一下细节吗?" },
-      { label:'直接给方向', text:"您好 {name},谢谢您的咨询!根据您描述的需求,我们的 {machine} 应该挺合适,要我帮您准备一份完整的规格报价吗? 🙏" }
-    ],
-    ms: [
-      { label:'先回应+要信息(BM)', text:"Hi {name}, terima kasih atas minat terhadap {machine} kami! Untuk sebut harga tepat, boleh saya tahu: baru atau refurbished? Volum cetakan bulanan? Lebar/warna sasaran? 😊" },
-      { label:'热情+约时间(BM)', text:"Hi {name}, gembira dapat berita dari anda! Saya nak cadangkan mesin yang sesuai. Ada masa untuk borak/call ringkas tentang butirannya?" },
-      { label:'直接给方向(BM)', text:"Hi {name}, terima kasih kerana menghubungi! Berdasarkan keperluan anda, {machine} kami mungkin sesuai. Nak saya sediakan sebut harga lengkap? 🙏" }
+    id: [
+      { label:'Acknowledge + ask', text:"Halo {name}, terima kasih atas ketertarikannya pada {machine} kami! Untuk menyiapkan penawaran yang akurat, boleh saya tahu: baru atau bekas (refurbished)? Berapa volume cetak per bulan? Serta lebar dan jumlah warna yang ditargetkan? 😊" },
+      { label:'Warm + schedule', text:"Halo {name}, senang mendengar kabar dari Anda! Saya ingin merekomendasikan mesin yang paling sesuai. Apakah ada waktu untuk ngobrol/telepon singkat membahas detailnya?" },
+      { label:'Give direction', text:"Halo {name}, terima kasih sudah menghubungi! Berdasarkan kebutuhan yang dijelaskan, {machine} kami sepertinya cocok. Apakah perlu saya siapkan penawaran lengkap beserta spesifikasinya? 🙏" }
     ]
   },
   after_sale: {
     en: [
-      { label:'交货关怀', text:"Hi {name}, hope the {machine} is running well! Any questions on operation or maintenance, our team is always here to help. 😊" },
-      { label:'问满意度', text:"Hi {name}, just checking in after delivery — is everything working smoothly with the {machine}? Your feedback means a lot to us! 🙏" },
-      { label:'推配件/保养', text:"Hi {name}, hope all is good at {company}! A reminder that we supply spare parts and servicing for your machine — let me know if you ever need support." }
+      { label:'Post-delivery care', text:"Hi {name}, hope the {machine} is running well! Any questions on operation or maintenance, our team is always here to help. 😊" },
+      { label:'Satisfaction check', text:"Hi {name}, just checking in after delivery — is everything working smoothly with the {machine}? Your feedback means a lot to us! 🙏" },
+      { label:'Parts / servicing', text:"Hi {name}, hope all is good at {company}! A reminder that we supply spare parts and servicing for your machine — let me know if you ever need support." }
     ],
-    zh: [
-      { label:'交货关怀', text:"您好 {name},希望 {machine} 运行顺利!操作或保养上有任何问题,我们团队随时为您服务 😊" },
-      { label:'问满意度', text:"您好 {name},交货后跟进一下 — {machine} 用起来一切顺利吗?您的反馈对我们很重要! 🙏" },
-      { label:'推配件/保养', text:"您好 {name},希望 {company} 一切都好!提醒一下,我们提供机器的配件和保养服务,有需要随时联系我~" }
-    ],
-    ms: [
-      { label:'交货关怀(BM)', text:"Hi {name}, harap {machine} berfungsi dengan baik! Sebarang soalan tentang operasi atau penyelenggaraan, pasukan kami sedia membantu 😊" },
-      { label:'问满意度(BM)', text:"Hi {name}, sekadar bertanya selepas penghantaran — semua lancar dengan {machine}? Maklum balas anda amat bermakna! 🙏" },
-      { label:'推配件/保养(BM)', text:"Hi {name}, harap semua baik di {company}! Peringatan bahawa kami bekalkan alat ganti dan servis untuk mesin anda — hubungi saya jika perlu." }
+    id: [
+      { label:'Post-delivery care', text:"Halo {name}, semoga {machine} berjalan dengan baik! Jika ada pertanyaan soal pengoperasian atau perawatan, tim kami selalu siap membantu. 😊" },
+      { label:'Satisfaction check', text:"Halo {name}, sekadar menindaklanjuti setelah pengiriman — apakah semuanya lancar dengan {machine}? Masukan Anda sangat berarti bagi kami! 🙏" },
+      { label:'Parts / servicing', text:"Halo {name}, semoga semuanya baik di {company}! Sekadar mengingatkan, kami menyediakan suku cadang dan servis untuk mesin Anda — kabari saya jika sewaktu-waktu membutuhkan dukungan." }
     ]
   }
 };
 
 const SCENARIO_LABELS = {
-  quote_no_reply: '🔴 报价后没回',
-  reactivate: '💤 老客户激活',
-  inquiry: '📞 询价回应',
-  after_sale: '✅ 成交后关怀'
+  quote_no_reply: '🔴 Quote — no reply',
+  reactivate: '💤 Reactivate',
+  inquiry: '📞 Inquiry reply',
+  after_sale: '✅ After-sale care'
 };
 
 let SCRIPT_MODAL_STATE = { company:'', scenario:'', lang:'' };
 
 function openScriptModal(company) {
   const c = STATE.customers.find(x => x.company === company);
-  if (!c) { showToast('找不到客户', 'error'); return; }
+  if (!c) { showToast('Customer not found', 'error'); return; }
   const followups = STATE.followups[company] || [];
   const scenario = detectScenario(c, followups);
   const lang = langForCountry(c.country);
   SCRIPT_MODAL_STATE = { company, scenario, lang };
 
-  $('modal-title').textContent = `✍️ 跟进话术 — ${getDisplayName(company)}`;
+  $('modal-title').textContent = `✍️ Follow-up scripts — ${getDisplayName(company)}`;
   $('modal-body').innerHTML = buildScriptModalBody(c, scenario, lang);
-  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">关闭</button>`;
+  $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">Close</button>`;
   $('modal-overlay').classList.add('show');
 }
 
 function buildScriptModalBody(c, scenario, lang) {
-  const name = c.attn || getDisplayName(c.company) || 'there';
-  const firstName = (name.split(/\s+/)[0]) || name;
+  const sal = scriptSalutation(c, lang);
   const machine = (c.latestMachine || (c.contracts[0] && c.contracts[0].machine) || 'our machine').replace(/\s*\(.*$/, '').substring(0, 50);
-  const fill = (t) => t.replace(/\{name\}/g, firstName).replace(/\{machine\}/g, machine).replace(/\{company\}/g, getDisplayName(c.company));
+  const fill = (t) => t.replace(/\{name\}/g, sal).replace(/\{machine\}/g, machine).replace(/\{company\}/g, getDisplayName(c.company));
 
   const scenarioPicker = Object.keys(SCENARIO_LABELS).map(s =>
     `<option value="${s}" ${s===scenario?'selected':''}>${SCENARIO_LABELS[s]}</option>`).join('');
-  const langPicker = [['en','English'],['zh','中文'],['ms','Bahasa Melayu']].map(([v,n]) =>
+  const langPicker = [['en','English'],['id','Bahasa Indonesia']].map(([v,n]) =>
     `<option value="${v}" ${v===lang?'selected':''}>${n}</option>`).join('');
 
   const templates = (SCRIPT_TEMPLATES[scenario] && SCRIPT_TEMPLATES[scenario][lang]) || SCRIPT_TEMPLATES[scenario].en || [];
@@ -4848,8 +4960,8 @@ function buildScriptModalBody(c, scenario, lang) {
         <div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:5px">${escapeHtml(tpl.label)}</div>
         <div id="script-text-${i}" style="font-size:13px;line-height:1.5;white-space:pre-wrap;color:#1a2433">${escapeHtml(msg)}</div>
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="copyText(document.getElementById('script-text-${i}').textContent, '已复制话术')" style="background:var(--info);color:#fff;font-size:11px">📋 复制</button>
-          ${waLink ? `<a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#25d366;color:#fff;font-size:11px;text-decoration:none">💬 直接发 WhatsApp</a>` : ''}
+          <button class="btn btn-sm" onclick="copyText(document.getElementById('script-text-${i}').textContent, 'Script copied')" style="background:var(--info);color:#fff;font-size:11px">📋 Copy</button>
+          ${waLink ? `<a href="${waLink}" target="_blank" class="btn btn-sm" style="background:#25d366;color:#fff;font-size:11px;text-decoration:none">💬 Send via WhatsApp</a>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -4857,18 +4969,18 @@ function buildScriptModalBody(c, scenario, lang) {
   return `
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <div>
-        <label style="font-size:10px;color:#999;display:block;margin-bottom:2px">场景</label>
+        <label style="font-size:10px;color:#999;display:block;margin-bottom:2px">Scenario</label>
         <select id="script-scenario" onchange="refreshScriptModal()" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px">${scenarioPicker}</select>
       </div>
       <div>
-        <label style="font-size:10px;color:#999;display:block;margin-bottom:2px">语言</label>
+        <label style="font-size:10px;color:#999;display:block;margin-bottom:2px">Language</label>
         <select id="script-lang" onchange="refreshScriptModal()" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px">${langPicker}</select>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">💡 系统按客户状态和国家自动选了场景+语言,你也可以手动改。挑一个复制或直接发。</div>
-    ${cards || '<div class="empty">这个组合暂无模板</div>'}
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">💡 Scenario + language are auto-selected by the customer's status and country — you can change them manually. Pick one to copy or send.</div>
+    ${cards || '<div class="empty">No template for this combination</div>'}
     <div style="font-size:11px;color:var(--text-muted);margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
-      ✨ 之后会加「AI 优化」按钮,对重要客户可一键精修话术 (需要 Claude API)。
+      ✨ An "AI polish" button will be added later to refine scripts for key customers (requires Claude API).
     </div>`;
 }
 
@@ -4956,7 +5068,7 @@ async function quickFollowup(customer, kind) {
   try {
     const r = await apiPost('crm_addFollowup', { followup: fu });
     if (!r.ok) throw new Error(r.error || 'Save failed');
-    showToast(`✅ 已记录 — 下次跟进 ${fmtDate(nextDate)}`, 'success');
+    showToast(`✅ Logged — next follow-up ${fmtDate(nextDate)}`, 'success');
     await selectCustomer(customer);  // refresh
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
