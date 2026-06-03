@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.79</title>
+<title>Sen Labels — Contract Generator v10.80</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#222}
@@ -147,13 +150,14 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 .cp-company{font-size:14pt;font-weight:700;color:#1e3a5f;margin-bottom:1mm;letter-spacing:0.3px}
 .cp-addr{font-size:8.5pt;color:#555;margin-bottom:0.4mm}
 .cp-divider{border:none;border-top:1px solid #dce6f0;margin:0 0 3mm}
-.cp-header-grid{display:grid;grid-template-columns:1fr auto;gap:4mm;margin-bottom:3mm;padding:3mm 4mm;background:#f8fafc;border:1px solid #dce6f0;border-radius:0 0 3px 3px;margin-top:0}
-.cp-header-sub{background:#f7f9fc;border-left:1px solid #dde4f0;border-right:1px solid #dde4f0;padding:3mm 5mm 2mm}
+.cp-header-grid{display:grid;grid-template-columns:1fr auto;gap:4mm;margin-bottom:3mm;padding:3mm 4mm;background:#fff;border:1px solid #ccd;border-radius:0 0 3px 3px;margin-top:0}
+.cp-header-sub{background:#fff;border-left:1px solid #dde4f0;border-right:1px solid #dde4f0;padding:3mm 5mm 2mm}
 .cp-to-block{font-size:10pt}
-.cp-to-block .cp-label{font-weight:700;display:inline-block;min-width:55px;color:#1e3a5f}
+.cp-to-block .cp-label{font-weight:700;display:inline-block;min-width:55px;color:#54657a;font-size:8pt;letter-spacing:.06em;text-transform:uppercase;font-family:'IBM Plex Sans',Arial,sans-serif}
 .cp-sc-block{text-align:right;font-size:10pt;white-space:nowrap}
 .cp-sc-block .cp-sc-no{font-weight:700;font-size:12pt;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:1mm;margin-bottom:1mm;display:inline-block}
-.cp-machine-title{font-size:11.5pt;font-weight:700;margin:3.5mm 0 1.5mm;background:#dce8f5;color:#1e3a5f;padding:1.8mm 4mm;border-radius:2px;letter-spacing:0.2px;border-left:4px solid #1e3a5f;border:1px solid #c0d6ea}
+.cp-machine-title{display:flex;align-items:flex-start;gap:2.4mm;font-size:11.5pt;font-weight:700;margin:4mm 0 2mm;background:#fff;color:#1e3a5f;padding:0 0 1.5mm 0;letter-spacing:0.1px;border-bottom:1.5px solid #1e3a5f}
+.cp-mnum{flex:none;display:inline-grid;place-items:center;min-width:5.3mm;height:5.3mm;background:#1e3a5f;color:#fff;font-size:9pt;font-weight:700;border-radius:1mm;padding:0 1mm;font-family:'IBM Plex Sans',Arial,sans-serif}
 .cp-spec-table{width:100%;border-collapse:collapse;margin-bottom:3mm;border:1px solid #e0e8f0;border-radius:3px;overflow:hidden}
 .cp-spec-table td{padding:0.8mm 3mm;font-size:9.5pt;vertical-align:top;border-bottom:1px solid #edf2f8}
 .cp-spec-table tr:nth-child(even) td{background:#f8fafc}
@@ -162,25 +166,26 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 .cp-spec-table td:nth-child(2){width:55mm;color:#444;font-weight:400}
 .cp-spec-table td:nth-child(3){width:6mm;text-align:center;color:#888}
 .cp-spec-table .val-cell{font-weight:400;color:#222}
-.cp-unit-price{font-size:12.5pt;font-weight:700;margin:3mm 0 4mm;color:#7a4500;background:#fff8ee;border-left:4px solid #e07800;padding:2.5mm 5mm;border-radius:0 3px 3px 0;display:block;border:1px solid #f5d9a8}
+.cp-unit-price{font-size:12.5pt;font-weight:700;margin:3mm 0 4mm;color:#000;background:#fff;border-left:4px solid #1e3a5f;padding:2.5mm 5mm;border-radius:0 3px 3px 0;display:block;border-top:1px solid #ccd;border-right:1px solid #ccd;border-bottom:1px solid #ccd}
 .cp-come-with{margin:2mm 0}
 .cp-come-with .cw-title{font-weight:700;font-size:10pt}
 .cp-pay-summary{width:100%;border-collapse:collapse;margin:2mm 0 1mm;font-size:10pt}
-.cp-pay-summary th{background:#dce8f5;color:#1e3a5f;padding:2mm 3mm;text-align:left;font-size:9.5pt;border-bottom:2px solid #1e3a5f;font-weight:700}
+.cp-pay-summary th{background:#1e3a5f;color:#fff;padding:2mm 3mm;text-align:left;font-size:8.5pt;letter-spacing:.06em;text-transform:uppercase;border-bottom:none;font-weight:700;font-family:'IBM Plex Sans',Arial,sans-serif}
 .cp-pay-summary td{padding:1mm 3mm;border-bottom:1px solid #dde}
-.cp-pay-summary .total-row td{font-weight:700;border-top:2px solid #1e3a5f;border-bottom:none;background:#f8fafc}
+.cp-pay-summary .total-row td{font-weight:700;border-top:2px solid #1e3a5f;border-bottom:none;background:#fff}
 .cp-terms-table{width:100%;border-collapse:collapse;margin:1.5mm 0;font-size:10pt;border:1px solid #e0e8f0}
 .cp-terms-table td{padding:1.5mm 3mm;vertical-align:top;border-bottom:1px solid #edf2f8}
 .cp-terms-table tr:last-child td{border-bottom:none}
 .cp-terms-table tr:nth-child(even) td{background:#f8fafc}
 .cp-terms-table td:first-child{width:50mm;font-weight:700;color:#1e3a5f}
-.cp-bank{margin:3mm 0;font-size:10pt;background:#f8f9fc;border:1px solid #dde;padding:3mm;border-radius:1mm}
-.cp-bank .bank-title{font-weight:700;margin-bottom:1mm}
+.cp-bank{margin:3mm 0;font-size:10pt;background:#fff;border:1px solid #d4dbe3;border-left:3px solid #1e3a5f;padding:3mm;border-radius:1mm}
+.cp-bank .bank-title{font-weight:700;margin-bottom:1.4mm;font-size:8.5pt;letter-spacing:.12em;text-transform:uppercase;color:#1e3a5f;font-family:'IBM Plex Sans',Arial,sans-serif}
 .cp-bank table{width:100%;border-collapse:collapse}
 .cp-bank table td{padding:.5mm 2mm;vertical-align:top}
 .cp-bank table td:first-child{width:32mm;font-weight:700}
-.cp-sig{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:5mm;font-size:10pt;background:#f8fafc;border:1px solid #dce6f0;border-radius:3px;padding:5mm}
+.cp-sig{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:5mm;font-size:10pt;background:#fff;border:1px solid #bbb;border-radius:3px;padding:5mm}
 .cp-sig .sig-block{padding-top:2mm}
+.cp-sig .sig-block>div:first-child{font-size:8.5pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#54657a;font-family:'IBM Plex Sans',Arial,sans-serif}
 .cp-sig .sig-name{font-weight:700;margin-top:1mm;color:#1e3a5f}
 .cp-sig .sig-title{font-size:9pt;color:#555}
 .cp-img-gallery{display:flex;flex-wrap:wrap;gap:3mm;margin:2mm 0;justify-content:center}
@@ -220,19 +225,23 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
     padding:0!important;
     margin:0!important;
     font-size:10pt!important;
-    line-height:1.5!important;
+    line-height:1.32!important;
   }
-  @page{size:A4 portrait;margin:8mm 10mm}
-  .cp-unit-price{font-size:11pt!important;font-weight:700!important;margin:2mm 0 2mm!important;line-height:1.4!important;color:#7a4500!important;background:#fff8ee!important;border-left:4px solid #e07800!important;padding:2mm 4mm!important;border-radius:0 4px 4px 0!important;display:block!important;-webkit-print-color-adjust:exact!important}
-  .cp-machine-title{font-size:11pt!important;font-weight:700!important;page-break-after:avoid!important;background:#dce8f5!important;color:#1e3a5f!important;padding:1.5mm 3mm!important;border-left:3px solid #1e3a5f!important;-webkit-print-color-adjust:exact!important;margin:2mm 0 1mm!important}
+  @page{size:A4 portrait;margin:7mm 10mm}
+  .cp-unit-price{font-size:11pt!important;font-weight:700!important;margin:2mm 0 2mm!important;line-height:1.4!important;color:#000!important;background:#fff!important;border-left:4px solid #1e3a5f!important;padding:2mm 4mm!important;border-radius:0 4px 4px 0!important;display:block!important;-webkit-print-color-adjust:exact!important}
+  .cp-machine-title{font-size:11pt!important;font-weight:700!important;page-break-after:avoid!important;background:#fff!important;color:#1e3a5f!important;padding:0 0 1.2mm 0!important;border-left:none!important;border-bottom:1.2px solid #1e3a5f!important;-webkit-print-color-adjust:exact!important;margin:2mm 0 1mm!important}
   .cp-spec-table{font-size:9pt!important}
   .cp-spec-table td{padding:0.8mm 1.5mm!important}
   .cp-pay-summary{font-size:9pt!important}
-  /* cp-spec-table: allow page break inside */
+  /* Keep each machine's title with the first rows of its spec table */
+  .cp-machine-title{page-break-after:avoid!important;break-after:avoid!important}
+  .cp-spec-table{page-break-inside:auto}
+  .cp-spec-table tr{page-break-inside:avoid!important}
   .cp-pay-summary{page-break-inside:avoid}
   .cp-sig{page-break-inside:avoid}
   .cp-bank{page-break-inside:avoid}
   .cp-terms-table{page-break-inside:avoid}
+  .cp-come-with{page-break-inside:avoid}
   .cp-header-wrap{padding:1.5mm 3mm!important;border-top-width:3px!important}
   .cp-header-grid{padding:1.5mm 2.5mm!important;margin-bottom:1.5mm!important}
   .cp-logo{height:12mm!important}
@@ -277,6 +286,62 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 #pw-btn{width:100%;padding:10px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;font-size:13pt;font-weight:600;cursor:pointer}
 #pw-btn:hover{background:#2c6fad}
 #pw-error{color:#c0392b;font-size:11pt;margin-top:8px;min-height:18px}
+
+/* ============================================================
+   REDESIGN LAYER — app chrome only. Contract paper keeps its
+   serif look (print-safe edits applied above). No JS touched.
+   ============================================================ */
+body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-0.125em;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+
+/* Topbar */
+#topbar{background:#143047;padding:0 16px;height:54px;border-bottom:1px solid rgba(255,255,255,.06);}
+#topbar h1{font-size:15px;font-weight:600;letter-spacing:-0.01em;display:flex;align-items:center;gap:9px;}
+#topbar h1 .brand-sen{color:#ff6f60;}
+#topbar h1 .brand-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(140deg,#27557d,#0e2536);display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);}
+#topbar h1 .brand-mark .ic{width:17px;height:17px;color:#fff;stroke-width:1.6;}
+#topbar .logo-sub{font-size:10.5px;opacity:.55;margin-top:2px;font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;}
+.topbar-actions{gap:6px;}
+
+/* Buttons — unified shape */
+.btn{border-radius:7px;font-weight:600;font-size:12px;display:inline-flex;align-items:center;gap:5px;letter-spacing:.005em;}
+.btn .ic{width:14px;height:14px;}
+.btn-sm{padding:6px 11px;font-size:11.5px;}
+.btn-primary{background:#1b3e5c;}
+.btn-primary:hover{background:#27557d;}
+.btn-orange{background:#d8392b;}
+.btn-orange:hover{background:#b32a1f;}
+.btn-outline{border:1px solid #ccd;}
+/* calm the loud topbar buttons into a translucent set on navy */
+.topbar-actions .btn-outline{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.18);}
+.topbar-actions .btn-outline:hover{background:rgba(255,255,255,.18);}
+.topbar-actions [style*="6a1b9a"],
+.topbar-actions [style*="00897b"],
+.topbar-actions [style*="e67e00"]{background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;}
+.topbar-actions [style*="6a1b9a"]:hover,
+.topbar-actions [style*="00897b"]:hover,
+.topbar-actions [style*="e67e00"]:hover{background:rgba(255,255,255,.18)!important;}
+
+/* Form panel tabs */
+.tab-bar{background:#fff;border-bottom:1px solid var(--g-border,#e3e8ee);}
+.tab-btn{padding:11px 4px;font-size:11.5px;font-weight:600;color:#54657a;display:inline-flex;align-items:center;justify-content:center;gap:5px;}
+.tab-btn .ic{width:15px;height:15px;color:#8696a8;}
+.tab-btn.active{border-bottom-color:#d8392b;color:#143047;}
+.tab-btn.active .ic{color:#d8392b;}
+.tab-btn:hover:not(.active){background:#f3f7fa;}
+
+/* Section titles, inputs */
+.section-title{color:#143047;border-bottom:2px solid #e8eaf0;font-weight:700;}
+.field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:#27557d;box-shadow:0 0 0 3px rgba(39,85,125,.12);}
+.m-tab.active{background:#143047;border-color:#143047;}
+.mdb-chip.active,.mdb-cat-header,.lib-cat-header{color:#143047;}
+.mdb-chip.active{background:#143047;border-color:#143047;}
+
+/* Mobile toggle */
+#mobile-preview-toggle button.active{border-bottom-color:#d8392b;color:#143047;}
+#mobile-preview-toggle button{display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+#mobile-preview-toggle .ic{width:15px;height:15px;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
@@ -312,6 +377,24 @@ function mobileTab(tab) {
 </script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h11M4 12h7M4 18h13"/><circle cx="18" cy="6" r="2"/><circle cx="13" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18l3 3 6.5-6.5a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
+  <symbol id="i-sheet" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></symbol>
+  <symbol id="i-money" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M16.5 9.4 7.5 4.2M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></symbol>
+</svg>
 <!-- v10.74: Generator password gate disabled (gate moved to CRM). Overlay kept but hidden. -->
 <div id="pw-overlay" style="display:none">
   <div id="pw-box">
@@ -347,42 +430,42 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1>&#127991; Sen Labels &#8212; Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.79</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.80</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
-    <span id="gs-status" class="gs-warn" title="Google Sheets status">&#9881; Sheets: Not configured</span>
+    <span id="gs-status" class="gs-warn" title="Google Sheets status"><svg class="ic"><use href="#i-settings"></use></svg> Sheets: Not configured</span>
     <span id="autosave-status" title="Auto-save status" style="font-size:11px;padding:3px 8px;border-radius:3px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;display:inline-flex;align-items:center;gap:4px"><span id="autosave-icon">&#9989;</span> <span id="autosave-text">Saved</span></span>
-    <button class="btn btn-outline btn-sm" onclick="openSettings()">&#9881; Settings</button>
-    <button class="btn btn-success btn-sm" onclick="saveToSheets()">&#128190; Save Record</button>
-    <button class="btn btn-sm" onclick="openLibrary()" style="background:#6a1b9a;color:#fff">&#128218; Library</button>
-    <a href="crm.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)">&#128101; CRM</a>
-    <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff">&#128295; Machine DB</button>
-    <button class="btn btn-orange btn-sm" onclick="doPrint()">&#128424; Print / PDF</button>
-    <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true)" style="background:#217346">&#128196; Export Excel</button>
-    <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true)" style="background:#2B579A">&#128196; Export Word</button>
-    <button class="btn btn-outline btn-sm" onclick="saveStateJSON()" title="Save full contract data as .json for future re-editing">&#128190; Save JSON</button>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file">&#128194; Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this)"></label>
-    <button class="btn btn-outline btn-sm" onclick="openPasteModal()" title="Paste JSON text to load contract (iPad friendly)">&#128203; Paste JSON</button>
-    <button class="btn btn-sm" onclick="openAppendMachineModal()" title="Paste a single machine's JSON to ADD it to the current contract (does not overwrite)" style="background:#2e7d32;color:#fff">&#10133; Add Machine</button>
-    <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff">&#128203; Duplicate</button>
-    <button class="btn btn-primary btn-sm" onclick="newContract()">&#xFF0B; New Contract</button>
+    <button class="btn btn-outline btn-sm" onclick="openSettings()"><svg class="ic"><use href="#i-settings"></use></svg> Settings</button>
+    <button class="btn btn-success btn-sm" onclick="saveToSheets()"><svg class="ic"><use href="#i-save"></use></svg> Save Record</button>
+    <button class="btn btn-sm" onclick="openLibrary()" style="background:#6a1b9a;color:#fff"><svg class="ic"><use href="#i-library"></use></svg> Library</button>
+    <a href="crm.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)"><svg class="ic"><use href="#i-users"></use></svg> CRM</a>
+    <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff"><svg class="ic"><use href="#i-wrench"></use></svg> Machine DB</button>
+    <button class="btn btn-orange btn-sm" onclick="doPrint()"><svg class="ic"><use href="#i-printer"></use></svg> Print / PDF</button>
+    <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true)" style="background:#217346"><svg class="ic"><use href="#i-sheet"></use></svg> Export Excel</button>
+    <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true)" style="background:#2B579A"><svg class="ic"><use href="#i-doc"></use></svg> Export Word</button>
+    <button class="btn btn-outline btn-sm" onclick="saveStateJSON()" title="Save full contract data as .json for future re-editing"><svg class="ic"><use href="#i-save"></use></svg> Save JSON</button>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file"><svg class="ic"><use href="#i-folder"></use></svg> Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this)"></label>
+    <button class="btn btn-outline btn-sm" onclick="openPasteModal()" title="Paste JSON text to load contract (iPad friendly)"><svg class="ic"><use href="#i-clipboard"></use></svg> Paste JSON</button>
+    <button class="btn btn-sm" onclick="openAppendMachineModal()" title="Paste a single machine's JSON to ADD it to the current contract (does not overwrite)" style="background:#2e7d32;color:#fff"><svg class="ic"><use href="#i-plus"></use></svg> Add Machine</button>
+    <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff"><svg class="ic"><use href="#i-copy"></use></svg> Duplicate</button>
+    <button class="btn btn-primary btn-sm" onclick="newContract()"><svg class="ic"><use href="#i-plus"></use></svg> New Contract</button>
   </div>
 </div>
 
 <div id="mobile-preview-toggle">
-  <button id="mpt-form" class="active" onclick="mobileTab('form')">&#128203; Form</button>
-  <button id="mpt-preview" onclick="mobileTab('preview')">&#128196; Live Preview</button>
+  <button id="mpt-form" class="active" onclick="mobileTab('form')"><svg class="ic"><use href="#i-clipboard"></use></svg> Form</button>
+  <button id="mpt-preview" onclick="mobileTab('preview')"><svg class="ic"><use href="#i-doc"></use></svg> Live Preview</button>
 </div>
 <div id="main">
 
 <div id="form-panel">
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('basic')">&#128203; Basic</button>
-    <button class="tab-btn" onclick="switchTab('machine')">&#9881; Machine</button>
-    <button class="tab-btn" onclick="switchTab('price')">&#128176; Price</button>
-    <button class="tab-btn" onclick="switchTab('extras')">&#128230; Extras</button>
-    <button class="tab-btn" onclick="switchTab('history')">&#128220; History</button>
+    <button class="tab-btn active" onclick="switchTab('basic')"><svg class="ic"><use href="#i-clipboard"></use></svg> Basic</button>
+    <button class="tab-btn" onclick="switchTab('machine')"><svg class="ic"><use href="#i-cube"></use></svg> Machine</button>
+    <button class="tab-btn" onclick="switchTab('price')"><svg class="ic"><use href="#i-money"></use></svg> Price</button>
+    <button class="tab-btn" onclick="switchTab('extras')"><svg class="ic"><use href="#i-package"></use></svg> Extras</button>
+    <button class="tab-btn" onclick="switchTab('history')"><svg class="ic"><use href="#i-doc"></use></svg> History</button>
   </div>
 
   <!-- TAB: BASIC -->
@@ -415,34 +498,34 @@ function mobileTab(tab) {
       <textarea id="f-notes" rows="2" placeholder="e.g. Valid for export only" oninput="state.notes=this.value;updatePreview()"></textarea>
     </div>
     <div class="field-group">
-      <label>👤 Sales Rep <span style="font-weight:400;font-size:11px;color:#888">(谁负责这个客户 — 下拉选或直接打字)</span></label>
-      <input list="sales-rep-list" id="f-sales-rep" placeholder="选或输入负责的 Sales Rep" oninput="state.salesRep=this.value;updateSalesRepHint();updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
+      <label><svg class="ic" style="color:#8696a8"><use href="#i-users"></use></svg> Sales Rep <span style="font-weight:400;font-size:11px;color:#888">(who handles this customer — pick from the list or type)</span></label>
+      <input list="sales-rep-list" id="f-sales-rep" placeholder="Select or type the Sales Rep" oninput="state.salesRep=this.value;updateSalesRepHint();updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
       <datalist id="sales-rep-list"></datalist>
       <div class="field-hint" id="sales-rep-hint" style="font-size:11px;color:#888"></div>
     </div>
     <div class="field-group">
       <label>Contract Status</label>
       <select id="f-status" onchange="state.status=this.value;toggleSignedPDFSection(this.value);updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
-        <optgroup label="📋 Active Quote">
-          <option value="Quotation Sent">📤 Quotation Sent</option>
-          <option value="Following Up">👀 Following Up</option>
-          <option value="Negotiating">💬 Negotiating</option>
+        <optgroup label="Active Quote">
+          <option value="Quotation Sent">Quotation Sent</option>
+          <option value="Following Up">Following Up</option>
+          <option value="Negotiating">Negotiating</option>
         </optgroup>
-        <optgroup label="✅ Confirmed">
-          <option value="Confirmed">✅ Confirmed (Signed)</option>
-          <option value="Deposit Received">💰 Deposit Received</option>
-          <option value="In Production">🏭 In Production</option>
-          <option value="Ready to Ship">📦 Ready to Ship</option>
-          <option value="Awaiting Payment">⏳ Awaiting Final Payment</option>
+        <optgroup label="Confirmed">
+          <option value="Confirmed">Confirmed (Signed)</option>
+          <option value="Deposit Received">Deposit Received</option>
+          <option value="In Production">In Production</option>
+          <option value="Ready to Ship">Ready to Ship</option>
+          <option value="Awaiting Payment">Awaiting Final Payment</option>
         </optgroup>
-        <optgroup label="🎉 Closed">
-          <option value="Delivered">🚚 Delivered</option>
-          <option value="Closed (Paid)">🎉 Closed (Fully Paid)</option>
+        <optgroup label="Closed">
+          <option value="Delivered">Delivered</option>
+          <option value="Closed (Paid)">Closed (Fully Paid)</option>
         </optgroup>
-        <optgroup label="❌ Not Won">
-          <option value="On Hold">⏸ On Hold</option>
-          <option value="Lost">❌ Lost</option>
-          <option value="Cancelled">🚫 Cancelled</option>
+        <optgroup label="Not Won">
+          <option value="On Hold">On Hold</option>
+          <option value="Lost">Lost</option>
+          <option value="Cancelled">Cancelled</option>
         </optgroup>
       </select>
     </div>
@@ -547,7 +630,7 @@ function mobileTab(tab) {
           <button id="add-spec-btn" onclick="addSpecRow()">+ Add Spec Row</button>
           <div class="field-hint">Rows appear in spec table above Power / Dimension / Country of Origin</div>
           <button onclick="saveCurrentMachineToSheetDB()" style="width:100%;margin-top:8px;padding:7px;background:#e67e00;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer">&#128190; Save This Machine to DB</button>
-          <div style="font-size:10px;color:#999;text-align:center;margin-top:2px">每次都是新增一行，不会覆盖同名机器</div>
+          <div style="font-size:10px;color:#999;text-align:center;margin-top:2px">Always adds a new row — never overwrites a machine of the same name</div>
           <div id="save-machine-db-status" style="font-size:11px;text-align:center;margin-top:4px;color:#888"></div>
         </div>
       </div>
@@ -608,7 +691,7 @@ function mobileTab(tab) {
       </div>
       <div class="field-group">
         <label>OR Deposit Amount (fixed)</label>
-        <input type="number" id="f-deposit-amt" value="" min="0" placeholder="e.g. 3000" oninput="onDepositAmtInput();calcPrice();updatePreview()" title="填固定金额会盖过上面的百分比。例如机器 7500,这里填 3000 = 收 3000 定金">
+        <input type="number" id="f-deposit-amt" value="" min="0" placeholder="e.g. 3000" oninput="onDepositAmtInput();calcPrice();updatePreview()" title="A fixed amount overrides the percentage above. e.g. machine 7500,enter 3000 here = collect 3000 deposit">
       </div>
       <div class="field-group">
         <label>Payment Condition</label>
@@ -896,20 +979,20 @@ function mobileTab(tab) {
     </div>
     <div style="margin-bottom:8px">
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px">
-        <span style="font-size:10px;color:#999;align-self:center;margin-right:2px">状态:</span>
+        <span style="font-size:10px;color:#999;align-self:center;margin-right:2px">Status:</span>
         <button class="mdb-chip active" data-mdb-cond="all" onclick="setMachineCondFilter('all')">All</button>
         <button class="mdb-chip" data-mdb-cond="New" onclick="setMachineCondFilter('New')">🆕 New</button>
         <button class="mdb-chip" data-mdb-cond="Refurbished" onclick="setMachineCondFilter('Refurbished')">♻️ Refurbished</button>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
-        <span style="font-size:10px;color:#999;align-self:center;margin-right:2px">类型:</span>
+        <span style="font-size:10px;color:#999;align-self:center;margin-right:2px">Type:</span>
         <button class="mdb-chip active" data-mdb-type="all" onclick="setMachineTypeFilter('all')">All Types</button>
-        <button class="mdb-chip" data-mdb-type="printing" onclick="setMachineTypeFilter('printing')">🖨 Printing</button>
-        <button class="mdb-chip" data-mdb-type="diecut" onclick="setMachineTypeFilter('diecut')">✂️ Die Cut</button>
-        <button class="mdb-chip" data-mdb-type="slitting" onclick="setMachineTypeFilter('slitting')">📏 Slitting</button>
-        <button class="mdb-chip" data-mdb-type="cutter" onclick="setMachineTypeFilter('cutter')">🔪 Cutter</button>
-        <button class="mdb-chip" data-mdb-type="rewinder" onclick="setMachineTypeFilter('rewinder')">🌀 Rewinder</button>
-        <button class="mdb-chip" data-mdb-type="other" onclick="setMachineTypeFilter('other')">⚙️ Other</button>
+        <button class="mdb-chip" data-mdb-type="printing" onclick="setMachineTypeFilter('printing')">Printing</button>
+        <button class="mdb-chip" data-mdb-type="diecut" onclick="setMachineTypeFilter('diecut')">Die Cut</button>
+        <button class="mdb-chip" data-mdb-type="slitting" onclick="setMachineTypeFilter('slitting')">Slitting</button>
+        <button class="mdb-chip" data-mdb-type="cutter" onclick="setMachineTypeFilter('cutter')">Cutter</button>
+        <button class="mdb-chip" data-mdb-type="rewinder" onclick="setMachineTypeFilter('rewinder')">Rewinder</button>
+        <button class="mdb-chip" data-mdb-type="other" onclick="setMachineTypeFilter('other')">Other</button>
       </div>
     </div>
     <div id="machinedb-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
@@ -1102,7 +1185,7 @@ function handleCrmUrlParams() {
     const go = () => {
       if (typeof gsUrl !== 'undefined' && gsUrl) loadFromLibrary(previewNo, { silent: true, preview: true });
       else if (tries-- > 0) setTimeout(go, 300);
-      else _previewLoadError(previewNo, '后端 URL 未配置,无法加载合同。请先在 Generator 设置里配置 Google Sheets URL。');
+      else _previewLoadError(previewNo, 'Backend URL not configured,Cannot load contract. Please configure the Google Sheets URL in Generator Settings first.');
     };
     go();
     return;
@@ -1119,7 +1202,7 @@ function handleCrmUrlParams() {
     // v10.73: fill full customer header from recent contracts / CustomerDB, then confirm
     setTimeout(async () => {
       if (typeof gsUrl !== 'undefined' && gsUrl) await fillCustomerHeaderFromContract(fromContract, customer);
-      alert('✅ New quote for: ' + customer + '\n\n客户资料已尽量自动填好,请检查后补充。现在可以加机器、定价、保存。');
+      alert('✅ New quote for: ' + customer + '\n\nCustomer details auto-filled where possible,Please review and complete. You can now add machines, set pricing, and save.');
     }, 350);
   } else if (contractNo && loadFlag) {
     // Load existing contract from Library
@@ -3005,7 +3088,7 @@ function buildContractHTML() {
           unitPriceHtml = ''; // buildComeWith always handles pricing now
         }
         machineBlocks += `
-  <div class="cp-machine-title">${mi+1})&nbsp;&nbsp;${buildMachineTitle(m)}</div>
+  <div class="cp-machine-title"><span class="cp-mnum">${mi+1}</span><span>${buildMachineTitle(m)}</span></div>
   ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${esc(m.desc)}</div>` : ''}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
@@ -3111,7 +3194,7 @@ function buildContractHTML() {
   </div>
   ${machineBlocks}
   <table style="width:100%;border-collapse:collapse;margin:4mm 0;font-size:10pt">
-    <thead><tr style="background:#dce8f5;color:#1e3a5f;border-bottom:2px solid #1e3a5f">
+    <thead><tr style="background:#1e3a5f;color:#fff;border-bottom:2px solid #1e3a5f">
       <th style="padding:2mm 2mm;text-align:left;width:5%">&nbsp;</th>
       <th style="padding:2mm 2mm;text-align:left">DESCRIPTION</th>
       <th style="padding:2mm 2mm;text-align:center;width:15%">QTY</th>
@@ -3129,7 +3212,7 @@ function buildContractHTML() {
   </table>
   ${remarksHtml}
   ${state.machines.filter(m=>m.machineType==='parts'&&m.machineRemarks).map(m=>`<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>`).join('')}
-  <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#dce8f5;padding:1.2mm 4mm;border-radius:2px;display:inline-block;border:1px solid #c0d6ea;border-left:4px solid #1e3a5f">REMARK</div>
+  <div style="margin:5mm 0 2mm;font-size:8.5pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1e3a5f;font-family:'IBM Plex Sans',Arial,sans-serif;padding:0 0 2px 0;border-bottom:1px solid #e0e8f0;display:block">Remark</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}</table>
   ${(function(){
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
@@ -3186,7 +3269,7 @@ function buildContractHTML() {
       unitPriceHtml = ''; // buildComeWith always handles pricing now
     }
     machineBlocks += `
-  <div class="cp-machine-title">${i+1})&nbsp;&nbsp;${title}</div>
+  <div class="cp-machine-title"><span class="cp-mnum">${i+1}</span><span>${title}</span></div>
   ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${esc(m.desc)}</div>` : ''}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
@@ -3303,7 +3386,7 @@ function buildContractHTML() {
     </tbody>
   </table>
 
-  <div style="margin:4mm 0 2mm;font-size:10.5pt;font-weight:700;color:#1e3a5f;background:#dce8f5;padding:1.2mm 4mm;border-radius:2px;display:inline-block;border:1px solid #c0d6ea;border-left:4px solid #1e3a5f">REMARK</div>
+  <div style="margin:5mm 0 2mm;font-size:8.5pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1e3a5f;font-family:'IBM Plex Sans',Arial,sans-serif;padding:0 0 2px 0;border-bottom:1px solid #e0e8f0;display:block">Remark</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${typeof instRows!=='undefined'?instRows:''}</table>
   ${(function(){
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
@@ -3539,7 +3622,7 @@ function buildComeWith(m) {
   }
 
   // Wrap in orange box
-  return `<div style="background:#fff8ee;border:1px solid #f5d9a8;border-left:4px solid #e07800;border-radius:0 3px 3px 0;padding:3mm 4mm;margin:3mm 0;color:#7a4500">${inner}</div>`;
+  return `<div style="background:#fff;border:1px solid #d4dbe3;border-left:4px solid #1e3a5f;border-radius:0 3px 3px 0;padding:3mm 4mm;margin:3mm 0;color:#1a1a1a">${inner}</div>`;
 }
 
 function buildOptionalItems(m) {
@@ -4074,15 +4157,15 @@ async function saveToSheets(silent=false) {
       if (verified) {
         setBtn('✅ Saved & Verified!', '#2e7d32');
         const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-        showSaveStamp('✅ 已存档并确认 — ' + ts);
+        showSaveStamp('✅ Saved and confirmed — ' + ts);
       } else {
         setBtn('⚠ Save unconfirmed', '#e67e00');
-        showSaveStamp('⚠ 存档未能确认，请再按一次 Save Record', true);
+        showSaveStamp('⚠ Save not confirmed — please press Save Record again', true);
       }
       setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000);
     }
   } catch(e) {
-    if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp('❌ 存档失败: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
+    if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp('❌ Save failed: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
   }
 }
 
@@ -4523,9 +4606,9 @@ async function searchLibrary() {
       return 'older';
     }
     const GROUP_LABELS = {
-      today: '📅 今天修改 Today', yesterday: '🕐 昨天 Yesterday',
-      thisweek: '📆 本周稍早 Earlier This Week', thismonth: '🗓 本月 This Month',
-      older: '📁 更早 Older (用搜索更快 — use search)'
+      today: '📅 Modified Today', yesterday: '🕐 Yesterday',
+      thisweek: '📆 Earlier This Week', thismonth: '🗓 This Month',
+      older: '📁 Older (use search)'
     };
     const GROUP_ORDER = ['today','yesterday','thisweek','thismonth','older'];
     // Bucket the (already savedAt-sorted) records
@@ -4538,7 +4621,7 @@ async function searchLibrary() {
       return `
       <div class="lib-item" onclick="loadFromLibrary('${escAttr(r.contractNo)}')">
         <div>
-          <div class="lib-item-no">📄 ${escHtml(r.contractNo)}</div>
+          <div class="lib-item-no">${escHtml(r.contractNo)}</div>
           <div class="lib-item-co">${escHtml(r.company)}</div>
           <div class="lib-item-machine">${escHtml(r.machineTitle)}</div>
         </div>
@@ -4568,14 +4651,14 @@ function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&
 
 async function loadFromLibrary(contractNo, opts) {
   opts = opts || {};
-  if (!gsUrl) { if (opts.silent) _previewLoadError(contractNo, '后端 URL 未配置'); return; }
+  if (!gsUrl) { if (opts.silent) _previewLoadError(contractNo, 'Backend URL not configured'); return; }
   const statusEl = document.getElementById('library-status');
   statusEl.textContent = `Loading ${contractNo}...`;
   try {
     const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
     const data = await resp.json();
     if (!data.ok || !data.state) {
-      if (opts.silent) { _previewLoadError(contractNo, data.error || '没有找到此合同的存档(可能是旧合同,请先在 Generator 用 Save Record 重存一次)'); return; }
+      if (opts.silent) { _previewLoadError(contractNo, data.error || 'No saved record found for this contract (may be an old contract,please re-save once using Save Record in the Generator)'); return; }
       alert('❌ Could not load contract: ' + (data.error || 'No state found.\n\nThis contract was saved before the Library update. Please re-save it using Save Record first.'));
       statusEl.textContent = 'Load failed';
       return;
@@ -4631,8 +4714,8 @@ function enterPreviewMode() {
     const bar = document.createElement('div');
     bar.id = 'cp-preview-bar';
     bar.innerHTML =
-      '<button style="background:#e67e00;color:#fff" onclick="doPrint()" title="保存 / 打印这张合同的 PDF">🖨️ 保存 PDF</button>' +
-      '<button style="background:#555;color:#fff" onclick="window.close()" title="关闭这个预览分页">✕ 关闭</button>';
+      '<button style="background:#e67e00;color:#fff" onclick="doPrint()" title="Save / print this contract’s PDF">🖨️ Save PDF</button>' +
+      '<button style="background:#555;color:#fff" onclick="window.close()" title="Close this preview tab">✕ Close</button>';
     document.body.appendChild(bar);
   }
   window.scrollTo(0, 0);
@@ -4641,9 +4724,9 @@ function _previewLoadError(contractNo, msg) {
   document.body.classList.remove('cp-preview-only');
   document.body.innerHTML = '<div style="padding:48px;font-family:system-ui,sans-serif;text-align:center;color:#333">'
     + '<div style="font-size:40px">📄</div>'
-    + '<h2 style="color:#c0392b">无法预览合同 ' + (contractNo || '') + '</h2>'
+    + '<h2 style="color:#c0392b">Cannot preview contract ' + (contractNo || '') + '</h2>'
     + '<p style="color:#666;max-width:520px;margin:8px auto">' + (msg || '') + '</p>'
-    + '<button onclick="window.close()" style="margin-top:12px;padding:8px 16px;border:none;border-radius:6px;background:#555;color:#fff;cursor:pointer">关闭</button></div>';
+    + '<button onclick="window.close()" style="margin-top:12px;padding:8px 16px;border:none;border-radius:6px;background:#555;color:#fff;cursor:pointer">Close</button></div>';
 }
 
 // v10.73: fill the customer header (company/addr/tel/email/attn/fax/port) for CRM "New Quote".
@@ -4966,11 +5049,11 @@ async function searchCustomerDB() {
     }
     listEl.innerHTML = customers.map((c, i) => `
       <div class="cdb-item" onclick="loadCustomerFromDB(${i})">
-        <div class="cdb-item-co">🏢 ${escHtml(c.company)}</div>
+        <div class="cdb-item-co">${escHtml(c.company)}</div>
         <div class="cdb-item-meta">
-          ${c.attn ? `👤 ${escHtml(c.attn)}` : ''}
-          ${c.tel ? ` &nbsp;|&nbsp; 📞 ${escHtml(c.tel)}` : ''}
-          ${c.port ? ` &nbsp;|&nbsp; 🚢 ${escHtml(c.port)}` : ''}
+          ${c.attn ? `${escHtml(c.attn)}` : ''}
+          ${c.tel ? ` &nbsp;|&nbsp; ${escHtml(c.tel)}` : ''}
+          ${c.port ? ` &nbsp;|&nbsp; ${escHtml(c.port)}` : ''}
         </div>
       </div>`).join('');
   } catch(e) {
@@ -5143,8 +5226,8 @@ function detectMachineCategory(m) {
   return 'other';
 }
 const MACHINE_CAT_LABELS = {
-  printing: '🖨 Printing Machines', diecut: '✂️ Die Cut Machines', slitting: '📏 Slitting Machines',
-  cutter: '🔪 Cutter Machines', rewinder: '🌀 Rewinder Machines', other: '⚙️ Other Machines'
+  printing: 'Printing Machines', diecut: 'Die Cut Machines', slitting: 'Slitting Machines',
+  cutter: 'Cutter Machines', rewinder: 'Rewinder Machines', other: 'Other Machines'
 };
 let _mdbCondFilter = 'all';
 let _mdbTypeFilter = 'all';
@@ -5182,7 +5265,7 @@ function renderMachineDBList(machines) {
       : `Showing ${tagged.length} of ${total} machine(s)`;
   }
   if (!tagged.length) {
-    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#999">没有符合筛选的机器 — 试试别的分类</div>';
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No machines match this filter — try another category</div>';
     return;
   }
   // Group by category (only when not already filtered to one type) for easy browsing
@@ -5193,11 +5276,11 @@ function renderMachineDBList(machines) {
   let html = '';
   const itemHTML = (t) => `
     <div class="mdb-item" onclick="loadMachineFromDB(${t.i})">
-      <div class="mdb-item-name">🔧 ${escHtml(t.m.modelName)}</div>
+      <div class="mdb-item-name">${escHtml(t.m.modelName)}</div>
       <div class="mdb-item-meta">
-        <span>📦 ${escHtml(t.m.condition)}</span>
-        <span>📐 ${t.m.extraSpecs ? t.m.extraSpecs.length : 0} specs</span>
-        ${t.m.cwItems && t.m.cwItems.length ? `<span>✅ ${t.m.cwItems.length} come-with items</span>` : ''}
+        <span>${escHtml(t.m.condition)}</span>
+        <span>${t.m.extraSpecs ? t.m.extraSpecs.length : 0} specs</span>
+        ${t.m.cwItems && t.m.cwItems.length ? `<span>${t.m.cwItems.length} come-with items</span>` : ''}
         ${t.m.refPrice ? `<span class="mdb-item-price">Ref: USD ${Number(t.m.refPrice).toLocaleString()}</span>` : ''}
       </div>
     </div>`;
