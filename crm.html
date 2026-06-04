@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.19</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.20</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1234,7 +1234,7 @@ async function refreshData() {
       if (c.status === 'Closed (Paid)' || c.status === 'Delivered') cust.totalSpent += c.amount;
       
       // Active = not closed and not lost
-      if (!['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled'].includes(c.status)) cust.activeContracts++;
+      if (!['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract'].includes(c.status)) cust.activeContracts++;
       
       // Latest contract by date
       if (!cust.lastDate || c.date > cust.lastDate) {
@@ -1869,6 +1869,7 @@ function renderPipeline() {
   const byStage = {};
   STAGE_GROUPS.forEach(g => byStage[g.id] = []);
   filtered.forEach(c => {
+    if (c.status === 'Sales Contract') return;  // v2.20: legacy/untriaged status — keep out of the pipeline
     const group = STAGE_GROUPS.find(g => g.statuses.includes(c.status));
     if (group) byStage[group.id].push(c);
     else byStage.quote.push(c);  // Default to "New Quote" if status unknown
