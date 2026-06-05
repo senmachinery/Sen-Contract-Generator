@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.84</title>
+<title>Sen Labels — Contract Generator v10.85</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -431,7 +431,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.84</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.85</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1218,11 +1218,29 @@ function handleCrmUrlParams() {
     updatePreview();
     // Clean URL so refresh won't re-trigger (capture fromcontract first)
     const fromContract = params.get('fromcontract');
+    // v10.85: attach inquiry photos handed off from CRM (same-origin localStorage)
+    let inqImgCount = 0;
+    if (params.get('inqimg') === '1') {
+      try {
+        const raw = localStorage.getItem('sen_pending_quote_images');
+        if (raw) {
+          const pkg = JSON.parse(raw);
+          const fresh = pkg && pkg.ts && (Date.now() - pkg.ts < 5 * 60 * 1000);
+          if (fresh && Array.isArray(pkg.images) && pkg.images.length) {
+            if (!M().images) M().images = [];
+            pkg.images.forEach(u => { if (u && M().images.indexOf(u) === -1) { M().images.push(u); inqImgCount++; } });
+            if (typeof reloadImageThumbs === 'function') reloadImageThumbs();
+            updatePreview();
+          }
+        }
+      } catch (e) {}
+      try { localStorage.removeItem('sen_pending_quote_images'); } catch (e) {}
+    }
     history.replaceState(null, '', window.location.pathname);
     // v10.73: fill full customer header from recent contracts / CustomerDB, then confirm
     setTimeout(async () => {
       if (typeof gsUrl !== 'undefined' && gsUrl) await fillCustomerHeaderFromContract(fromContract, customer);
-      alert('✅ New quote for: ' + customer + '\n\nCustomer details auto-filled where possible,Please review and complete. You can now add machines, set pricing, and save.');
+      alert('✅ New quote for: ' + customer + (inqImgCount ? ('\n📷 ' + inqImgCount + ' inquiry photo(s) added to Machine 1.') : '') + '\n\nCustomer details auto-filled where possible,Please review and complete. You can now add machines, set pricing, and save.');
     }, 350);
   } else if (contractNo && loadFlag) {
     // Load existing contract from Library
