@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.82</title>
+<title>Sen Labels — Contract Generator v10.83</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -431,7 +431,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.82</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.83</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3877,12 +3877,17 @@ function showFilenameDialog(fname, onContinue) {
 function doPrintInner(fname) {
   const origTitle = document.title;
   const origState = history.state;
+  // v10.83 FIX: capture the FULL original URL (path + search + hash) BEFORE changing it,
+  // so we can restore it exactly after printing. The old code re-read window.location.pathname
+  // during restore, but by then it had already been changed to '/', so the URL got stuck at '/'
+  // and a refresh / relative crm.html link 404'd.
+  const origUrl = window.location.pathname + window.location.search + window.location.hash;
 
   // Step 1: Set contract filename as title (for PDF save dialog)
   document.title = fname;
 
-  // Step 2: Clear URL to remove watermark — do it just before print
-  try { history.replaceState(null, '', '/'); } catch(e) {}
+  // Step 2: Strip URL params for a clean print footer — keep the path, only drop ?search/#hash
+  try { history.replaceState(null, '', window.location.pathname); } catch(e) {}
 
   const style = document.createElement('style');
   style.id = '_print_fix';
@@ -3894,7 +3899,7 @@ function doPrintInner(fname) {
     // Restore after print dialog closes
     setTimeout(() => {
       document.title = origTitle;
-      try { history.replaceState(origState, '', window.location.pathname + window.location.search); } catch(e) {}
+      try { history.replaceState(origState, '', origUrl); } catch(e) {}
       const el = document.getElementById('_print_fix');
       if (el) el.remove();
     }, 3000);
