@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.20</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.21</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -2842,6 +2842,7 @@ function rebuildInquiriesFromTasks() {
       budget: data.budget || '',
       source: data.source || '',
       detail: data.detail || '',
+      images: Array.isArray(data.images) ? data.images : [],
       _task: t
     });
   }
@@ -2977,6 +2978,7 @@ function renderInquiryCard(inq) {
         ${inq.source ? `<span class="inquiry-meta-item">📍 ${escapeHtml(inq.source)}</span>` : ''}
       </div>
       ${inq.detail ? `<div class="inquiry-notes">📝 ${escapeHtml(inq.detail)}</div>` : ''}
+      ${(inq.images && inq.images.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${inq.images.map(u => `<a href="${u}" target="_blank" title="Open full image"><img src="${u}" style="width:54px;height:54px;object-fit:cover;border-radius:5px;border:1px solid var(--border)" onerror="this.style.opacity=0.3;this.alt='⚠'"></a>`).join('')}</div>` : ''}
       <div class="inquiry-actions">
         ${!inq.converted ? `<button class="btn btn-sm" onclick="convertInquiry('${inq.id}')" style="background:var(--success);color:#fff">➡️ Convert to Quote</button>` : ''}
         <button class="btn btn-sm btn-outline" onclick="editInquiry('${inq.id}')">✏️ Edit</button>
@@ -3419,10 +3421,78 @@ function printInquiries() {
   setTimeout(() => { try { win.print(); } catch(e){} }, 400);
 }
 
+// ─── Inquiry photo attachments (v2.21) — stored in Google Drive, only URLs kept in inquiry ───
+let _inqImages = [];
+
+function compressImageFile(file, maxDim, quality) {
+  maxDim = maxDim || 1600; quality = quality || 0.82;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) { const r = Math.min(maxDim / w, maxDim / h); w = Math.round(w * r); h = Math.round(h * r); }
+        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Could not read image'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleInqImageSelect(ev) {
+  const files = Array.from(ev.target.files || []);
+  ev.target.value = '';
+  if (!files.length) return;
+  const statusEl = $('inq-image-status');
+  for (const file of files) {
+    if (!file.type || file.type.indexOf('image/') !== 0) continue;
+    try {
+      if (statusEl) statusEl.textContent = '⏳ Uploading ' + file.name + '…';
+      const dataUrl = await compressImageFile(file);
+      const base64 = dataUrl.split(',')[1];
+      const safeName = 'inq_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const up = await apiPost('uploadImage', { folder: 'SenLabels_InquiryImages', folderName: 'SenLabels_InquiryImages', name: safeName, base64: base64, mimeType: 'image/jpeg' });
+      if (!up || !up.ok || !up.id) { showToast('Upload failed: ' + ((up && up.error) || 'unknown'), 'error'); continue; }
+      // Get a publicly-viewable thumbnail URL. listImages also sets ANYONE_WITH_LINK sharing on the folder's files.
+      let url = 'https://drive.google.com/thumbnail?id=' + up.id + '&sz=w1000';
+      try {
+        const li = await apiGet('listImages', { folder: 'SenLabels_InquiryImages' });
+        if (li && li.ok && Array.isArray(li.images)) { const f = li.images.find(x => x.id === up.id); if (f && f.url) url = f.url; }
+      } catch (e) { /* sharing/url fallback already set */ }
+      _inqImages.push(url);
+      renderInqImageThumbs();
+    } catch (e) { showToast('Image error: ' + e.message, 'error'); }
+  }
+  if (statusEl) statusEl.textContent = _inqImages.length ? ('✅ ' + _inqImages.length + ' photo(s) attached') : '';
+}
+
+function renderInqImageThumbs() {
+  const wrap = $('inq-images-thumbs');
+  if (!wrap) return;
+  wrap.innerHTML = (_inqImages || []).map((url, i) =>
+    `<div style="position:relative;width:64px;height:64px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=0.3;this.alt='⚠'">
+      <button type="button" title="Remove" onclick="removeInqImage(${i})" style="position:absolute;top:0;right:0;background:rgba(192,57,43,.92);color:#fff;border:none;width:18px;height:18px;line-height:18px;font-size:11px;cursor:pointer;border-radius:0 0 0 6px;padding:0">✕</button>
+    </div>`
+  ).join('');
+}
+
+function removeInqImage(i) {
+  _inqImages.splice(i, 1);
+  renderInqImageThumbs();
+}
+
 function openNewInquiryModal(prefill) {
   const today = new Date().toISOString().split('T')[0];
   const customers = (STATE.customers || []).map(c => c.company).sort();
   prefill = prefill || {};
+  _inqImages = Array.isArray(prefill.images) ? prefill.images.slice() : [];
   
   $('modal-title').textContent = '📞 New Inquiry';
   $('modal-body').innerHTML = `
@@ -3504,6 +3574,13 @@ function openNewInquiryModal(prefill) {
       <label>Details / Notes</label>
       <textarea id="inq-detail" rows="2" placeholder="What exactly do they need? Any special requirements?" style="width:100%">${escapeHtml(prefill.detail||'')}</textarea>
     </div>
+    <div class="form-row">
+      <label>📷 Photos <span style="font-weight:normal;color:var(--text-muted);font-size:11px">(parts / components the customer is asking about — stored in Google Drive)</span></label>
+      <div id="inq-images-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+      <input type="file" id="inq-image-input" accept="image/*" multiple style="display:none" onchange="handleInqImageSelect(event)">
+      <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('inq-image-input').click()">➕ Add Photo(s)</button>
+      <span id="inq-image-status" style="font-size:11px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
     <div class="form-row" id="customer-status-row" style="background:var(--bg);padding:8px 10px;border-radius:6px;font-size:12px">
       <span id="customer-status-indicator" style="color:var(--text-muted)">👤 Enter a customer name above…</span>
     </div>
@@ -3522,6 +3599,7 @@ function openNewInquiryModal(prefill) {
       custInput.addEventListener('change', updateCustomerStatus);
       updateCustomerStatus();  // initial check (in case prefilled)
     }
+    renderInqImageThumbs();
   }, 100);
 }
 
@@ -3563,7 +3641,8 @@ async function saveNewInquiry() {
     country: ($('inq-country').value || '').trim(),
     budget: ($('inq-budget').value || '').trim(),
     source: ($('inq-source').value || '').trim(),
-    detail: ($('inq-detail').value || '').trim()
+    detail: ($('inq-detail').value || '').trim(),
+    images: _inqImages.slice()
   };
   
   // Build the task that represents this inquiry
@@ -3621,7 +3700,7 @@ function editInquiry(id) {
   openNewInquiryModal({
     customer: inq.customer, machine: inq.machine, quantity: inq.quantity, tel: inq.tel, email: inq.email,
     address: inq.address, attn: inq.attn, country: inq.country, budget: inq.budget,
-    source: inq.source, detail: inq.detail
+    source: inq.source, detail: inq.detail, images: inq.images
   });
   $('modal-title').textContent = '✏️ Edit Inquiry ' + inq.tempNo;
   // Set date + priority
@@ -3654,6 +3733,7 @@ async function saveEditInquiry(id) {
     budget: ($('inq-budget').value || '').trim(),
     source: ($('inq-source').value || '').trim(),
     detail: ($('inq-detail').value || '').trim(),
+    images: _inqImages.slice(),
     convertedTo: inq.convertedTo || ''
   };
   
@@ -3687,7 +3767,12 @@ function convertInquiry(id) {
   markInquiryConverted(id);
   
   // Open Generator in new tab with customer prefill
-  const url = `index.html?customer=${encodeURIComponent(inq.customer)}&autofill=true`;
+  // v2.21: hand off inquiry photos so the Generator attaches them to the quote's first machine
+  let imgFlag = '';
+  if (Array.isArray(inq.images) && inq.images.length) {
+    try { localStorage.setItem('sen_pending_quote_images', JSON.stringify({ images: inq.images, ts: Date.now() })); imgFlag = '&inqimg=1'; } catch(e) {}
+  }
+  const url = `index.html?customer=${encodeURIComponent(inq.customer)}&autofill=true${imgFlag}`;
   window.open(url, '_blank');
 }
 
