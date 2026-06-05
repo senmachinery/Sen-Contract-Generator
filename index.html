@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.83</title>
+<title>Sen Labels — Contract Generator v10.84</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -431,7 +431,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.83</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.84</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -681,6 +681,23 @@ function mobileTab(tab) {
         </div>
       </div>
       <div class="field-hint">Leave both at 0 for no discount. Only one can be active at a time.</div>
+    </div>
+    <div class="field-group" style="margin-top:8px;background:#f0f6ff;border:1px solid #c8d8ee;border-radius:6px;padding:8px 10px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;font-weight:600;margin:0">
+        <input type="checkbox" id="f-in-package" style="width:auto;margin:0" onchange="M().inPackage=this.checked;savePriceFields();calcPrice();updatePreview()">
+        🧩 组成配套 / Part of a package (hide this item's individual price)
+      </label>
+      <div class="field-hint" style="margin-top:4px">Tick this on each machine you want bundled together. Their individual prices are hidden in the contract; enter ONE combined price in "Package Price" below. The package price shows after the last bundled item.</div>
+    </div>
+    <div id="package-price-row" class="field-row" style="display:none">
+      <div class="field-group">
+        <label>📦 Package Price (<span class="currency-label-inline">USD</span>)</label>
+        <input type="number" id="f-package-price" min="0" step="0.01" placeholder="combined price for all bundled items" oninput="state.packagePrice=parseFloat(this.value)||0;calcPrice();updatePreview()">
+      </div>
+      <div class="field-group">
+        <label>Package Label (optional)</label>
+        <input type="text" id="f-package-label" placeholder="Package Price" oninput="state.packageLabel=this.value;updatePreview()">
+      </div>
     </div>
     <div id="price-calc-result" class="price-calc" style="display:none"></div>
     <div id="all-machines-total" class="all-total-box" style="display:none"></div>
@@ -1109,6 +1126,7 @@ function newMachine() {
     discountPct:0, discountAmt:0, discountLabel:'',
     costMachine:0, costAddons:0, costStd:60000, costTradein:0,
     custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
+    inPackage:false,
     _finalPrice:0
   };
 }
@@ -1129,6 +1147,7 @@ let state = {
   delivery:'To be determined upon confirmation and/or full payment.',
   balanceLabel:'', payTermsText:'', warrantyOverride:'', signedPdfUrl:'',
   customPayRows:[],
+  packagePrice:0, packageLabel:'',
   bankOverride: false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
   docType:'Sales Contract', status:'Quotation Sent', revised:'',
   remarks:'',
@@ -1492,6 +1511,8 @@ function saveCurrentMachineToState() {
   state.bankSwift        = g('f-bank-swift');
   state.bankBranch       = g('f-bank-branch');
   state.remarks         = g('f-remarks');
+  state.packagePrice    = n('f-package-price') || 0;
+  state.packageLabel    = g('f-package-label');
   // Machine-level
   readMachineParams();
   savePriceFields();
@@ -1512,6 +1533,7 @@ function savePriceFields() {
   M().discountPct   = n('f-discount-pct') || 0;
   M().discountAmt   = n('f-discount-amt') || 0;
   M().discountLabel = g('f-discount-label');
+  M().inPackage = document.getElementById('f-in-package')?.checked || false;
 }
 
 function saveRates() {
@@ -1556,6 +1578,9 @@ function loadMachineIntoForm() {
   setVal('f-other-model', m.otherModel);
   setVal('f-machine-remarks', m.machineRemarks);
   setVal('f-qty', m.qty || '1 Unit');
+  const ipEl = document.getElementById('f-in-package'); if (ipEl) ipEl.checked = !!m.inPackage;
+  const ppEl = document.getElementById('f-package-price'); if (ppEl) ppEl.value = state.packagePrice || '';
+  const plEl = document.getElementById('f-package-label'); if (plEl) plEl.value = state.packageLabel || '';
   if (m.machineType === 'parts') {
     setTimeout(() => {
       setVal('f-discount-pct', m.discountPct||'');
@@ -1953,7 +1978,7 @@ function generateInstallments() {
   const startDate  = document.getElementById('f-inst-start').value;
 
   // Total balance = total price minus deposit minus trade-in
-  const totalPrice = state.machines.reduce((s,m)=>(s + (calcPriceForMachine(m).sellPrice||0)),0);
+  const totalPrice = pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m)=>(s + (calcPriceForMachine(m).sellPrice||0)),0);
   const depositAmt = getDepositFor(totalPrice);
   const tradeinAmt = (state.tradeinValue>0) ? (state.tradeinValue||0) : 0;
   const balance    = totalPrice - depositAmt - tradeinAmt;
@@ -2009,6 +2034,19 @@ function renderInstallmentRows() {
 // ============================================================
 // PRICE CALCULATOR
 // ============================================================
+// v10.84: package pricing helpers. A "package" = machines with inPackage=true.
+// Their individual prices are hidden; one combined state.packagePrice is shown instead.
+function pkgAnyActive() { return state.machines.some(m => m && m.inPackage); }
+function pkgContractTotal() {
+  let t = 0, anyPkg = false;
+  state.machines.forEach(m => {
+    if (!m) return;
+    if (m.inPackage) { anyPkg = true; }
+    else { t += calcPriceForMachine(m).sellPrice; }
+  });
+  return t + (anyPkg ? (state.packagePrice || 0) : 0);
+}
+
 function calcPriceForMachine(m) {
   if (m.machineType === 'parts') {
     let total = 0;
@@ -2190,6 +2228,8 @@ function calcPrice() {
     ? 'Net Total (auto from items)'
     : 'Total Selling Price (<span id="currency-label">' + (state.currency||'USD') + '</span>) <span style="font-weight:400;font-size:10px;color:#888">— auto = Unit Price × Qty, or override below</span>';
   savePriceFields();
+  const ppRow = document.getElementById('package-price-row');
+  if (ppRow) ppRow.style.display = pkgAnyActive() ? '' : 'none';
   const m = M();
   const curr = state.currency;
   const {sellPrice, grossPrice, discountAmt} = calcPriceForMachine(m);
@@ -2222,7 +2262,7 @@ function calcPrice() {
   const totBox = document.getElementById('all-machines-total');
   if (totBox && state.machines.length > 1) {
     const allPrices = state.machines.map(mm => ({title: shortTitle(mm)||'Machine', price: calcPriceForMachine(mm).sellPrice}));
-    const grand = allPrices.reduce((s,x)=>s+x.price,0);
+    const grand = pkgContractTotal();
     const grandDep = getDepositFor(grand);
     const grandBal = grand - grandDep;
     let rows = allPrices.map((x,i) => `<div class="at-row"><span>Machine ${i+1} (${x.title})</span><span>${fmt(x.price)}</span></div>`).join('');
@@ -3048,7 +3088,7 @@ function buildContractHTML() {
   const revisedStr = state.revised ? `Revised On: ${formatDate(state.revised)}` : '';
   // Compute all machine prices
   const machinePrices = state.machines.map(m => calcPriceForMachine(m).sellPrice);
-  const totalPrice = machinePrices.reduce((s,p)=>s+(p||0), 0);
+  const totalPrice = pkgAnyActive() ? pkgContractTotal() : machinePrices.reduce((s,p)=>s+(p||0), 0);
   const totalDep = getDepositFor(totalPrice);
   const tradeinAmt = (state.tradeinDesc && state.tradeinValue > 0) ? (state.tradeinValue||0) : 0;
   const effectiveDep = state.payCond === 'tradein' ? 0 : totalDep;
@@ -3148,7 +3188,7 @@ function buildContractHTML() {
       }
     });
 
-    const totalAll = subtotalAll;
+    const totalAll = pkgAnyActive() ? pkgContractTotal() : subtotalAll;
     const dep = getDepositFor(totalAll);
     const bal = totalAll - dep;
     const balLbl = state.balanceLabel || 'Before Delivery';
@@ -3252,6 +3292,7 @@ function buildContractHTML() {
   // ---- END PARTS ORDER ----
 
   // Build machine blocks (each with its own images)
+  const lastPkgIdx = state.machines.reduce((acc,mm,idx)=> (mm && mm.inPackage) ? idx : acc, -1);
   let machineBlocks = '';
   state.machines.forEach((m, i) => {
     const {sellPrice: netPrice, grossPrice, discountAmt} = calcPriceForMachine(m);
@@ -3278,12 +3319,35 @@ function buildContractHTML() {
   ${imgHtml}
   ${unitPriceHtml}
   ${buildOptionalItems(m)}`;
+    if (i === lastPkgIdx) machineBlocks += `
+  <div style="background:#fff;border:1px solid #d4dbe3;border-left:4px solid #1e3a5f;border-radius:0 3px 3px 0;padding:3mm 4mm;margin:3mm 0;color:#1a1a1a"><div style="font-size:10.5pt;font-weight:700">${esc(state.packageLabel)||'Package Price'} : ${fmt(state.packagePrice||0)}${state.port?` [${esc(state.port)}]`:''}</div></div>`;
   });
 
   // Payment summary rows — use net price (after discount)
-  let summaryRows = state.machines.map((m, i) => {
+  let summaryRows = '';
+  state.machines.forEach((m, i) => {
     const {sellPrice: netPrice} = calcPriceForMachine(m);
-    return `
+    if (m.inPackage) {
+      summaryRows += `
+    <tr>
+      <td>${i+1})</td>
+      <td>${buildMachineTitle(m)}</td>
+      <td style="text-align:center">${esc(m.qty||'1 Unit')}</td>
+      <td style="text-align:right">&mdash;</td>
+      <td style="text-align:right">&mdash;</td>
+    </tr>`;
+      if (i === lastPkgIdx) {
+        summaryRows += `
+    <tr>
+      <td></td>
+      <td style="font-weight:700">${esc(state.packageLabel)||'Package Price'}</td>
+      <td style="text-align:center">&nbsp;</td>
+      <td style="text-align:right">&nbsp;</td>
+      <td style="text-align:right;font-weight:700">${fmt(state.packagePrice||0)}</td>
+    </tr>`;
+      }
+    } else {
+      summaryRows += `
     <tr>
       <td>${i+1})</td>
       <td>${buildMachineTitle(m)}</td>
@@ -3291,7 +3355,8 @@ function buildContractHTML() {
       <td style="text-align:right">${fmt(netPrice)}</td>
       <td style="text-align:right">${fmt(netPrice)}</td>
     </tr>`;
-  }).join('');
+    }
+  });
 
   const balLbl = state.balanceLabel || 'Before Delivery';
   const fmtInstDate = s => {
@@ -3554,6 +3619,16 @@ function buildComeWith(m) {
   const curr = state.currency;
   const fmt  = n => formatMoney(n, curr);
   const items = (m.cwItems||[]).filter(i=>i && typeof i === 'object' && i.desc);
+  // v10.84: package machine — hide all individual pricing, show only the come-with list (no prices)
+  if (m.inPackage) {
+    if (!items.length) return '';
+    let pin = '<div style="font-size:10pt;font-weight:600;margin:2mm 0 1mm 0">Come With :</div>';
+    items.forEach(item => {
+      const label = esc(item.qty) ? esc(item.qty)+' '+esc(item.desc) : esc(item.desc);
+      pin += `<div style="font-size:10pt;margin-left:4mm;margin-bottom:0.5mm">- ${label}</div>`;
+    });
+    return `<div style="background:#fff;border:1px solid #d4dbe3;border-left:4px solid #1e3a5f;border-radius:0 3px 3px 0;padding:3mm 4mm;margin:3mm 0;color:#1a1a1a">${pin}</div>`;
+  }
   const cwTotal = items.reduce((s,i) => s + (i ? parseCwVal(i.val) : 0), 0);
   const unitPrice = m.unitPrice || m.sellPrice || 0;
   const uQty = m.unitQty || 1;
@@ -4006,6 +4081,8 @@ function appendMachinesFromJSON() {
 function normalizeState(s) {
   if (!s) return;
   if (!Array.isArray(s.machines)) s.machines = [];
+  if (typeof s.packagePrice !== 'number') s.packagePrice = 0;
+  if (typeof s.packageLabel !== 'string') s.packageLabel = '';
 
   s.machines.forEach(m => {
     if (!m) return;
@@ -4021,6 +4098,7 @@ function normalizeState(s) {
     // ── Fix condition: old values → valid values ──────────────────────────
     if (m.condition === 'Demo') m.condition = 'Refurbished';
     if (!m.condition) m.condition = 'New';
+    if (typeof m.inPackage !== 'boolean') m.inPackage = false;
 
     // ── Fix extraSpecs ────────────────────────────────────────────────────
     if (Array.isArray(m.extraSpecs)) {
@@ -4132,7 +4210,7 @@ async function saveToSheets(silent=false) {
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
   try {
-    const totalAmt = state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0);
+    const totalAmt = pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0);
     const machineTitle = state.machines.map(m => m.customTitle||m.otherModel||m.machineType||'Machine').join(', ');
     const record = {
       contractNo: state.contractNo, date: state.date, company: state.company,
