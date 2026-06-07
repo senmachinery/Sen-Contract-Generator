@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="快速询盘">
+<meta name="theme-color" content="#0b5cab">
+<title>Sen 快速新增询盘 v1.0</title>
+<style>
+  :root{
+    --blue:#0b5cab; --blue-dark:#084a8c; --bg:#eef2f7; --card:#fff;
+    --text:#1c2733; --muted:#6b7886; --line:#d7dee7; --ok:#1f9d55; --err:#d9534f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+    padding:env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 24px);
+  }
+  .wrap{max-width:480px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 4px 10px}
+  header h1{font-size:19px;margin:0;font-weight:700}
+  .ver{font-size:11px;color:var(--muted);font-weight:600}
+  #conn{font-size:12px;padding:6px 10px;border-radius:8px;margin:0 4px 12px;background:#fff7e6;color:#8a6d00;border:1px solid #ffe2a8}
+  #conn.ok{background:#e9f8ef;color:#157347;border-color:#bfe9cf}
+  #conn.bad{background:#fdecea;color:#a4271f;border-color:#f5c2bd}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(20,40,70,.05)}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:14px 0 6px}
+  label.req::after{content:" *";color:var(--err)}
+  input,select,textarea{
+    width:100%;font-size:16px;padding:12px 12px;border:1px solid var(--line);
+    border-radius:10px;background:#fbfcfe;color:var(--text);font-family:inherit;
+  }
+  input:focus,select,textarea:focus{outline:none;border-color:var(--blue);background:#fff}
+  textarea{min-height:72px;resize:vertical}
+  .row{display:flex;gap:10px}
+  .row>div{flex:1}
+  details{margin-top:14px;border-top:1px dashed var(--line);padding-top:6px}
+  summary{font-size:14px;font-weight:600;color:var(--blue);cursor:pointer;list-style:none;padding:6px 0}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"➕ ";font-size:12px}
+  details[open] summary::before{content:"➖ "}
+  button{
+    width:100%;margin-top:20px;padding:16px;font-size:17px;font-weight:700;color:#fff;
+    background:var(--blue);border:none;border-radius:12px;cursor:pointer;
+  }
+  button:active{background:var(--blue-dark)}
+  button:disabled{opacity:.55}
+  #msg{margin-top:14px;font-size:14px;text-align:center;min-height:20px}
+  #msg.ok{color:var(--ok);font-weight:600}
+  #msg.err{color:var(--err);font-weight:600}
+  .done{text-align:center;padding:30px 10px}
+  .done .big{font-size:48px}
+  .done h2{margin:10px 0 4px;font-size:20px}
+  .done .no{font-family:monospace;font-size:18px;background:#eef4fb;color:var(--blue);padding:4px 10px;border-radius:8px;display:inline-block;margin:6px 0 18px}
+  .ghost{background:#fff;color:var(--blue);border:1.5px solid var(--blue)}
+  .setup{font-size:12px;text-align:center;margin-top:16px}
+  .setup a{color:var(--blue);cursor:pointer;text-decoration:underline}
+  .hide{display:none!important}
+  #setupBox{margin-top:12px}
+  #setupBox input{font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📝 快速新增询盘</h1>
+    <span class="ver">v1.0 · Sen</span>
+  </header>
+  <div id="conn">⏳ 正在连接 CRM…</div>
+
+  <!-- Setup (only shown when no backend URL is found) -->
+  <div id="setupBox" class="card hide">
+    <label class="req">CRM 后端地址（一次性，只填一次）</label>
+    <input id="urlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+    <p style="font-size:12px;color:var(--muted);margin:8px 2px 0">
+      在你电脑的 CRM「设置」里复制那条 Apps Script 链接，粘到这里。它只存在你这台设备上。
+    </p>
+    <button id="saveUrlBtn">保存并连接</button>
+  </div>
+
+  <!-- The form -->
+  <form id="form" class="card hide" autocomplete="off">
+    <label class="req" for="f-customer">客户 / 公司</label>
+    <input id="f-customer" required placeholder="例：DRACO PRINTING PTE. LTD">
+
+    <label class="req" for="f-machine">机器 / 产品</label>
+    <input id="f-machine" required placeholder="例：New Sen IF-350 6C UV">
+
+    <div class="row">
+      <div>
+        <label for="f-budget">预算</label>
+        <input id="f-budget" placeholder="例：USD 200,000">
+      </div>
+      <div>
+        <label for="f-source">来源</label>
+        <select id="f-source">
+          <option value="">—</option>
+          <option>WhatsApp</option>
+          <option>Email</option>
+          <option>Phone</option>
+          <option>Exhibition</option>
+          <option>Website</option>
+          <option>Referral</option>
+          <option>Walk-in</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="f-country">国家 / 地区</label>
+        <input id="f-country" placeholder="例：Malaysia">
+      </div>
+      <div>
+        <label for="f-priority">优先级</label>
+        <select id="f-priority">
+          <option value="normal" selected>普通</option>
+          <option value="high">高</option>
+          <option value="low">低</option>
+        </select>
+      </div>
+    </div>
+
+    <details>
+      <summary>更多信息（可选）</summary>
+      <label for="f-quantity">数量</label>
+      <input id="f-quantity" placeholder="例：1 台 / 2 sets">
+
+      <div class="row">
+        <div>
+          <label for="f-tel">电话</label>
+          <input id="f-tel" inputmode="tel" placeholder="电话 / WhatsApp">
+        </div>
+        <div>
+          <label for="f-email">邮箱</label>
+          <input id="f-email" inputmode="email" placeholder="email@…">
+        </div>
+      </div>
+
+      <label for="f-attn">联系人 (Attn)</label>
+      <input id="f-attn" placeholder="对接人姓名">
+
+      <label for="f-address">地址</label>
+      <input id="f-address" placeholder="公司地址">
+
+      <label for="f-detail">备注 / 详情</label>
+      <textarea id="f-detail" placeholder="客户需求、备注…"></textarea>
+    </details>
+
+    <button id="submitBtn" type="submit">提交到 CRM ✓</button>
+    <div id="msg"></div>
+    <div class="setup">连接有问题？<a id="reconfig">重新设置后端地址</a></div>
+  </form>
+
+  <!-- Success screen -->
+  <div id="done" class="card hide">
+    <div class="done">
+      <div class="big">✅</div>
+      <h2>询盘已记录！</h2>
+      <div class="no" id="doneNo"></div>
+      <div id="doneSummary" style="font-size:14px;color:var(--muted);margin-bottom:18px"></div>
+      <button id="againBtn">➕ 再记一条</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ── Sen Quick Inquiry · v1.0 ────────────────────────────────────────────────
+// Standalone mobile page. Writes ONE inquiry into the CRM by reusing the exact
+// same backend contract crm.html uses (action crm_addTask). NO Apps Script /
+// backend change is needed. Inquiry shows up in the CRM's inquiry list because
+// contractNo starts with "INQ-" and the fields are JSON-encoded in task.notes,
+// matching saveNewInquiry()/rebuildInquiriesFromTasks() in crm.html.
+//
+// Backend URL: shared (same-origin) with crm.html via localStorage key
+// 'sen_crm_apps_script_url'. If absent, we ask once and store under the same key.
+
+var URL_KEY = "sen_crm_apps_script_url";
+var $ = function (id) { return document.getElementById(id); };
+var appsUrl = "";
+
+function getUrl() { try { return localStorage.getItem(URL_KEY) || ""; } catch (e) { return ""; } }
+function setUrl(u) { try { localStorage.setItem(URL_KEY, u); } catch (e) {} appsUrl = u; }
+
+// ── Backend calls (mirror crm.html apiGet/apiPost exactly) ──────────────────
+function apiGet(action, params) {
+  var qs = new URLSearchParams(Object.assign({ action: action }, params || {})).toString();
+  return fetch(appsUrl + "?" + qs).then(function (r) { return r.json(); });
+}
+function apiPost(action, data) {
+  return fetch(appsUrl, {
+    method: "POST",
+    // text/plain avoids a CORS preflight to Apps Script (same as crm.html)
+    body: JSON.stringify(Object.assign({ action: action }, data)),
+    headers: { "Content-Type": "text/plain;charset=utf-8" }
+  }).then(function (r) { return r.json(); });
+}
+
+// ── Inquiry number: scan existing tasks for max INQ-YY-NNNN, +1 ──────────────
+function todayIso() { return new Date().toISOString().split("T")[0]; }
+function computeNextInquiryNo(tasks) {
+  var yy = String(new Date().getFullYear()).slice(-2);
+  var maxN = 0;
+  (tasks || []).forEach(function (t) {
+    var m = t && t.contractNo ? String(t.contractNo).match(/INQ-\d{2}-(\d+)/) : null;
+    if (m) { var n = parseInt(m[1], 10); if (n > maxN) maxN = n; }
+  });
+  return "INQ-" + yy + "-" + String(maxN + 1).padStart(4, "0");
+}
+
+// ── Connection check ────────────────────────────────────────────────────────
+function showConn(state, text) {
+  var el = $("conn");
+  el.className = state || "";
+  el.textContent = text;
+}
+function checkConnection() {
+  appsUrl = getUrl();
+  if (!appsUrl) { showSetup(true); showConn("bad", "⚠️ 还没设置 CRM 后端地址"); return; }
+  showSetup(false);
+  showConn("", "⏳ 正在连接 CRM…");
+  apiGet("crm_ping").then(function (r) {
+    if (r && r.ok) {
+      showConn("ok", "✅ 已连接 CRM" + (r.version ? "  v" + r.version : ""));
+      showForm();
+    } else {
+      showConn("bad", "❌ 连接失败：后端没有正常回应");
+      showSetup(true);
+    }
+  }).catch(function () {
+    showConn("bad", "❌ 连不上后端，请检查地址或网络");
+    showSetup(true);
+  });
+}
+
+// ── View switching ──────────────────────────────────────────────────────────
+function showSetup(on) { $("setupBox").classList.toggle("hide", !on); }
+function showForm() { $("form").classList.remove("hide"); $("done").classList.add("hide"); }
+function showDone(no, summary) {
+  $("doneNo").textContent = no;
+  $("doneSummary").textContent = summary;
+  $("form").classList.add("hide");
+  $("done").classList.remove("hide");
+}
+
+// ── Submit ──────────────────────────────────────────────────────────────────
+function val(id) { var e = $(id); return e ? (e.value || "").trim() : ""; }
+
+function submitInquiry(ev) {
+  ev.preventDefault();
+  var customer = val("f-customer");
+  var machine = val("f-machine");
+  var msg = $("msg");
+  if (!customer) { msg.className = "err"; msg.textContent = "请填写客户名称"; return; }
+  if (!machine) { msg.className = "err"; msg.textContent = "请填写机器 / 产品"; return; }
+
+  // Inquiry fields — must match crm.html saveNewInquiry()'s inquiryData shape
+  var inquiryData = {
+    customer: customer,
+    machine: machine,
+    quantity: val("f-quantity"),
+    tel: val("f-tel"),
+    email: val("f-email"),
+    address: val("f-address"),
+    attn: val("f-attn"),
+    country: val("f-country"),
+    budget: val("f-budget"),
+    source: val("f-source"),
+    detail: val("f-detail"),
+    images: []
+  };
+
+  var btn = $("submitBtn");
+  btn.disabled = true;
+  msg.className = "";
+  msg.textContent = "⏳ 正在提交…";
+
+  // 1) read tasks to compute the next INQ number, 2) post the new inquiry task
+  apiGet("crm_getTasks").then(function (r) {
+    var no = computeNextInquiryNo(r && r.tasks ? r.tasks : []);
+    var task = {
+      title: machine,          // machine in title (matches crm.html)
+      customer: customer,
+      contractNo: no,          // "INQ-…" marks this task as an inquiry
+      dueDate: todayIso(),
+      priority: val("f-priority") || "normal",
+      notes: JSON.stringify(inquiryData)
+    };
+    return apiPost("crm_addTask", { task: task }).then(function (res) {
+      if (!res || !res.ok) throw new Error("backend rejected");
+      var parts = [customer, machine];
+      if (inquiryData.budget) parts.push(inquiryData.budget);
+      showDone(no, parts.join(" · "));
+    });
+  }).catch(function (e) {
+    msg.className = "err";
+    msg.textContent = "❌ 提交失败：" + (e && e.message ? e.message : "请重试") + "（数据未保存）";
+  }).then(function () { btn.disabled = false; });
+}
+
+function resetForm() {
+  ["f-customer","f-machine","f-budget","f-source","f-country","f-quantity","f-tel","f-email","f-attn","f-address","f-detail"]
+    .forEach(function (id) { var e = $(id); if (e) e.value = ""; });
+  $("f-priority").value = "normal";
+  $("msg").textContent = "";
+  showForm();
+  window.scrollTo(0, 0);
+  $("f-customer").focus();
+}
+
+// ── Wire up ─────────────────────────────────────────────────────────────────
+$("form").addEventListener("submit", submitInquiry);
+$("againBtn").addEventListener("click", resetForm);
+$("saveUrlBtn").addEventListener("click", function () {
+  var u = ($("urlInput").value || "").trim();
+  if (!/^https:\/\/script\.google\.com\/.*\/exec$/.test(u)) {
+    showConn("bad", "❌ 地址应以 script.google.com 开头、以 /exec 结尾");
+    return;
+  }
+  setUrl(u);
+  checkConnection();
+});
+$("reconfig").addEventListener("click", function () {
+  $("urlInput").value = getUrl();
+  showSetup(true);
+  $("urlInput").focus();
+});
+
+checkConnection();
+</script>
+</body>
+</html>
