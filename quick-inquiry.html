@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="快速询盘">
 <meta name="theme-color" content="#0b5cab">
-<title>Sen 快速新增询盘 v1.0</title>
+<title>Sen 快速新增询盘 v1.1</title>
 <style>
   :root{
     --blue:#0b5cab; --blue-dark:#084a8c; --bg:#eef2f7; --card:#fff;
@@ -67,7 +67,7 @@
 <div class="wrap">
   <header>
     <h1>📝 快速新增询盘</h1>
-    <span class="ver">v1.0 · Sen</span>
+    <span class="ver">v1.1 · Sen</span>
   </header>
   <div id="conn">⏳ 正在连接 CRM…</div>
 
@@ -238,9 +238,36 @@ function checkConnection() {
   });
 }
 
+// ── Prefill from URL params (v1.1) — lets a pre-filled link (e.g. from Gina)
+// populate the form; the user still reviews & taps submit. No params = unchanged.
+var PREFILL = (function () {
+  try {
+    var p = new URLSearchParams(location.search), o = {}, any = false;
+    ["customer","machine","quantity","tel","email","address","attn","country","budget","source","detail","priority"]
+      .forEach(function (k) { if (p.has(k)) { o[k] = p.get(k); any = true; } });
+    return any ? o : null;
+  } catch (e) { return null; }
+})();
+var _prefillDone = false;
+function applyPrefill() {
+  if (_prefillDone || !PREFILL) return;
+  _prefillDone = true;
+  var map = { customer:"f-customer", machine:"f-machine", quantity:"f-quantity", tel:"f-tel",
+    email:"f-email", address:"f-address", attn:"f-attn", country:"f-country", budget:"f-budget",
+    source:"f-source", detail:"f-detail", priority:"f-priority" };
+  var advanced = { quantity:1, tel:1, email:1, attn:1, address:1, detail:1 }, openMore = false;
+  Object.keys(PREFILL).forEach(function (k) {
+    var el = $(map[k]); if (!el) return;
+    el.value = PREFILL[k];
+    if (advanced[k] && PREFILL[k]) openMore = true;
+  });
+  if (openMore) { var d = document.querySelector("#form details"); if (d) d.open = true; }
+  var msg = $("msg"); if (msg) { msg.className = ""; msg.textContent = "✅ 已为你预填，请核对后提交"; }
+}
+
 // ── View switching ──────────────────────────────────────────────────────────
 function showSetup(on) { $("setupBox").classList.toggle("hide", !on); }
-function showForm() { $("form").classList.remove("hide"); $("done").classList.add("hide"); }
+function showForm() { $("form").classList.remove("hide"); $("done").classList.add("hide"); applyPrefill(); }
 function showDone(no, summary) {
   $("doneNo").textContent = no;
   $("doneSummary").textContent = summary;
