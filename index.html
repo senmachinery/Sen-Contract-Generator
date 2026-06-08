@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.86</title>
+<title>Sen Labels — Contract Generator v10.87</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -431,7 +431,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.86</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.87</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -491,6 +491,7 @@ function mobileTab(tab) {
         <select id="f-doctype" onchange="onDoctypeChange()">
           <option value="Sales Contract">Sales Contract</option>
           <option value="Quotation">Quotation</option>
+          <option value="Invoice">Invoice</option>
         </select>
       </div>
     </div>
@@ -1684,6 +1685,11 @@ function switchTabDirect(name) {
 // ============================================================
 // CONTRACT NUMBER
 // ============================================================
+// Quotation-like docs (Quotation, Invoice) hide the buyer signature block.
+function isQuoteLike(dt) {
+  dt = dt || state.docType;
+  return dt === 'Quotation' || dt === 'Invoice';
+}
 function docPrefix() {
   const dt = document.getElementById('f-doctype')?.value || state.docType || 'Sales Contract';
   return dt === 'Quotation' ? 'Q' : 'SC';
@@ -1705,7 +1711,9 @@ function onDoctypeChange() {
   const noField = document.getElementById('f-contract-no');
   let no = noField.value;
   const dt = document.getElementById('f-doctype').value;
-  if (dt === 'Quotation') {
+  if (dt === 'Invoice') {
+    // Invoice numbers come from the CRM / typed manually — don't rewrite the number.
+  } else if (dt === 'Quotation') {
     no = no.replace(/\/SC\//g, '/Q/');
   } else {
     no = no.replace(/\/Q\//g, '/SC/');
@@ -3296,7 +3304,7 @@ function buildContractHTML() {
         </div>
       </div>
     </div>
-    ${state.docType !== 'Quotation' ? `<div class="sig-block">
+    ${!isQuoteLike(state.docType) ? `<div class="sig-block">
       <div>BUYER</div>
       <div class="sig-name">CONFIRM &amp; RECEIVED BY :</div>
       <div style="margin-top:30mm;border-top:1px solid #000;padding-top:1mm">
@@ -3498,7 +3506,7 @@ function buildContractHTML() {
         </div>
       </div>
     </div>
-    ${state.docType !== 'Quotation' ? `<div class="sig-block">
+    ${!isQuoteLike(state.docType) ? `<div class="sig-block">
       <div>BUYER</div>
       <div class="sig-name">CONFIRM &amp; RECEIVED BY :</div>
       <div style="margin-top:30mm;border-top:1px solid #000;padding-top:1mm">
@@ -5685,7 +5693,7 @@ function exportToExcel() {
 
   // Signature block
   fullRow('AUTHORISED SIGNATURE', ST.secHdr);
-  const isQuote = state.docType === 'Quotation';
+  const isQuote = isQuoteLike(state.docType);
   if (isQuote) {
     { const ri = rows.length; r([c('SELLER',ST.label), c(''), c(''), c(''), c('')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:4}}); }
     { const ri = rows.length; r([c('Sen Labels Machinery Sdn. Bhd.'), c(''), c(''), c(''), c('')]); merges.push({s:{r:ri,c:0},e:{r:ri,c:4}}); }
@@ -6008,7 +6016,7 @@ function exportToWord() {
   body += `</table>`;
 
   // ── 9. SIGNATURE BLOCK ─────────────────────────────────────────────────
-  const isWordQuote = state.docType === 'Quotation';
+  const isWordQuote = isQuoteLike(state.docType);
   if (isWordQuote) {
     body += `
 <table width="60%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:6pt">
