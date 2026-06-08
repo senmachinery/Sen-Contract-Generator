@@ -14,10 +14,10 @@ Two browser tools, hosted on **GitHub Pages** at `senmachinery.github.io`:
 
 | File | What it is | Current version |
 |------|------------|-----------------|
-| `index.html` | **Contract Generator** — builds quotes / sales contracts, prints PDF | **v10.85** |
-| `crm.html` | **CRM** — customers, contract pipeline, tasks, inquiries | **v2.21** |
+| `index.html` | **Contract Generator** — builds quotes / sales contracts / invoices, prints PDF | **v10.87** |
+| `crm.html` | **CRM** — customers, contract pipeline, tasks, inquiries, invoices | **v2.24** |
 
-Backend: a **Google Apps Script web app** talking to a Google Sheet named **"Sen Labels Contract Record"**. The backend reports version **v10.62**. Its source is a `.gs` file that lives **outside** the Pages repo. Both HTML files call it via `fetch`.
+Backend: a **Google Apps Script web app** talking to a Google Sheet named **"Sen Labels Contract Record"**. The backend reports version **v10.62** (plus invoice handlers added 2026-06 — see §9). Its source is a `.gs` file that lives **outside** the Pages repo. Both HTML files call it via `fetch`.
 
 - The backend URL is **stored in the browser (localStorage), never hardcoded.** Do not hardcode it. Do not print it.
 - Both HTML files are **single-file** apps (all HTML + CSS + JS inline). There is no build step.
@@ -125,12 +125,29 @@ When unsure of a field name or default, **grep the source**; do not invent field
 
 ## 7. Current version log
 
-- **index.html — v10.85**: inquiry-photos→quote handoff (v10.85) · package pricing (v10.84) · print-refresh 404 fix (v10.83). Two render branches; image = base64 or Drive URL.
-- **crm.html — v2.21**: inquiry photo attachment (Drive-stored) + photo handoff on Convert to Quote. Inquiries live in task `notes` JSON.
-- **backend `.gs` — v10.62**: `saveState` = one cell; images via Drive (`uploadImage` + `listImages`); `crm_*` handlers.
+- **index.html — v10.87**: **Invoice doc type (v10.87)** — `docType:'Invoice'` reuses the print engine; `isQuoteLike()` hides the buyer signature for Quotation+Invoice. · inquiry-photos→quote handoff (v10.85) · package pricing (v10.84) · print-refresh 404 fix (v10.83). Two render branches; image = base64 or Drive URL.
+- **crm.html — v2.24**: invoice/collection UI in **English** (v2.24) · **Dashboard "Collected" summary** (v2.23) · **Invoices tab** (v2.22) — create invoice (auto-numbered by category), list with Unpaid/Partial/Paid/Overdue filters, record payment. · inquiry photo attachment + photo handoff on Convert to Quote. Inquiries live in task `notes` JSON.
+- **backend `.gs` — v10.62 (+invoice handlers)**: `saveState` = one cell; images via Drive (`uploadImage` + `listImages`); `crm_*` handlers + invoice handlers `crm_addInvoice` / `crm_getInvoices` / `crm_nextInvoiceNo` / `crm_updateInvoice` / `crm_importInvoices`, and a new `Invoices` tab.
 
 ---
 
 ## 8. Working agreement (quick recap for every task)
 
 1. Read the relevant file/functions first. 2. Smallest possible, additive, **guarded** edit. 3. Add `normalizeState` defaults for new fields. 4. Bump the version (title + top-bar). 5. Verify A/B/C (§3). 6. Deliver the file + **versioned archive name** + exact deploy steps + "no backend redeploy needed" (or the redeploy steps). 7. Reply to Max in **简体中文**.
+
+---
+
+## 9. Invoice module (added 2026-06 — all phases live)
+
+Completes the money half of the pipeline: **inquiry → quote → contract → invoice → payment**. Scope = **internal bookkeeping only** — no SST / MyInvois e-invoice yet (a `taxPct` field is reserved for it).
+
+- **New `Invoices` tab** in the central Sheet, mirroring the colleague's existing `SalesActuals` columns (`Date · Month · InvoiceNo · Customer · Category · Currency · Amount · Value_RM_equiv`) **plus** payment fields (`ContractNo · DueDate · TaxPct · PaidAmount · Status · Payments · Items · Remark · CreatedAt · CreatedBy`).
+- **Three invoice-number series by Category**, auto-continued (max+1), assigned **server-side under a lock** so concurrent staff never collide. Numbering scans **both** `Invoices` and the legacy `SalesActuals`, so it continues the existing sequence:
+  - `Parts/Consumables` → `S{YY}-####` (e.g. `S26-1426`)
+  - `New Machine` → `IN/N/{YY}-####` (e.g. `IN/N/26-0074`)
+  - `Refurb Machine` → `IN/R/{YY}-####` (e.g. `IN/R/26-0078`)
+- **Backend handlers** (all additive): `crm_addInvoice` (assigns number + appends), `crm_getInvoices` (normalises date cells back to `yyyy-MM-dd`), `crm_nextInvoiceNo` (preview), `crm_updateInvoice` (record payments → recompute Unpaid/Partial/Paid), `crm_importInvoices` (idempotent bulk history import). Editing the backend still requires a redeploy (§2).
+- **Generator (`index.html`)**: `docType:'Invoice'` prints an invoice via the existing engine (no buyer signature; "Invoice No." label). Guarded by `isQuoteLike()`.
+- **CRM (`crm.html`)**: an **Invoices tab** to create/record invoices (pick category → auto-number → save), a list with status filters + record-payment; the **Dashboard** shows a **Collected / Invoiced / Outstanding** summary (RM-equivalent) that follows the period filter.
+- **History**: the historical `SalesActuals` rows were imported into `Invoices` (marked Paid), original numbers preserved.
+- **UI language**: the app UI is **English** — do not add Chinese to the app UI. Only the chat with Max is 简体中文.
