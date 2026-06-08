@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM</title>
+<title>Sen Labels — CRM v2.22</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.21</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.22</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -536,6 +536,7 @@
   <button class="tab" data-tab="pipeline"><svg class="ic"><use href="#i-kanban"/></svg> Pipeline <span class="count" id="pipeline-count">—</span></button>
   <button class="tab" data-tab="inquiries"><svg class="ic"><use href="#i-phone-in"/></svg> Inquiries <span class="count" id="inquiries-count">—</span></button>
   <button class="tab" data-tab="tasks"><svg class="ic"><use href="#i-check-sq"/></svg> Tasks <span class="count" id="tasks-count">—</span></button>
+  <button class="tab" data-tab="invoices"><svg class="ic"><use href="#i-doc"/></svg> Invoices <span class="count" id="invoices-count">—</span></button>
   <button class="tab" data-tab="dashboard"><svg class="ic"><use href="#i-chart"/></svg> Dashboard</button>
   <button class="tab" data-tab="reps"><svg class="ic"><use href="#i-badge"/></svg> Sales Reps <span class="count" id="reps-count">—</span></button>
   <button class="tab" data-tab="packs"><svg class="ic"><use href="#i-package"/></svg> Follow-up Packs</button>
@@ -645,6 +646,42 @@
       </div>
     </div>
     <div id="tasks-list"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading tasks...</div></div></div>
+  </div>
+  <!-- INVOICES TAB (v2.22) -->
+  <div class="tab-content" id="tab-invoices">
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div>
+          <h3 style="font-size:14px;color:var(--primary);margin:0 0 4px 0"><svg class="ic"><use href="#i-doc"></use></svg> Invoices 发票</h3>
+          <div style="font-size:11px;color:var(--text-muted)">开票记录进 Invoices 分页 · 按类别自动给号 · 追踪付款状态</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label style="font-size:11px;color:var(--text-muted)">类别<br><select id="inv-category" onchange="invPreviewNextNo()" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+          <option value="">— 选类别 —</option>
+          <option value="Parts/Consumables">Parts/Consumables 配件耗材</option>
+          <option value="New Machine">New Machine 新机</option>
+          <option value="Refurb Machine">Refurb Machine 翻新机</option>
+        </select></label>
+        <label style="font-size:11px;color:var(--text-muted)">客户<br><input id="inv-customer" list="inv-customer-list" placeholder="客户名" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:150px"><datalist id="inv-customer-list"></datalist></label>
+        <label style="font-size:11px;color:var(--text-muted)">币种<br><select id="inv-currency" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"><option>MYR</option><option>USD</option><option>SGD</option></select></label>
+        <label style="font-size:11px;color:var(--text-muted)">金额<br><input id="inv-amount" type="number" step="0.01" placeholder="0.00" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:105px"></label>
+        <label style="font-size:11px;color:var(--text-muted)">RM等值(选填)<br><input id="inv-valuerm" type="number" step="0.01" placeholder="自动=金额" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:105px"></label>
+        <label style="font-size:11px;color:var(--text-muted)">合同号(选填)<br><input id="inv-contract" placeholder="挂哪张合同" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:120px"></label>
+        <label style="font-size:11px;color:var(--text-muted)">到期日(选填)<br><input id="inv-due" type="date" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"></label>
+        <label style="font-size:11px;color:var(--text-muted)">备注(选填)<br><input id="inv-remark" placeholder="备注" style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;min-width:110px"></label>
+        <button class="btn" id="inv-save-btn" onclick="saveNewInvoice()" style="background:var(--accent);color:#fff">保存发票</button>
+        <span id="inv-nextno" style="font-size:11px;color:var(--text-secondary)"></span>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="qf-chip active" data-inv-filter="all" onclick="setInvoiceFilter('all')">All <span id="inv-cnt-all">0</span></button>
+        <button class="qf-chip" data-inv-filter="Unpaid" onclick="setInvoiceFilter('Unpaid')">未付 <span id="inv-cnt-unpaid">0</span></button>
+        <button class="qf-chip" data-inv-filter="Partial" onclick="setInvoiceFilter('Partial')">部分 <span id="inv-cnt-partial">0</span></button>
+        <button class="qf-chip" data-inv-filter="Paid" onclick="setInvoiceFilter('Paid')">已付 <span id="inv-cnt-paid">0</span></button>
+        <button class="qf-chip" data-inv-filter="overdue" onclick="setInvoiceFilter('overdue')">逾期 <span id="inv-cnt-overdue">0</span></button>
+      </div>
+    </div>
+    <div id="invoices-list"><div class="empty">切到此页加载发票，或填上面表单开第一张。</div></div>
   </div>
   <!-- DASHBOARD TAB (v1.5) -->
   <div class="tab-content" id="tab-dashboard">
@@ -5242,6 +5279,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (t.dataset.tab === 'tasks' && !TASKS_STATE.loaded) loadTasks();
     if (t.dataset.tab === 'tasks') { renderTasks(); updateTaskCounts(); }
     if (t.dataset.tab === 'dashboard') renderDashboard();
+    // v2.22: Invoices
+    if (t.dataset.tab === 'invoices') { if (!INVOICES_STATE.loaded) loadInvoices(); else renderInvoices(); }
     // v1.6: Sales Reps + Packs
     if (t.dataset.tab === 'reps' && !REPS_STATE.loaded) loadReps();
     if (t.dataset.tab === 'reps') renderReps();
@@ -5277,6 +5316,126 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('customer-list').innerHTML = '<div class="empty">⚠ Please configure Apps Script URL in Settings</div>';
   }
 });
+
+// ===== INVOICES MODULE (v2.22) — record invoices into the Invoices tab =====
+const INVOICES_STATE = { loaded: false, invoices: [], filter: 'all' };
+
+async function loadInvoices() {
+  const list = $('invoices-list');
+  if (list) list.innerHTML = '<div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading invoices…</div></div>';
+  try {
+    const r = await apiGet('crm_getInvoices');
+    INVOICES_STATE.invoices = (r && r.invoices) ? r.invoices : [];
+    INVOICES_STATE.loaded = true;
+    populateInvoiceCustomers();
+    renderInvoices();
+  } catch (e) {
+    if (list) list.innerHTML = '<div class="empty">⚠ Failed to load invoices: ' + (e.message || e) + '</div>';
+  }
+}
+
+function invIsOverdue(inv) {
+  if (!inv.dueDate || inv.status === 'Paid') return false;
+  return String(inv.dueDate) < new Date().toISOString().slice(0, 10);
+}
+
+function setInvoiceFilter(f) {
+  INVOICES_STATE.filter = f;
+  $$('[data-inv-filter]').forEach(b => b.classList.toggle('active', b.dataset.invFilter === f));
+  renderInvoices();
+}
+
+function updateInvoiceCounts() {
+  const inv = INVOICES_STATE.invoices;
+  const c = { all: inv.length, Unpaid: 0, Partial: 0, Paid: 0, overdue: 0 };
+  inv.forEach(i => { c[i.status] = (c[i.status] || 0) + 1; if (invIsOverdue(i)) c.overdue++; });
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  set('inv-cnt-all', c.all); set('inv-cnt-unpaid', c.Unpaid); set('inv-cnt-partial', c.Partial);
+  set('inv-cnt-paid', c.Paid); set('inv-cnt-overdue', c.overdue);
+  const tc = $('invoices-count'); if (tc) tc.textContent = c.all;
+}
+
+function renderInvoices() {
+  updateInvoiceCounts();
+  const list = $('invoices-list'); if (!list) return;
+  const f = INVOICES_STATE.filter;
+  let rows = INVOICES_STATE.invoices.slice().reverse();
+  if (f === 'overdue') rows = rows.filter(invIsOverdue);
+  else if (f !== 'all') rows = rows.filter(i => i.status === f);
+  if (!rows.length) { list.innerHTML = '<div class="empty">No invoices' + (f !== 'all' ? ' (' + f + ')' : '') + ' yet.</div>'; return; }
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const num = n => (Number(n) || 0).toLocaleString();
+  const badge = i => {
+    const od = invIsOverdue(i);
+    const color = i.status === 'Paid' ? 'var(--success,#2e7d32)' : (i.status === 'Partial' ? 'var(--accent,#e67e00)' : '#c0392b');
+    const label = od ? (i.status === 'Unpaid' ? 'Overdue 逾期' : 'Partial · 逾期') : i.status;
+    return '<span style="background:' + color + ';color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">' + esc(label) + '</span>';
+  };
+  list.innerHTML = rows.map(i => {
+    const paid = Number(i.paidAmount) || 0, total = Number(i.amount) || 0, out = total - paid;
+    return '<div class="card" style="padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+      + '<div style="min-width:200px"><div style="font-weight:700;color:var(--primary)">' + esc(i.invoiceNo) + ' ' + badge(i) + '</div>'
+      + '<div style="font-size:12px;color:var(--text-secondary)">' + esc(i.customer) + ' · ' + esc(i.category) + ' · ' + esc(i.date) + (i.contractNo ? ' · ' + esc(i.contractNo) : '') + '</div></div>'
+      + '<div style="text-align:right;font-size:12px"><div style="font-weight:700">' + esc(i.currency) + ' ' + num(total) + '</div>'
+      + '<div style="color:var(--text-muted)">已收 ' + num(paid) + ' · 未收 ' + num(out) + '</div></div>'
+      + '<div><button class="btn btn-sm" onclick="recordInvoicePayment(\'' + esc(i.invoiceNo).replace(/'/g, "\\'") + '\')" ' + (i.status === 'Paid' ? 'disabled style="opacity:.5"' : 'style="background:var(--primary);color:#fff"') + '>+ 记收款</button></div>'
+      + '</div>';
+  }).join('');
+}
+
+function populateInvoiceCustomers() {
+  const dl = $('inv-customer-list'); if (!dl) return;
+  const names = (typeof STATE !== 'undefined' && STATE.customers) ? STATE.customers.map(c => c.company) : [];
+  dl.innerHTML = names.map(n => '<option value="' + String(n).replace(/"/g, '&quot;') + '">').join('');
+}
+
+async function invPreviewNextNo() {
+  const cat = $('inv-category').value, out = $('inv-nextno');
+  if (!cat) { if (out) out.textContent = ''; return; }
+  if (out) out.textContent = '取号中…';
+  try {
+    const r = await apiGet('crm_nextInvoiceNo', { category: cat });
+    if (out) out.textContent = (r && r.invoiceNo) ? ('下一个号: ' + r.invoiceNo) : '';
+  } catch (e) { if (out) out.textContent = ''; }
+}
+
+async function saveNewInvoice() {
+  const category = $('inv-category').value, customer = $('inv-customer').value.trim();
+  const amount = parseFloat($('inv-amount').value);
+  if (!category) { showToast('请选择类别', 'error'); return; }
+  if (!customer) { showToast('请填客户', 'error'); return; }
+  if (!(amount > 0)) { showToast('请填金额', 'error'); return; }
+  const inv = {
+    category, customer, currency: $('inv-currency').value, amount,
+    valueRM: parseFloat($('inv-valuerm').value) || 0,
+    contractNo: $('inv-contract').value.trim(), dueDate: $('inv-due').value,
+    remark: $('inv-remark').value.trim()
+  };
+  const btn = $('inv-save-btn'); if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  try {
+    const r = await apiPost('crm_addInvoice', { invoice: inv });
+    if (r && r.ok) {
+      showToast('已开票 ' + r.invoiceNo, 'success');
+      ['inv-customer', 'inv-amount', 'inv-valuerm', 'inv-contract', 'inv-due', 'inv-remark'].forEach(id => { const e = $(id); if (e) e.value = ''; });
+      $('inv-nextno').textContent = '';
+      await loadInvoices();
+    } else { showToast('保存失败: ' + ((r && r.error) || 'unknown'), 'error'); }
+  } catch (e) { showToast('保存失败: ' + (e.message || e), 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '保存发票'; } }
+}
+
+async function recordInvoicePayment(invoiceNo) {
+  const amtStr = prompt('记录收款 — 金额 (' + invoiceNo + '):');
+  if (amtStr === null) return;
+  const amount = parseFloat(amtStr);
+  if (!(amount > 0)) { showToast('金额无效', 'error'); return; }
+  try {
+    const r = await apiPost('crm_updateInvoice', { invoiceNo: invoiceNo, updates: { addPayment: { date: new Date().toISOString().slice(0, 10), amount: amount, method: '', ref: '' } } });
+    if (r && r.ok) { showToast('已记收款，状态: ' + r.status, 'success'); await loadInvoices(); }
+    else showToast('失败: ' + ((r && r.error) || 'unknown'), 'error');
+  } catch (e) { showToast('失败: ' + (e.message || e), 'error'); }
+}
+// ===== end INVOICES MODULE =====
 
 </script>
 </body>
