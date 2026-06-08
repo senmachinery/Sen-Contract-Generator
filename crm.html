@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.22</title>
+<title>Sen Labels — CRM v2.23</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.22</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.23</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -2409,6 +2409,21 @@ function detectMachineFamily(machineName) {
   return 'Other';
 }
 
+// v2.23: aggregate invoice collection (RM-equivalent) for the dashboard
+function invoiceCollectionStats(cutoff) {
+  const inv = (typeof INVOICES_STATE !== 'undefined' && INVOICES_STATE.invoices) ? INVOICES_STATE.invoices : [];
+  let invoicedRM = 0, collectedRM = 0, count = 0; const byCur = {};
+  inv.forEach(i => {
+    const d = String(i.date || '').slice(0, 10);
+    if (cutoff && d && d < cutoff) return;
+    count++;
+    const amt = Number(i.amount) || 0, vrm = Number(i.valueRM) || amt, paid = Number(i.paidAmount) || 0;
+    invoicedRM += vrm;
+    collectedRM += amt > 0 ? vrm * (paid / amt) : 0;
+    if (paid > 0) { const cur = i.currency || 'MYR'; byCur[cur] = (byCur[cur] || 0) + paid; }
+  });
+  return { invoicedRM: invoicedRM, collectedRM: collectedRM, outstandingRM: invoicedRM - collectedRM, count: count, byCur: byCur };
+}
 function renderDashboard() {
   const el = $('dashboard-content');
   if (!el) return;
@@ -2447,7 +2462,24 @@ function renderDashboard() {
   const winRate = totalDecided > 0 ? Math.round(100 * won.length / totalDecided) : 0;
   
   const customerCount = new Set(filtered.map(c => c.company)).size;
-  
+
+  // v2.23: invoice collection summary (load invoices on first dashboard view)
+  if (!INVOICES_STATE.loaded) loadInvoices().then(renderDashboard);
+  const invStats = invoiceCollectionStats(cutoff);
+  const collectionHtml = INVOICES_STATE.loaded ? `
+    <div class="dashboard-row">
+      <div class="dashboard-section">
+        <h3>💰 收款 Collected (发票 · RM 等值)</h3>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+          <div><div class="stat-value" style="color:#2e7d32">RM ${Math.round(invStats.collectedRM).toLocaleString()}</div><div class="stat-label">已收款 Collected</div></div>
+          <div><div class="stat-value" style="font-size:20px">RM ${Math.round(invStats.invoicedRM).toLocaleString()}</div><div class="stat-label">已开票 Invoiced</div></div>
+          <div><div class="stat-value" style="font-size:20px;color:${invStats.outstandingRM > 0.5 ? '#c0392b' : 'var(--text-muted)'}">RM ${Math.round(invStats.outstandingRM).toLocaleString()}</div><div class="stat-label">未收 Outstanding</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">${invStats.count} 张发票 · 原币已收: ${formatMultiCurrency(invStats.byCur)}</div>
+      </div>
+    </div>` : `
+    <div class="dashboard-row"><div class="dashboard-section"><h3>💰 收款 Collected (发票)</h3><div style="font-size:12px;color:var(--text-muted)"><span class="spinner"></span> 加载发票数据中…</div></div></div>`;
+
   el.innerHTML = `
     <div class="dashboard-grid">
       <div class="stat-card primary">
@@ -2471,7 +2503,7 @@ function renderDashboard() {
         <div class="stat-sublabel">${won.length} won · ${lost.length} lost · ${totalDecided} decided</div>
       </div>
     </div>
-    
+    ${collectionHtml}
     <div class="dashboard-row">
       <div class="dashboard-section">
         <h3>🏆 Best Selling Machine Families</h3>
