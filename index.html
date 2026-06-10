@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.87</title>
+<title>Sen Labels — Contract Generator v10.88</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -431,7 +431,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.87</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.88</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -478,6 +478,7 @@ function mobileTab(tab) {
       <div style="display:flex;gap:5px">
         <input type="text" id="f-contract-no" placeholder="SEN/SC/NR/26-XXXX" style="flex:1" oninput="updatePreview()">
         <button class="btn btn-outline btn-sm" onclick="fetchNextNo()" title="Get next number from Sheets">&#8635;</button>
+        <button class="btn btn-outline btn-sm" onclick="makeVariantNo()" title="Variant copy — same number, different content: 2453 &#8594; 2453(B). Edit content then Save Record; the original is NOT overwritten.">+B</button>
       </div>
       <div class="field-hint" id="next-no-hint">Click &#8635; to fetch next sequence</div>
     </div>
@@ -1739,6 +1740,43 @@ async function fetchNextNo() {
   } catch(e) {
     document.getElementById('next-no-hint').innerHTML = '<span class="red">Failed. Check URL.</span>';
   }
+}
+
+// v10.88: Variant number — same contract, second version of the content.
+// 2453 → 2453(B); if (B) is taken (checked against saved records), → (C), (D)…
+// Only changes the number field: the loaded content stays as the starting point,
+// and Save Record then stores it as a SEPARATE record (saveRecord/saveState match
+// the exact string, so the base contract is never overwritten).
+// Note: getNextNo is safe with this suffix — parseInt('2453(B)') === 2453.
+async function makeVariantNo() {
+  const noField = document.getElementById('f-contract-no');
+  const hint = document.getElementById('next-no-hint');
+  const cur = (noField.value || '').trim();
+  if (!cur || cur.endsWith('-')) { alert('Please enter or load a full contract number first.'); return; }
+  const base = cur.replace(/\([A-Z]\)$/, '');          // strip an existing (X) suffix
+  const used = {};
+  const mCur = cur.match(/\(([A-Z])\)$/);
+  if (mCur) used[mCur[1]] = true;
+  if (gsUrl) {
+    if (hint) hint.innerHTML = '<span class="spinner"></span> Checking existing variants...';
+    try {
+      const resp = await fetch(gsUrl + '?action=list&q=' + encodeURIComponent(base));
+      const data = await resp.json();
+      (data.records || []).forEach(function(r) {
+        const no = String(r.contractNo || '');
+        if (no.indexOf(base) !== 0) return;
+        const m = no.slice(base.length).match(/^\(([A-Z])\)$/);
+        if (m) used[m[1]] = true;
+      });
+    } catch (e) { /* offline — fall back to the letter visible in the field */ }
+  }
+  let letter = 'B';
+  while (used[letter] && letter !== 'Z') letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+  const newNo = base + '(' + letter + ')';
+  noField.value = newNo;
+  state.contractNo = newNo;
+  if (hint) hint.textContent = 'Variant of ' + base + ' — edit the content, then Save Record (saved as a separate record; the original is untouched).';
+  updatePreview();
 }
 
 // ============================================================
