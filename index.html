@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.88</title>
+<title>Sen Labels — Contract Generator v10.89</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -251,6 +251,13 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
   .cp-come-with{margin:1.5mm 0!important;padding:2mm 3mm!important}
   .cp-img-gallery img{max-height:55mm!important}
   #contract-paper{font-size:9.5pt!important}
+  /* v10.89: no colored fill after the contract ends — print on white only (saves ink).
+     The preview-mode rule (body.cp-preview-only #preview-panel, #e9ecef) has higher
+     specificity than the plain #preview-panel print rule above, so it leaked into
+     print. Repeat it here at equal specificity (later in source wins) + force
+     html/body white, since * {print-color-adjust:exact} makes backgrounds print. */
+  html,body{background:#fff!important}
+  body.cp-preview-only #preview-panel{background:#fff!important;padding:0!important;width:100%!important}
 }
 @media(max-width:900px){
   #main{flex-direction:column}
@@ -431,7 +438,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.88</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.89</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
