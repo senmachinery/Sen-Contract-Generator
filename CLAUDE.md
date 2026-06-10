@@ -14,7 +14,7 @@ Two browser tools, hosted on **GitHub Pages** at `senmachinery.github.io`:
 
 | File | What it is | Current version |
 |------|------------|-----------------|
-| `index.html` | **Contract Generator** — builds quotes / sales contracts / invoices, prints PDF | **v10.87** |
+| `index.html` | **Contract Generator** — builds quotes / sales contracts / invoices, prints PDF | **v10.88** |
 | `crm.html` | **CRM** — customers, contract pipeline, tasks, inquiries, invoices | **v2.24** |
 
 Backend: a **Google Apps Script web app** talking to a Google Sheet named **"Sen Labels Contract Record"**. The backend reports version **v10.62** (plus invoice handlers added 2026-06 — see §9). Its source is a `.gs` file that lives **outside** the Pages repo. Both HTML files call it via `fetch`.
@@ -79,6 +79,7 @@ Don't tell Max "done" until A, B and C pass, and say briefly what you verified.
 - **Images:** `m.images[]` entries are **either base64 data URLs or Google Drive image URLs** — both render via `<img src>`. To store to Drive: call backend `uploadImage(folder,name,base64)` then `listImages(folder)` (the latter sets sharing and returns a usable thumbnail URL — see §4.3). `reloadImageThumbs()` re-renders the form strip and already handles both kinds.
 - **URL params (CRM → Generator handoff):** `?customer=NAME&autofill=true` (new quote, auto-fills customer header from CustomerDB), optional `&inqimg=1` (pull inquiry photos from localStorage — see §4.2), `?contract=NO&load=true` (open existing), `?preview=NO` (silent PDF preview). All handled in `handleCrmUrlParams()`.
 - **404 fix (v10.83) — do not regress:** `doPrintInner()` must capture the **full** original URL (path + search + hash) **before** it changes the URL for printing, and restore it afterward. Otherwise refreshing after a print 404s and the CRM link breaks.
+- **Variant numbers (v10.88):** one contract number can have multiple contents — `SEN/SC/NR/26-2453` + `26-2453(B)` + `(C)`… The `+B` button (`makeVariantNo()`) next to the contract-no field strips any existing `(X)`, queries `action=list` for used letters, and sets the next free one. Variants are **separate records** (saveRecord/saveState match the exact string). `getNextNo` is safe with the suffix: `parseInt('2453(B)') === 2453`. ⚠️ Never use digit suffixes like `24530` for this — they DO inflate `getNextNo`.
 
 ### 4.2 CRM (`crm.html`)
 
@@ -125,9 +126,9 @@ When unsure of a field name or default, **grep the source**; do not invent field
 
 ## 7. Current version log
 
-- **index.html — v10.87**: **Invoice doc type (v10.87)** — `docType:'Invoice'` reuses the print engine; `isQuoteLike()` hides the buyer signature for Quotation+Invoice. · inquiry-photos→quote handoff (v10.85) · package pricing (v10.84) · print-refresh 404 fix (v10.83). Two render branches; image = base64 or Drive URL.
+- **index.html — v10.88**: **Variant contract numbers (v10.88)** — `+B` button: same number, second content as `2453(B)`/`(C)`…, saved as separate records; numbering tool unaffected. · Invoice doc type (v10.87) · inquiry-photos→quote handoff (v10.85) · package pricing (v10.84) · print-refresh 404 fix (v10.83). Two render branches; image = base64 or Drive URL.
 - **crm.html — v2.24**: invoice/collection UI in **English** (v2.24) · **Dashboard "Collected" summary** (v2.23) · **Invoices tab** (v2.22) — create invoice (auto-numbered by category), list with Unpaid/Partial/Paid/Overdue filters, record payment. · inquiry photo attachment + photo handoff on Convert to Quote. Inquiries live in task `notes` JSON.
-- **backend `.gs` — v10.62 (+invoice handlers)**: `saveState` = one cell; images via Drive (`uploadImage` + `listImages`); `crm_*` handlers + invoice handlers `crm_addInvoice` / `crm_getInvoices` / `crm_nextInvoiceNo` / `crm_updateInvoice` / `crm_importInvoices`, and a new `Invoices` tab.
+- **backend `.gs` — v10.62 (+invoice handlers, +variant insert 2026-06-10)**: `saveState` = one cell; images via Drive (`uploadImage` + `listImages`); `crm_*` handlers + invoice handlers `crm_addInvoice` / `crm_getInvoices` / `crm_nextInvoiceNo` / `crm_updateInvoice` / `crm_importInvoices`, and a new `Invoices` tab. **`saveRecord` variant insert**: a new `…(B)`-style row is inserted directly below its base contract row (or the last earlier variant) instead of appended; base row missing → append as before. ⚠️ The local `AppScript_最终版_全部修复.txt` (Desktop, old folder) predates the invoice handlers — never paste it wholesale over the deployed script; patch single functions only.
 
 ---
 
