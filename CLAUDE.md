@@ -152,3 +152,14 @@ Completes the money half of the pipeline: **inquiry → quote → contract → i
 - **CRM (`crm.html`)**: an **Invoices tab** to create/record invoices (pick category → auto-number → save), a list with status filters + record-payment; the **Dashboard** shows a **Collected / Invoiced / Outstanding** summary (RM-equivalent) that follows the period filter.
 - **History**: the historical `SalesActuals` rows were imported into `Invoices` (marked Paid), original numbers preserved.
 - **UI language**: the app UI is **English** — do not add Chinese to the app UI. Only the chat with Max is 简体中文.
+
+---
+
+## 10. Cross-device & Max's "second brain" (memory portability)
+
+Max's pain: opening Claude Code on a *different* computer (or web/app Claude) loses all context. The fix:
+
+- **This repo IS the portable memory for these tools.** Everything Claude needs to continue is in this `CLAUDE.md` + the git history (versions are in commit messages and §7). So on ANY computer: `git clone https://github.com/senmachinery/Sen-Contract-Generator.git` → launch **Claude Code inside the cloned folder** → it auto-loads this file and instantly knows the project, current versions, rules, and architecture. No re-instructing needed. After a change, **bump version + commit + push** so the next machine/session is up to date.
+- **Broader business context** (Max himself, customers, suppliers, sales pipeline, the market dashboard, trading) lives in Max's **Obsidian "second brain"** vault `第二大脑` (synced via Obsidian Sync; has its own root `CLAUDE.md`). If that vault is present on the machine, read it for cross-project context (e.g. customer details when drafting a contract).
+- **Web chat (claude.ai) / iPad app CANNOT edit this repo** — no filesystem. They can READ context from the Google Drive doc **"Sen Labels — Max 工作现状 (Work Context)"** (via the Google Drive connector), but for any actual code change, Max must use **Claude Code on a computer** with this repo cloned. Say so plainly if asked to edit code from web/app.
+- Keep the Drive "工作现状" doc and §7 here roughly in sync when versions change, so every surface sees the latest state.
