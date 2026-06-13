@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="快速询盘">
 <meta name="theme-color" content="#0b5cab">
-<title>Sen 快速新增询盘 v1.1</title>
+<title>Sen 快速新增询盘 v1.2</title>
 <style>
   :root{
     --blue:#0b5cab; --blue-dark:#084a8c; --bg:#eef2f7; --card:#fff;
@@ -67,7 +67,7 @@
 <div class="wrap">
   <header>
     <h1>📝 快速新增询盘</h1>
-    <span class="ver">v1.1 · Sen</span>
+    <span class="ver">v1.2 · Sen</span>
   </header>
   <div id="conn">⏳ 正在连接 CRM…</div>
 
@@ -357,6 +357,18 @@ $("reconfig").addEventListener("click", function () {
   showSetup(true);
   $("urlInput").focus();
 });
+
+// ── v1.2: bootstrap backend URL from ?apps= param ───────────────────────────
+// Lets a self-contained prefill link carry the CRM backend so it auto-connects
+// on ANY browser/context (e.g. fresh Safari, not just the saved home-screen app).
+// Only accepts a valid script.google.com /exec URL; persists it to localStorage
+// so subsequent plain links also work. Purely additive — no param = unchanged.
+(function () {
+  try {
+    var ap = new URLSearchParams(location.search).get("apps");
+    if (ap && /^https:\/\/script\.google\.com\/.*\/exec$/.test(ap)) setUrl(ap);
+  } catch (e) {}
+})();
 
 checkConnection();
 </script>
