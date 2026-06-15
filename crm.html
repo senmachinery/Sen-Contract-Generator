@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.25</title>
+<title>Sen Labels — CRM v2.26</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.25</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.26</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1465,6 +1465,9 @@ function renderCustomerList() {
         <div class="customer-item-meta" style="margin-top:3px">
           ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}
         </div>
+        ${c.defaultRep
+          ? `<div class="cust-rep" onclick="event.stopPropagation();openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" title="Account agent — click to change" style="font-size:11px;margin-top:3px;color:var(--info);cursor:pointer">👤 ${escapeHtml(c.defaultRep)}</div>`
+          : `<div class="cust-rep cust-rep-unassigned" onclick="event.stopPropagation();openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" title="No agent assigned — click to assign" style="font-size:11px;margin-top:3px;color:var(--warning);cursor:pointer;font-weight:600">⚠ Unassigned — tap to assign</div>`}
       </div>
     `;
   }).join('');
@@ -1744,6 +1747,7 @@ async function saveCustomerRep(company) {
     closeModal();
     showToast(rep ? `✅ Account agent set to ${rep}` : '✅ Account agent cleared', 'success');
     await selectCustomer(company);  // refresh detail
+    if (typeof renderReps === 'function') renderReps();  // v2.25: keep rep-card counts in sync
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
   }
@@ -2801,17 +2805,16 @@ function renderRepCard(r) {
   const wa = (r.whatsapp || '').toString().replace(/\D/g, '');
   const email = (r.email || '').trim();
   
-  // Compute customers in same country (approximate match)
-  const repCountries = (r.country || '').split(/[,\/]/).map(c => c.trim().toLowerCase());
-  const matchingCustomers = (STATE.customers || []).filter(c => {
-    const cc = (c.country || '').toLowerCase();
-    return repCountries.some(rc => rc && (rc.includes(cc) || cc.includes(rc)));
-  });
+  // v2.25 BUGFIX: count a rep's customers/contracts by ACTUAL assignment
+  // (customer.defaultRep / contract.salesRep), NOT by country overlap.
+  // The old country match gave the owner "Max (You)" (country "Global") 0 customers,
+  // and lumped every same-country customer under a rep who was never actually assigned.
+  const repNm = r.name || '';
+  const matchingCustomers = (STATE.customers || []).filter(c => c.defaultRep === repNm);
   const matchingContracts = (STATE.contracts || []).filter(c => {
-    const cust = STATE.customers.find(cu => cu.company === c.company);
-    if (!cust) return false;
-    const cc = (cust.country || '').toLowerCase();
-    return repCountries.some(rc => rc && (rc.includes(cc) || cc.includes(rc)));
+    if (CONTRACT_REP[c.contractNo] === repNm) return true;             // explicit contract rep
+    const cust = STATE.customers.find(cu => cu.company === c.company);  // else inherit from customer
+    return !!(cust && cust.defaultRep === repNm);
   });
   
   // Multi-currency total of won deals
