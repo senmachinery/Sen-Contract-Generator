@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.24</title>
+<title>Sen Labels — CRM v2.25</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.24</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.25</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -942,6 +942,9 @@ let CUSTOMER_DB_NAMES = new Set();
 // v2.6: company → default sales rep; contractNo → rep set on that contract
 let CUSTOMER_DEFAULT_REP = {};
 let CONTRACT_REP = {};
+// v2.25: normalise company name → rep-map key (case/space-insensitive). Fixes account-agent
+// reverting to "Not set" when CustomerDB casing ≠ contract casing.
+const repKey = s => String(s || '').trim().toLowerCase();
 // Helper: is this company already in the Customer DB? (exact, case-insensitive)
 function isExistingCustomer(company) {
   if (!company) return false;
@@ -1190,7 +1193,7 @@ async function refreshData() {
         const blob = [c.addr, c.address, c.attn, c.notes, c.port, c.tel].filter(Boolean).join(' ');
         CUSTOMER_ADDR_BLOB[c.company.trim()] = blob;
         CUSTOMER_DB_NAMES.add(c.company.trim().toLowerCase());  // v2.1
-        if (c.defaultRep) CUSTOMER_DEFAULT_REP[c.company.trim()] = c.defaultRep;  // v2.6
+        if (c.defaultRep) CUSTOMER_DEFAULT_REP[repKey(c.company)] = c.defaultRep;  // v2.6 (v2.25: case-insensitive key)
       });
     } catch (e) { console.warn('CustomerDB fetch failed (country detection will use names only):', e); }
     
@@ -1227,6 +1230,9 @@ async function refreshData() {
       STATE.contracts.forEach(c => {
         const key = (c.contractNo || '').trim();
         if (!key) { return; } // keep blank-contractNo rows as-is (handled below)
+        // v2.25: carry a salesRep set on an EARLIER duplicate forward onto the kept (last) row,
+        // so a contract agent written to a duplicate row doesn't read back as "Not set".
+        if (seen[key] && seen[key].salesRep && !c.salesRep) c.salesRep = seen[key].salesRep;
         seen[key] = c;
       });
       const blanks = STATE.contracts.filter(c => !(c.contractNo || '').trim());
@@ -1258,7 +1264,7 @@ async function refreshData() {
           lastDate: null, latestContract: null, latestStatus: '',
           latestMachine: '', overdueFollowups: 0, nextDueDate: null,
           activeContracts: 0,
-          defaultRep: CUSTOMER_DEFAULT_REP[key] || ''
+          defaultRep: CUSTOMER_DEFAULT_REP[repKey(key)] || ''
         };
       }
       const cust = custMap[key];
@@ -1732,7 +1738,7 @@ async function saveCustomerRep(company) {
     const r = await apiPost('crm_setCustomerRep', { company: company, defaultRep: rep });
     if (!r.ok) throw new Error(r.error || 'Save failed');
     // Update local state immediately
-    CUSTOMER_DEFAULT_REP[company] = rep;
+    CUSTOMER_DEFAULT_REP[repKey(company)] = rep;
     const cust = STATE.customers.find(x => x.company === company);
     if (cust) cust.defaultRep = rep;
     closeModal();
