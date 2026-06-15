@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.26</title>
+<title>Sen Labels — CRM v2.31</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.26</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.31</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -945,6 +945,10 @@ let CONTRACT_REP = {};
 // v2.25: normalise company name → rep-map key (case/space-insensitive). Fixes account-agent
 // reverting to "Not set" when CustomerDB casing ≠ contract casing.
 const repKey = s => String(s || '').trim().toLowerCase();
+// v2.27: map known rep-name aliases → one canonical name so counts/joins don't miss.
+// Same person is recorded under several names (Max = "Max" / "Mr. Goh" / "Max (You)").
+const REP_ALIASES = { 'max': 'Max (You)', 'mr. goh': 'Max (You)', 'mr goh': 'Max (You)' };
+function repCanon(name) { const k = String(name || '').trim().toLowerCase(); return REP_ALIASES[k] || String(name || '').trim(); }
 // Helper: is this company already in the Customer DB? (exact, case-insensitive)
 function isExistingCustomer(company) {
   if (!company) return false;
@@ -1214,7 +1218,7 @@ async function refreshData() {
       currency: r.currency || 'USD',
       amount: parseFloat(r.amount) || 0,
       status: r.status || 'Quotation Sent',
-      salesRep: r.salesRep || '',
+      salesRep: (function(s){ s = (s || '').trim(); return /^https?:|drive\.google/i.test(s) ? '' : s; })(r.salesRep),  // v2.29: drop garbage URL values
       country: getCustomerCountry((r.company || '').trim())
     })).filter(c => c.company);  // Filter out empty company names
     // v2.6: build contractNo → rep map (only contracts that actually have a rep set)
@@ -1304,6 +1308,23 @@ async function refreshData() {
       }
     });
     
+    // v2.28: include CustomerDB customers that have NO contracts yet — else the DB's ~163
+    // customers show as only ~150 (contract-derived). Add a zero-contract stub for each,
+    // carrying its saved default rep. Case-insensitive guard so we never duplicate an
+    // existing customer whose contract company string differs only by casing/spacing.
+    const _haveCo = new Set(Object.keys(custMap).map(k => k.trim().toLowerCase()));
+    Object.keys(CUSTOMER_ADDR_BLOB).forEach(co => {
+      if (!co || _haveCo.has(co.trim().toLowerCase())) return;
+      const _ctry = getCustomerCountry(co);
+      custMap[co] = {
+        company: co, contracts: [], country: _ctry,
+        flag: flagFor(_ctry), totalSpent: 0, totalConfirmed: 0,
+        lastDate: null, latestContract: null, latestStatus: '',
+        latestMachine: '', overdueFollowups: 0, nextDueDate: null,
+        activeContracts: 0,
+        defaultRep: CUSTOMER_DEFAULT_REP[repKey(co)] || ''
+      };
+    });
     STATE.customers = Object.values(custMap).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||''));
     
     // Populate country dropdown (sorted by count desc, then name)
@@ -1595,7 +1616,7 @@ function renderCustomerDetail(c, followups) {
             <div style="margin-top:4px">
               <span class="pill ${statusColor(ct.status)}">${ct.status}</span>
               <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
-              <span style="font-size:11px;margin-left:6px"><svg class="ic"><use href="#i-users"></use></svg> ${ct.salesRep ? escapeHtml(ct.salesRep) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(c.defaultRep)+' (default)</span>' : '<span style="color:var(--text-muted)">Not set</span>')}</span>
+              <span style="font-size:11px;margin-left:6px"><svg class="ic"><use href="#i-users"></use></svg> ${ct.salesRep ? escapeHtml(repCanon(ct.salesRep)) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(repCanon(c.defaultRep))+' (default)</span>' : '<span style="color:var(--text-muted)">Not set</span>')}</span>
               <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="Set agent for this contract"><svg class="ic"><use href="#i-edit"></use></svg></span>
               <button onclick="event.stopPropagation();openContractPDF('${ct.contractNo.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="Preview this contract's PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>
               ${_nextF ? `<span style="font-size:11px;margin-left:8px;color:#2e7d32;font-weight:600" title="Next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Next ${fmtDate(_nextF)}</span>` : ''}
@@ -1676,7 +1697,7 @@ function openContractRepEditor(contractNo) {
   const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo);
   const reps = (REPS_STATE.reps || []);
   const cur = ct ? ct.salesRep : '';
-  const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${cur === r.name ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
+  const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${repCanon(cur) === repCanon(r.name) ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
   $('modal-title').textContent = `Contract agent — ${contractNo}`;
   $('modal-body').innerHTML = `
     <div class="form-row">
@@ -1716,7 +1737,7 @@ async function saveContractRep(contractNo) {
 function openCustomerRepEditor(company) {
   const c = STATE.customers.find(x => x.company === company);
   const reps = (REPS_STATE.reps || []);
-  const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${c && c.defaultRep === r.name ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
+  const repOpts = reps.map(r => `<option value="${escapeHtml(r.name)}" ${c && repCanon(c.defaultRep) === repCanon(r.name) ? 'selected' : ''}>${escapeHtml(r.name)}${r.country ? ' ('+escapeHtml(r.country)+')' : ''}</option>`).join('');
   $('modal-title').textContent = `Account agent — ${getDisplayName(company)}`;
   $('modal-body').innerHTML = `
     <div class="form-row">
@@ -2450,7 +2471,7 @@ function renderDashboard() {
   const totalContracts = filtered.length;
   const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
   const wonStages = ['Delivered', 'Closed (Paid)'];
-  const lostStages = ['Lost', 'Cancelled'];
+  const lostStages = ['Lost', 'Cancelled', 'On Hold'];  // v2.31 (H1): On Hold lives in the Lost column (STAGE_GROUPS) — count it so buckets reconcile
   
   const active = filtered.filter(c => activeStages.includes(c.status));
   const won = filtered.filter(c => wonStages.includes(c.status));
@@ -2809,12 +2830,12 @@ function renderRepCard(r) {
   // (customer.defaultRep / contract.salesRep), NOT by country overlap.
   // The old country match gave the owner "Max (You)" (country "Global") 0 customers,
   // and lumped every same-country customer under a rep who was never actually assigned.
-  const repNm = r.name || '';
-  const matchingCustomers = (STATE.customers || []).filter(c => c.defaultRep === repNm);
+  const repNm = repCanon(r.name);  // v2.27: alias-aware
+  const matchingCustomers = (STATE.customers || []).filter(c => repCanon(c.defaultRep) === repNm);
   const matchingContracts = (STATE.contracts || []).filter(c => {
-    if (CONTRACT_REP[c.contractNo] === repNm) return true;             // explicit contract rep
+    if (repCanon(CONTRACT_REP[c.contractNo]) === repNm) return true;   // explicit contract rep (alias-aware)
     const cust = STATE.customers.find(cu => cu.company === c.company);  // else inherit from customer
-    return !!(cust && cust.defaultRep === repNm);
+    return !!(cust && repCanon(cust.defaultRep) === repNm);
   });
   
   // Multi-currency total of won deals
@@ -3938,7 +3959,7 @@ function getCustomerColdStatus(customer) {
   // Find latest activity across contracts + followups
   let latestActivity = null;
   for (const c of activeContracts) {
-    const dates = [toIsoDate(c.savedAt), toIsoDate(c.date)].filter(Boolean);
+    const dates = [toIsoDate(c.date)].filter(Boolean);  // v2.30: contracts have no savedAt; use contract date
     for (const d of dates) {
       if (!latestActivity || d > latestActivity) latestActivity = d;
     }
@@ -3972,7 +3993,7 @@ function renderColdTag(coldStatus) {
 // ─── AGING DETECTION (Awaiting Payment) ───────────────────────
 function getContractAgingStatus(contract) {
   if (contract.status !== 'Awaiting Payment') return null;
-  const startDate = toIsoDate(contract.savedAt) || toIsoDate(contract.date);
+  const startDate = toIsoDate(contract.date);  // v2.30: no savedAt field — base aging on contract date
   if (!startDate) return null;
   const days = daysAgo(startDate);
   if (days === null || days < 0) return null;
@@ -4048,16 +4069,16 @@ function renderSnapshot() {
   const wonStages = ['Delivered', 'Closed (Paid)'];
   const recentlyWon = (STATE.contracts || []).filter(c => {
     if (!wonStages.includes(c.status)) return false;
-    const d = toIsoDate(c.savedAt) || toIsoDate(c.date);
+    const d = toIsoDate(c.date);  // v2.30: contracts carry only `date`
     return d && d >= weekAgo;
   });
   
   // 5. Hot deals — warmed up in last 7 days (any active deal with recent activity)
   const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed',
-                        'Deposit Received', 'In Production', 'Ready to Ship'];
+                        'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];  // v2.30 (H3): include Awaiting Payment
   const hotDeals = (STATE.contracts || []).filter(c => {
     if (!activeStages.includes(c.status)) return false;
-    const d = toIsoDate(c.savedAt) || toIsoDate(c.date);
+    const d = toIsoDate(c.date);  // v2.30: contracts carry only `date`
     return d && d >= weekAgo;
   });
   
@@ -4201,7 +4222,7 @@ function renderSnapshot() {
           hotDeals.slice(0, 8).map(c => `
             <div class="snapshot-item">
               <div class="snapshot-item-title">${escapeHtml(getDisplayName(c.company))}</div>
-              <div class="snapshot-item-meta">${escapeHtml(c.status)} · ${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machineTitle||'').substring(0,50))}</div>
+              <div class="snapshot-item-meta">${escapeHtml(c.status)} · ${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machine||'').substring(0,50))}</div>
             </div>
           `).join('')
         }
@@ -4214,7 +4235,7 @@ function renderSnapshot() {
           recentlyWon.slice(0, 8).map(c => `
             <div class="snapshot-item">
               <div class="snapshot-item-title">${escapeHtml(getDisplayName(c.company))}</div>
-              <div class="snapshot-item-meta">${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machineTitle||'').substring(0,50))}</div>
+              <div class="snapshot-item-meta">${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machine||'').substring(0,50))}</div>
             </div>
           `).join('')
         }
@@ -4400,9 +4421,9 @@ function gatherPackData(onlyChecked) {
     if (PACK_STATE.repName) {
       // A customer belongs to a rep if: explicit default rep matches, OR any contract has that rep,
       // OR (fallback) no explicit rep anywhere but their country matches the rep's countries.
-      const repName = PACK_STATE.repName;
-      const hasExplicitDefault = customer.defaultRep && customer.defaultRep === repName;
-      const hasContractRep = (customer.contracts || []).some(ct => CONTRACT_REP[ct.contractNo] === repName);
+      const repName = repCanon(PACK_STATE.repName);  // v2.27: alias-aware
+      const hasExplicitDefault = customer.defaultRep && repCanon(customer.defaultRep) === repName;
+      const hasContractRep = (customer.contracts || []).some(ct => repCanon(CONTRACT_REP[ct.contractNo]) === repName);
       const anyExplicitRep = (customer.defaultRep) || (customer.contracts || []).some(ct => CONTRACT_REP[ct.contractNo]);
       const countryMatch = customerMatchesRep(customer, repCountries) && !anyExplicitRep;
       if (!(hasExplicitDefault || hasContractRep || countryMatch)) continue;
@@ -4852,6 +4873,10 @@ function onKanbanDrop(e, groupId) {
   if (!no) return;
   const ct = (STATE.contracts || []).find(x => x.contractNo === no);
   if (!ct) { showToast('Contract not found', 'error'); return; }
+  // v2.31 (H2): if the card is already in this column, dropping is a no-op — don't rewrite
+  // its sub-status (e.g. Negotiating must not silently become Following Up).
+  const _g = STAGE_GROUPS.find(x => x.id === groupId);
+  if (_g && _g.statuses.includes(ct.status)) { renderPipeline(); return; }
   const status = kanbanStatusForGroup(groupId);
   if (!status || ct.status === status) { renderPipeline(); return; }
   if ((groupId === 'closed' || groupId === 'lost') && !confirm(`Mark contract ${no} as \"${status}\"?`)) { renderPipeline(); return; }
