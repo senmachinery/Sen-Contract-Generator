@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.96</title>
+<title>Sen Labels — Contract Generator v10.97</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -444,7 +444,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.96</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.97</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -761,6 +761,9 @@ function mobileTab(tab) {
         </select>
       </div>
     </div>
+    <!-- v10.97: 价格简单/高级 — 默认只露 单价/数量/折扣/订金/付款方式；以旧换新/分期/有效期/保修/自定义付款 收进高级（有数据会自动展开，绝不藏住已填内容） -->
+    <button type="button" id="price-adv-toggle" onclick="togglePriceAdvanced()" style="width:100%;padding:8px 10px;margin:4px 0 10px;background:#f0f4ff;border:1px dashed #9ab;border-radius:6px;color:#1a3a5c;font-size:12px;font-weight:600;cursor:pointer;text-align:left">⚙️ 高级选项 Advanced<span style="font-weight:400;color:#888"> · 以旧换新 / 分期 / 有效期 / 保修 / 自定义付款</span><span class="adv-caret" style="float:right">&#9662;</span></button>
+    <div id="price-advanced" style="display:none">
     <div class="field-group">
       <label>Trade-In Machine (optional)</label>
       <input type="text" id="f-tradein-desc" placeholder="e.g. SMP-320 Letterpress Machine (2015)" oninput="updatePreview()">
@@ -846,6 +849,7 @@ function mobileTab(tab) {
         <option value="No Warranty.">No Warranty</option>
       </select>
     </div>
+    </div><!-- /#price-advanced -->
   </div>
 
   <!-- TAB: EXTRAS -->
@@ -3151,6 +3155,35 @@ function removeSpecRow(idx) {
 }
 
 // ============================================================
+// v10.97: 价格高级区——有数据返回 true（用来决定是否自动展开，绝不据此收起）
+function priceAdvHasData() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  if (parseFloat(v('f-tradein-value')) > 0) return true;
+  if (v('f-tradein-desc')) return true;
+  if (document.getElementById('f-installment-on')?.checked) return true;
+  if (v('f-pay-terms-text')) return true;
+  if (v('f-balance-label')) return true;
+  if (v('f-warranty-override')) return true;
+  const val = v('f-validity'); if (val && val !== 'One (1) Month only') return true;
+  const del = v('f-delivery'); if (del && del !== 'To be determined upon confirmation and/or full payment.') return true;
+  if (Array.isArray(state.customPayRows) && state.customPayRows.length) return true;
+  return false;
+}
+// 只展开、绝不自动收起 → 加载含以旧换新/分期等的合同会自动露出，且永不藏住已填内容
+function syncPriceAdvanced() {
+  const wrap = document.getElementById('price-advanced'); if (!wrap) return;
+  if (wrap.style.display === 'none' && priceAdvHasData()) {
+    wrap.style.display = 'block';
+    const c = document.querySelector('#price-adv-toggle .adv-caret'); if (c) c.innerHTML = '&#9652;';
+  }
+}
+function togglePriceAdvanced() {
+  const wrap = document.getElementById('price-advanced'); if (!wrap) return;
+  const show = wrap.style.display === 'none';
+  wrap.style.display = show ? 'block' : 'none';
+  const c = document.querySelector('#price-adv-toggle .adv-caret'); if (c) c.innerHTML = show ? '&#9652;' : '&#9662;';
+}
+
 function updatePreview() {
   try {
     const g = id => document.getElementById(id)?.value || '';
@@ -3196,6 +3229,7 @@ function updatePreview() {
     if (paper) paper.innerHTML = '<div style="color:red;padding:20px;font-family:sans-serif"><b>Preview error:</b><br>' + e.message + '</div>';
     console.error('updatePreview error:', e);
   }
+  try { syncPriceAdvanced(); } catch (e) {}   // v10.97: 有高级数据则自动展开（隔离 try，绝不影响预览渲染）
 }
 
 function buildContractHTML() {
