@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.39</title>
+<title>Sen Labels — CRM v2.40</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -241,7 +241,15 @@
   .kanban-board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 12px; }
   @media (max-width: 1200px) { .kanban-board { grid-template-columns: repeat(5, 240px); } }
   @media (max-width: 700px) { .kanban-board { grid-template-columns: repeat(5, 220px); } }
-  
+  /* v2.40 手机：看板改单列竖排（不再 5 列横滑）+ 阶段选择器只看一列 */
+  .pipe-mstage { display: none; }
+  @media (max-width: 900px) {
+    #kanban-board { grid-template-columns: 1fr !important; }
+    #kanban-board.mfilter > .kanban-col { display: none; }
+    #kanban-board.mfilter > .kanban-col.mshow { display: block; }
+    .pipe-mstage { display: inline-block; }
+  }
+
   .kanban-col { background: #f7fafc; border-radius: var(--radius); padding: 10px; min-height: 200px; }
   .kanban-col-header { padding: 8px 4px 12px 4px; border-bottom: 2px solid; margin-bottom: 10px; }
   .kanban-col-title { font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
@@ -528,7 +536,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.39</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.40</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -603,6 +611,16 @@
     <div class="pipeline-filters" style="background:#fff;padding:10px 12px;border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px">
       <strong style="color:var(--primary)"><svg class="ic"><use href="#i-kanban"></use></svg> Pipeline</strong>
       <div style="flex:1"></div>
+      <select id="pipeline-mobile-stage" class="pipe-mstage" onchange="applyMobileStage()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px" title="手机：只看一个阶段" aria-label="按阶段筛选 Filter by stage">
+        <option value="all">📋 全部阶段（竖排滑看）</option>
+        <option value="inquiry">📞 Inquiry 询盘</option>
+        <option value="quote">🆕 New Quote 新报价</option>
+        <option value="progress">👀 In Progress 跟进中</option>
+        <option value="confirmed">💰 Confirmed 已确认</option>
+        <option value="fulfilling">🏭 Fulfilling 备货中</option>
+        <option value="closed">✅ Closed Won 成交</option>
+        <option value="lost">❌ Lost 流失</option>
+      </select>
       <select id="pipeline-country-filter" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
         <option value="">All Countries</option>
       </select>
@@ -2048,7 +2066,7 @@ function renderPipeline() {
         .join(' · ');
       
       return `
-        <div class="kanban-col ${group.cssClass}" ondragover="event.preventDefault();event.dataTransfer.dropEffect='move'" ondragenter="this.classList.add('dnd-over')" ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('dnd-over')" ondrop="this.classList.remove('dnd-over');onKanbanDrop(event,'${group.id}')">
+        <div class="kanban-col ${group.cssClass} pcol-${group.id}" ondragover="event.preventDefault();event.dataTransfer.dropEffect='move'" ondragenter="this.classList.add('dnd-over')" ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('dnd-over')" ondrop="this.classList.remove('dnd-over');onKanbanDrop(event,'${group.id}')">
           <div class="kanban-col-header">
             <div class="kanban-col-title">
               <span>${group.title}</span>
@@ -2070,7 +2088,7 @@ function renderPipeline() {
   // Apply country filter to inquiries too
   if (country) pendingInq = pendingInq.filter(i => (i.country || '') === country);
   const inqCol = `
-    <div class="kanban-col inquiry-col">
+    <div class="kanban-col inquiry-col pcol-inquiry">
       <div class="kanban-col-header">
         <div class="kanban-col-title">
           <span>📞 Inquiry</span>
@@ -2084,13 +2102,31 @@ function renderPipeline() {
   `;
   
   board.innerHTML = inqCol + cols;
-  
+  applyMobileStage();  // v2.40: 重渲染后重新套用手机单列阶段筛选
+
   // Update tab count (count active = not closed, not lost)
   const activeCount = STATE.contracts.filter(c => {
     const g = STAGE_GROUPS.find(g => g.statuses.includes(c.status));
     return g && g.id !== 'closed' && g.id !== 'lost';
   }).length;
   $('pipeline-count').textContent = activeCount;
+}
+
+// v2.40: 手机单列阶段筛选——选某阶段→只显该列；选"全部"→竖排显示所有列(CSS 已设 ≤900px 单列)
+function applyMobileStage() {
+  const board = $('kanban-board');
+  const sel = $('pipeline-mobile-stage');
+  if (!board || !sel) return;
+  const v = sel.value;
+  // 选了 Closed/Lost 但对应复选框没勾 → 该列不会被渲染，先勾上并重渲染(重渲染末尾会再调本函数，届时已勾不再重入)
+  if (v === 'closed' && !$('show-closed').checked) { $('show-closed').checked = true; renderPipeline(); return; }
+  if (v === 'lost'   && !$('show-lost').checked)   { $('show-lost').checked   = true; renderPipeline(); return; }
+  board.classList.remove('mfilter');
+  board.querySelectorAll('.kanban-col.mshow').forEach(el => el.classList.remove('mshow'));
+  if (!v || v === 'all') return;  // 全部：竖排显示所有列
+  board.classList.add('mfilter');
+  const target = board.querySelector('.kanban-col.pcol-' + v);
+  if (target) target.classList.add('mshow');
 }
 
 function renderKanbanCard(c) {
