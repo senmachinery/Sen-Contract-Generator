@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.94</title>
+<title>Sen Labels — Contract Generator v10.95</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -443,7 +443,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.94</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.95</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3999,32 +3999,30 @@ function showFilenameDialog(fname, onContinue) {
   dialog.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:520px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
   
   dialog.innerHTML = `
-    <h3 style="margin:0 0 12px 0;font-size:17px;color:#1a3a5c">&#128194; iPad Filename Helper</h3>
-    <p style="margin:0 0 14px 0;font-size:13px;color:#555;line-height:1.5">
-      iPad Safari uses the URL as the default filename. Copy the suggested name below, 
-      then paste it in the iPad "Save to Files" dialog.
-    </p>
-    <div style="background:#f5f9ff;border:1px solid #c0cde0;border-radius:6px;padding:12px;margin-bottom:14px">
-      <div style="font-size:11px;color:#666;margin-bottom:6px;font-weight:600">SUGGESTED FILENAME:</div>
+    <h3 style="margin:0 0 10px 0;font-size:17px;color:#1a3a5c">&#128228; 出 PDF / 分享给客户</h3>
+    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-bottom:14px">
+      <div style="font-weight:700;font-size:13px;color:#2e7d32;margin-bottom:4px">&#128172; 想直接发 WhatsApp？（最快，免复制文件名）</div>
+      <div style="font-size:12px;color:#33691e;line-height:1.55">
+        1. 点下面 <b>继续 → 打印/分享</b><br>
+        2. 打印预览页 <b>右上角「分享」图标</b> &#128229;<br>
+        3. 选 <b>WhatsApp</b> 直接发给客户 —— 文件名已自动带合同号，不用复制。
+      </div>
+    </div>
+    <div style="font-size:12px;color:#666;margin-bottom:6px">想<b>存到文件</b>存档？先复制文件名（存档时 iPad 会用网址当默认名，需粘贴）：</div>
+    <div style="background:#f5f9ff;border:1px solid #c0cde0;border-radius:6px;padding:10px;margin-bottom:12px">
+      <div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600">SUGGESTED FILENAME 建议文件名：</div>
       <div id="fname-display" style="font-family:'SF Mono',Menlo,monospace;font-size:13px;line-height:1.4;color:#1a3a5c;word-break:break-word;user-select:all;-webkit-user-select:all">${fname}</div>
     </div>
-    <p style="margin:0 0 18px 0;font-size:12px;color:#888;line-height:1.5">
-      <b>Steps:</b><br>
-      1. Tap <b>Copy Filename</b> below<br>
-      2. Tap <b>Continue to Print</b> &rarr; Save to Files<br>
-      3. In Save dialog, long-press filename field &rarr; <b>Paste</b><br>
-      4. Tap Save
-    </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button id="fname-copy-btn" style="flex:1;min-width:140px;background:#1a3a5c;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">
-        &#128203; Copy Filename
+      <button id="fname-continue-btn" style="flex:2;min-width:160px;background:#00897b;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer">
+        &#128424; 继续 &rarr; 打印/分享
       </button>
-      <button id="fname-continue-btn" style="flex:1;min-width:140px;background:#00897b;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">
-        &#128424; Continue to Print
+      <button id="fname-copy-btn" style="flex:1;min-width:120px;background:#1a3a5c;color:#fff;border:none;padding:12px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
+        &#128203; 复制文件名
       </button>
     </div>
     <button id="fname-cancel-btn" style="margin-top:10px;width:100%;background:transparent;color:#999;border:none;padding:8px;font-size:13px;cursor:pointer">
-      Cancel
+      取消 Cancel
     </button>
   `;
   
@@ -4034,13 +4032,11 @@ function showFilenameDialog(fname, onContinue) {
   const copyBtn = document.getElementById('fname-copy-btn');
   const continueBtn = document.getElementById('fname-continue-btn');
   const cancelBtn = document.getElementById('fname-cancel-btn');
-  let didCopy = false;
-  
+
   copyBtn.onclick = async () => {
     try {
       await navigator.clipboard.writeText(fname);
-      didCopy = true;
-      copyBtn.innerHTML = '&#10003; Copied! Paste in Save dialog';
+      copyBtn.innerHTML = '&#10003; 已复制 Copied';
       copyBtn.style.background = '#388e3c';
     } catch (e) {
       // Fallback: select the text manually
@@ -4051,15 +4047,13 @@ function showFilenameDialog(fname, onContinue) {
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        copyBtn.innerHTML = '&#9888; Tap selected text &rarr; Copy';
+        copyBtn.innerHTML = '&#9888; 长按选中文字 &rarr; 拷贝';
       }
     }
   };
-  
+
+  // v10.95: 复制文件名只在"存到文件"时才需要；分享给客户用打印预览的分享键、文件名已自动带合同号 → 不再拦截/追问是否已复制
   continueBtn.onclick = () => {
-    if (!didCopy) {
-      if (!confirm('You haven\'t copied the filename yet. Continue anyway?')) return;
-    }
     overlay.remove();
     onContinue();
   };
