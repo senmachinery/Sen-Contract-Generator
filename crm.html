@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.31</title>
+<title>Sen Labels — CRM v2.32</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.31</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.32</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -827,6 +827,13 @@ function fmtMoney(amt, currency) {
   currency = currency || 'USD';
   if (typeof amt === 'string') amt = parseFloat(amt) || 0;
   return currency + ' ' + (amt || 0).toLocaleString('en-US', {maximumFractionDigits: 2});
+}
+
+// v2.32: 粗略 RM 折算，仅用于催单列表的"按金额排序 + 显示"(非精确财务，粗排优先级用)
+function _toRM(amt, currency) {
+  amt = (typeof amt === 'string') ? (parseFloat(amt) || 0) : (amt || 0);
+  const rate = { USD: 4.7, SGD: 3.5, EUR: 5.1, RMB: 0.65, CNY: 0.65, MYR: 1 };
+  return amt * (rate[(currency || 'USD').toUpperCase()] || 1);
 }
 
 function fmtDate(iso) {
@@ -1267,7 +1274,7 @@ async function refreshData() {
           flag: flagFor(c.country), totalSpent: 0, totalConfirmed: 0,
           lastDate: null, latestContract: null, latestStatus: '',
           latestMachine: '', overdueFollowups: 0, nextDueDate: null,
-          activeContracts: 0,
+          activeContracts: 0, openValueRM: 0,
           defaultRep: CUSTOMER_DEFAULT_REP[repKey(key)] || ''
         };
       }
@@ -1282,7 +1289,9 @@ async function refreshData() {
       
       // Active = not closed and not lost
       if (!['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract'].includes(c.status)) cust.activeContracts++;
-      
+      // v2.32: 在谈(可催)金额(RM粗折算)，用于催单优先级排序+显示
+      if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) cust.openValueRM += _toRM(c.amount, c.currency);
+
       // Latest contract by date
       if (!cust.lastDate || c.date > cust.lastDate) {
         cust.lastDate = c.date;
@@ -1321,11 +1330,15 @@ async function refreshData() {
         flag: flagFor(_ctry), totalSpent: 0, totalConfirmed: 0,
         lastDate: null, latestContract: null, latestStatus: '',
         latestMachine: '', overdueFollowups: 0, nextDueDate: null,
-        activeContracts: 0,
+        activeContracts: 0, openValueRM: 0,
         defaultRep: CUSTOMER_DEFAULT_REP[repKey(co)] || ''
       };
     });
-    STATE.customers = Object.values(custMap).sort((a,b) => (b.lastDate||'').localeCompare(a.lastDate||''));
+    // v2.32: 催单视角排序——逾期优先 → 在谈金额大 → 最近活动(原排序保底)
+    STATE.customers = Object.values(custMap).sort((a,b) =>
+      (Number(b.overdueFollowups > 0) - Number(a.overdueFollowups > 0))
+      || ((b.openValueRM || 0) - (a.openValueRM || 0))
+      || (b.lastDate || '').localeCompare(a.lastDate || ''));
     
     // Populate country dropdown (sorted by count desc, then name)
     STATE.countries.clear();
@@ -1484,7 +1497,7 @@ function renderCustomerList() {
         ${c.latestStatus ? `<div style="margin-top:3px"><span class="customer-status-pill ${statusClass}">${c.latestStatus}</span></div>` : ''}
         ${c.latestMachine ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.latestMachine}</div>` : ''}
         <div class="customer-item-meta" style="margin-top:3px">
-          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}
+          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}${c.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(c.openValueRM).toLocaleString()}</b>` : ''}
         </div>
         ${c.defaultRep
           ? `<div class="cust-rep" onclick="event.stopPropagation();openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" title="Account agent — click to change" style="font-size:11px;margin-top:3px;color:var(--info);cursor:pointer">👤 ${escapeHtml(c.defaultRep)}</div>`
