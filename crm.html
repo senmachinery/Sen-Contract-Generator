@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.38</title>
+<title>Sen Labels — CRM v2.39</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -528,7 +528,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.38</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.39</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -4147,7 +4147,11 @@ function renderSnapshot() {
       }
     }
   }
-  
+  // v2.39: 逾期跟进按"在谈金额(RM粗折算)"大→小排，再按逾期天数多→少，免大单被 top-8 截掉
+  overdueFollowups.sort((a, b) =>
+    ((b.customer.openValueRM || 0) - (a.customer.openValueRM || 0)) ||
+    ((toIsoDate(a.followup.nextFollowupDate) || '').localeCompare(toIsoDate(b.followup.nextFollowupDate) || '')));
+
   // 4. Recently won deals (last 7 days)
   const wonStages = ['Delivered', 'Closed (Paid)'];
   const recentlyWon = (STATE.contracts || []).filter(c => {
@@ -4284,7 +4288,7 @@ function renderSnapshot() {
             return `
               <div class="snapshot-item">
                 <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(dispName)}</div>
-                <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
+                <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late${x.customer.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(x.customer.openValueRM).toLocaleString()}</b>` : ''} · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
                 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
                   <button onclick="waWithScript('${x.customer.company.replace(/'/g, "\\'")}')" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp (with script)">💬 WhatsApp</button>
                   <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 3 days">⏰ +3d</button>
