@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.92</title>
+<title>Sen Labels — Contract Generator v10.93</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -23,6 +23,11 @@ button{cursor:pointer;font-family:inherit}
 .tab-btn{flex:1;padding:9px 4px;font-size:11px;font-weight:600;background:none;border:none;border-bottom:3px solid transparent;color:#666;transition:.15s;text-align:center;white-space:nowrap}
 .tab-btn.active{border-bottom-color:#1a3a5c;color:#1a3a5c;background:#fff}
 .tab-btn:hover:not(.active){background:#eef}
+/* v10.93: 顶栏"更多▾"下拉，把次要导出/JSON 收起来 */
+.more-menu{position:relative;display:inline-block}
+.more-panel{position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #dde;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;display:none;flex-direction:column;gap:4px;z-index:1200;min-width:160px}
+.more-menu.open .more-panel{display:flex}
+.more-panel .btn{justify-content:flex-start;width:100%;margin:0}
 .tab-content{display:none;padding:14px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .tab-content.active{display:block}
 #tab-machine.active{display:flex;flex-direction:column;padding:0}
@@ -438,7 +443,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.92</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.93</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -450,11 +455,16 @@ function mobileTab(tab) {
     <a href="crm.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)"><svg class="ic"><use href="#i-users"></use></svg> CRM</a>
     <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff"><svg class="ic"><use href="#i-wrench"></use></svg> Machine DB</button>
     <button class="btn btn-orange btn-sm" onclick="doPrint()"><svg class="ic"><use href="#i-printer"></use></svg> Print / PDF</button>
-    <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true)" style="background:#217346"><svg class="ic"><use href="#i-sheet"></use></svg> Export Excel</button>
-    <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true)" style="background:#2B579A"><svg class="ic"><use href="#i-doc"></use></svg> Export Word</button>
-    <button class="btn btn-outline btn-sm" onclick="saveStateJSON()" title="Save full contract data as .json for future re-editing"><svg class="ic"><use href="#i-save"></use></svg> Save JSON</button>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file"><svg class="ic"><use href="#i-folder"></use></svg> Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this)"></label>
-    <button class="btn btn-outline btn-sm" onclick="openPasteModal()" title="Paste JSON text to load contract (iPad friendly)"><svg class="ic"><use href="#i-clipboard"></use></svg> Paste JSON</button>
+    <div class="more-menu" id="more-menu">
+      <button class="btn btn-outline btn-sm" onclick="toggleMoreMenu(event)" title="更多导出/JSON · More export & JSON tools">&#8943; 更多 &#9662;</button>
+      <div class="more-panel">
+        <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true);closeMoreMenu()" style="background:#217346"><svg class="ic"><use href="#i-sheet"></use></svg> Export Excel</button>
+        <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true);closeMoreMenu()" style="background:#2B579A"><svg class="ic"><use href="#i-doc"></use></svg> Export Word</button>
+        <button class="btn btn-outline btn-sm" onclick="saveStateJSON();closeMoreMenu()" title="Save full contract data as .json for future re-editing"><svg class="ic"><use href="#i-save"></use></svg> Save JSON</button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file"><svg class="ic"><use href="#i-folder"></use></svg> Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this);closeMoreMenu()"></label>
+        <button class="btn btn-outline btn-sm" onclick="openPasteModal();closeMoreMenu()" title="Paste JSON text to load contract (iPad friendly)"><svg class="ic"><use href="#i-clipboard"></use></svg> Paste JSON</button>
+      </div>
+    </div>
     <button class="btn btn-sm" onclick="openAppendMachineModal()" title="Paste a single machine's JSON to ADD it to the current contract (does not overwrite)" style="background:#2e7d32;color:#fff"><svg class="ic"><use href="#i-plus"></use></svg> Add Machine</button>
     <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff"><svg class="ic"><use href="#i-copy"></use></svg> Duplicate</button>
     <button class="btn btn-primary btn-sm" onclick="newContract()"><svg class="ic"><use href="#i-plus"></use></svg> New Contract</button>
@@ -1160,6 +1170,14 @@ let _autoNoValue = null;
 
 // Active machine shortcut
 function M() { return state.machines[state.activeMachineIdx]; }
+
+// v10.93: 顶栏"更多▾"下拉开关
+function toggleMoreMenu(e) { if (e) e.stopPropagation(); const m = document.getElementById('more-menu'); if (m) m.classList.toggle('open'); }
+function closeMoreMenu() { const m = document.getElementById('more-menu'); if (m) m.classList.remove('open'); }
+document.addEventListener('click', function(e) {
+  const m = document.getElementById('more-menu');
+  if (m && m.classList.contains('open') && !m.contains(e.target)) m.classList.remove('open');
+});
 
 // ============================================================
 // INIT
