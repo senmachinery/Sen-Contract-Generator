@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.35</title>
+<title>Sen Labels — CRM v2.36</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -284,7 +284,17 @@
   .pill-orange { background: #feebc8; color: #7c2d12; }
   
   .crm-layout { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
-  @media (max-width: 900px) { .crm-layout { grid-template-columns: 1fr; } }
+  .crm-back { display: none; }  /* v2.36: 返回按钮只在窄屏显示 */
+  @media (max-width: 900px) {
+    .crm-layout { grid-template-columns: 1fr; }
+    /* v2.36 手机：默认只显客户列表；选了客户→隐藏列表只显详情(+返回键) */
+    .crm-layout .customer-detail { display: none; }
+    .crm-layout.show-detail .customer-list { display: none; }
+    .crm-layout.show-detail .customer-detail { display: block; }
+    .crm-back { display: inline-flex !important; align-items: center; gap: 6px; margin-bottom: 10px;
+      background: var(--bg-soft, #eef1f5); color: var(--primary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 6px 12px; font-size: 13px; font-weight: 600; }
+  }
   
   .customer-list { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); max-height: 75vh; overflow-y: auto; }
   .customer-list-header { padding: 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 5; font-size: 13px; font-weight: 600; }
@@ -518,7 +528,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.35</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.36</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1508,9 +1518,17 @@ function renderCustomerList() {
 }
 
 // ─── Customer Detail ───────────────────────────────────────────
+function crmBackToList() {   // v2.36 手机：从客户详情返回列表
+  const lay = document.querySelector('.crm-layout');
+  if (lay) lay.classList.remove('show-detail');
+}
+
 async function selectCustomer(companyName) {
   STATE.activeCustomer = companyName;
   renderCustomerList();
+  // v2.36 手机：进详情视图(隐藏列表)，并滚到顶
+  const _lay = document.querySelector('.crm-layout');
+  if (_lay) { _lay.classList.add('show-detail'); window.scrollTo(0, 0); }
   
   const c = STATE.customers.find(x => x.company === companyName);
   if (!c) return;
@@ -1585,6 +1603,7 @@ function renderCustomerDetail(c, followups) {
   }
 
   $('customer-detail').innerHTML = `
+    <button class="crm-back" onclick="crmBackToList()">← 客户列表</button>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div>
         <h2>
