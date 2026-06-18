@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.90</title>
+<title>Sen Labels — Contract Generator v10.91</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -438,7 +438,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.90</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.91</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1155,6 +1155,8 @@ let state = {
 
 let gsUrl = localStorage.getItem('sen_gs_url') || '';
 let gsId  = localStorage.getItem('sen_gs_id')  || '';
+// v10.91: 记住"自动取号"最后写入的合同号字符串。仅当号还原封不动(未被加载/手改)时，切换文档类型才重新取号(Q/SC 是不同序列)。
+let _autoNoValue = null;
 
 // Active machine shortcut
 function M() { return state.machines[state.activeMachineIdx]; }
@@ -1177,7 +1179,19 @@ document.addEventListener('DOMContentLoaded', () => {
   updatePreview();
   if (window.innerWidth <= 900) { mobileTab('form'); }
   setTimeout(loadHistory, 500);
-  
+
+  // ─── v10.91: 全新会话自动取下一个合同号（免手动点 ↺）。仅当已配 Sheets，且 URL 不是要加载/预览既有合同时；只在号还是空白前缀时填，避免覆盖。
+  {
+    const _p = new URLSearchParams(location.search);
+    const _loadingExisting = _p.get('preview') || (_p.get('contract') && _p.get('load') === 'true');
+    if (gsUrl && !_loadingExisting) {
+      setTimeout(() => {
+        const cur = (document.getElementById('f-contract-no').value || '').trim();
+        if (!cur || cur.endsWith('-')) fetchNextNo({ auto: true });
+      }, 250);
+    }
+  }
+
   // ─── v10.55: Handle URL params from CRM ───
   setTimeout(handleCrmUrlParams, 800);
 });
@@ -1702,6 +1716,8 @@ function onDoctypeChange() {
   const noField = document.getElementById('f-contract-no');
   let no = noField.value;
   const dt = document.getElementById('f-doctype').value;
+  // v10.91: 切换前若号还是"自动取得且未改动"的，切完类型要按新表(Q/SC 独立序列)重新取号，否则只是把 /SC/ 换成 /Q/ 会留下错序列号。
+  const wasAuto = !!(_autoNoValue && no === _autoNoValue);
   if (dt === 'Invoice') {
     // Invoice numbers come from the CRM / typed manually — don't rewrite the number.
   } else if (dt === 'Quotation') {
@@ -1712,23 +1728,32 @@ function onDoctypeChange() {
   noField.value = no;
   state.contractNo = no;
   updatePreview();
+  if (wasAuto && gsUrl && dt !== 'Invoice') fetchNextNo();   // 用正确序列覆盖（fetchNextNo 用 docPrefix() = 新类型）
 }
 
-async function fetchNextNo() {
-  if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
+async function fetchNextNo(opts) {
+  opts = opts || {};
+  if (!gsUrl) { if (!opts.auto) alert('Please configure Google Sheets URL in Settings first.'); return; }
+  // v10.91: 自动取号时记下取号前的值，回来若已被改(手打/加载)则不覆盖，避免抢走用户输入
+  const startVal = (document.getElementById('f-contract-no').value || '');
   document.getElementById('next-no-hint').innerHTML = '<span class="spinner"></span> Fetching...';
   try {
     const resp = await fetch(gsUrl + '?action=nextNo&admin=' + (document.getElementById('f-admin').value) + '&doctype=' + encodeURIComponent(docPrefix()));
     const data = await resp.json();
+    if (opts.auto && (document.getElementById('f-contract-no').value || '') !== startVal) {
+      document.getElementById('next-no-hint').textContent = '';   // 用户在等待中已自行填号，放手
+      return;
+    }
     const yr = new Date().getFullYear().toString().slice(-2);
     const seqStr = String(data.next).padStart(4, '0');
     const no = `SEN/${docPrefix()}/${document.getElementById('f-admin').value}/${yr}-${seqStr}`;
     document.getElementById('f-contract-no').value = no;
     state.contractNo = no;
+    _autoNoValue = no;   // v10.91: 标记此号为"自动取得且未被改动"
     document.getElementById('next-no-hint').textContent = `Next: ${data.next} (last used: ${data.last})`;
     updatePreview();
   } catch(e) {
-    document.getElementById('next-no-hint').innerHTML = '<span class="red">Failed. Check URL.</span>';
+    document.getElementById('next-no-hint').innerHTML = opts.auto ? '' : '<span class="red">Failed. Check URL.</span>';
   }
 }
 
@@ -4457,6 +4482,7 @@ function newContract() {
   renderMachineTabs();
   updateMachineLabels();
   genContractNo();
+  if (gsUrl) fetchNextNo({ auto: true });   // v10.91: 新建合同自动取下一个号，免手动点 ↺
   updatePreview();
   switchTabDirect('basic');
 }
