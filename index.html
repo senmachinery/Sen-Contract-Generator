@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.97</title>
+<title>Sen Labels — Contract Generator v10.98</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -267,8 +267,9 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 }
 @media(max-width:900px){
   #main{flex-direction:column}
-  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;flex-shrink:0;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:60vh}
-  #preview-panel{padding:10px;flex-shrink:0}
+  /* v10.98: iPad/手机表单全高 — 表单与预览靠顶部 Form|预览 切换(一次只显一个)，活动面板占满高度并内部滚动，不再锁 60vh 留白 */
+  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+  #preview-panel{padding:10px;flex:1;min-height:0}
   #contract-paper{width:100%!important;padding:10px!important;font-size:9pt}
   #mobile-preview-toggle{display:flex!important}
 }
@@ -444,7 +445,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.97</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.98</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
