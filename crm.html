@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.32</title>
+<title>Sen Labels — CRM v2.33</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -518,7 +518,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.32</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.33</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -5434,14 +5434,39 @@ function updateInvoiceCounts() {
   const tc = $('invoices-count'); if (tc) tc.textContent = c.all;
 }
 
+// v2.33: 发票页顶部"总未收/逾期/本周到期"汇总条（按 RM 粗折算，一眼看谁欠钱）
+function _invSummaryStrip() {
+  const inv = INVOICES_STATE.invoices || [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let totOut = 0, overdue = 0, dueWk = 0;
+  inv.forEach(i => {
+    if (i.status === 'Paid') return;
+    const total = Number(i.amount) || 0, paid = Number(i.paidAmount) || 0;
+    const vrm = Number(i.valueRM) || total;
+    const outRM = total > 0 ? vrm * (total - paid) / total : vrm;
+    if (outRM <= 0) return;
+    totOut += outRM;
+    if (invIsOverdue(i)) { overdue += outRM; return; }
+    if (i.dueDate) { const d = parseAnyDate(i.dueDate); if (d && !isNaN(d)) { const days = (d - today) / 86400000; if (days >= 0 && days <= 7) dueWk += outRM; } }
+  });
+  if (totOut <= 0) return '';
+  const m = n => 'RM' + Math.round(n).toLocaleString();
+  const box = (label, val, red) => '<div style="flex:1;min-width:92px;background:' + (red ? '#fdecea' : 'var(--bg-soft,#f5f6f8)') + ';border-radius:8px;padding:8px 10px">'
+    + '<div style="font-size:11px;color:var(--text-muted)">' + label + '</div>'
+    + '<div style="font-size:17px;font-weight:700' + (red ? ';color:#c0392b' : '') + '">' + m(val) + '</div></div>';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+    + box('总未收', totOut, false) + box('⚠️ 逾期', overdue, overdue > 0) + box('本周到期', dueWk, false) + '</div>';
+}
+
 function renderInvoices() {
   updateInvoiceCounts();
   const list = $('invoices-list'); if (!list) return;
   const f = INVOICES_STATE.filter;
+  const strip = _invSummaryStrip();
   let rows = INVOICES_STATE.invoices.slice().reverse();
   if (f === 'overdue') rows = rows.filter(invIsOverdue);
   else if (f !== 'all') rows = rows.filter(i => i.status === f);
-  if (!rows.length) { list.innerHTML = '<div class="empty">No invoices' + (f !== 'all' ? ' (' + f + ')' : '') + ' yet.</div>'; return; }
+  if (!rows.length) { list.innerHTML = strip + '<div class="empty">No invoices' + (f !== 'all' ? ' (' + f + ')' : '') + ' yet.</div>'; return; }
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const num = n => (Number(n) || 0).toLocaleString();
   const badge = i => {
@@ -5460,6 +5485,7 @@ function renderInvoices() {
       + '<div><button class="btn btn-sm" onclick="recordInvoicePayment(\'' + esc(i.invoiceNo).replace(/'/g, "\\'") + '\')" ' + (i.status === 'Paid' ? 'disabled style="opacity:.5"' : 'style="background:var(--primary);color:#fff"') + '>+ Record Payment</button></div>'
       + '</div>';
   }).join('');
+  list.innerHTML = strip + list.innerHTML;
 }
 
 function populateInvoiceCustomers() {
