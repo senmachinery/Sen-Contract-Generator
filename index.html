@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.95</title>
+<title>Sen Labels — Contract Generator v10.96</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -144,6 +144,7 @@ button{cursor:pointer;font-family:inherit}
 body.cp-preview-only #topbar,
 body.cp-preview-only #form-panel,
 body.cp-preview-only #mobile-preview-toggle,
+body.cp-preview-only #connect-card,
 body.cp-preview-only #preview-panel>h3{display:none!important}
 body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!important;padding:24px 0!important}
 #cp-preview-bar{position:fixed;top:10px;right:14px;z-index:99999;display:flex;gap:8px}
@@ -222,7 +223,7 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   #app{display:block;height:auto}
-  #topbar,#form-panel,#preview-panel>h3,#mobile-preview-toggle{display:none!important}
+  #topbar,#form-panel,#preview-panel>h3,#mobile-preview-toggle,#connect-card{display:none!important}
   #preview-panel{background:#fff!important;padding:0!important;overflow:visible!important;width:100%!important}
   #contract-paper{
     box-shadow:none!important;
@@ -443,7 +444,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.95</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.96</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -469,6 +470,16 @@ function mobileTab(tab) {
     <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff"><svg class="ic"><use href="#i-copy"></use></svg> Duplicate</button>
     <button class="btn btn-primary btn-sm" onclick="newContract()"><svg class="ic"><use href="#i-plus"></use></svg> New Contract</button>
   </div>
+</div>
+
+<!-- v10.96: 未连 Sheets 友好兜底卡（新设备引导一次性连接；机密 webhook 不硬编码，仅引导去设置粘贴） -->
+<div id="connect-card" style="display:none;margin:0;padding:11px 16px;background:#fff8e1;border-bottom:1px solid #ffe082;font-size:13px;color:#6d4c1b;align-items:center;gap:12px;flex-wrap:wrap">
+  <div style="flex:1;min-width:220px;line-height:1.5">
+    <b style="color:#e65100">⚠️ 还没连接数据库</b> —— 机型库 / 自动取合同号 / 保存到云 / 客户库 / 发票 都需要一次性连接 Google Sheets。
+    <span style="color:#8a6d3b">（没连也能照常做合同 + 出 PDF / Word / Excel。）</span>
+  </div>
+  <button onclick="openSettings()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">🔗 去连接（设置）</button>
+  <button onclick="dismissConnectCard()" title="暂时离线用，本次不再提示" style="background:transparent;border:1px solid #d8c79a;color:#8a6d3b;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap">暂时离线用 ✕</button>
 </div>
 
 <div id="mobile-preview-toggle">
@@ -1196,6 +1207,7 @@ document.addEventListener('DOMContentLoaded', () => {
   state.date = today;
   if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','&#10003; Configured'); }
   if (gsId)  document.getElementById('s-gs-id').value = gsId;
+  refreshConnectCard();   // v10.96: 没连 Sheets 就显示友好兜底卡
   document.getElementById('apps-script-code').textContent = getAppsScriptCode();
   genContractNo();
   renderRemarkItems();
@@ -4432,6 +4444,18 @@ function loadFromHistory(i) {
 // ============================================================
 // SETTINGS
 // ============================================================
+// v10.96: 未连 Sheets 兜底卡——仅在没配 URL 且本次未关掉时显示；连上后自动消失
+function refreshConnectCard() {
+  const card = document.getElementById('connect-card');
+  if (!card) return;
+  let dismissed = false;
+  try { dismissed = sessionStorage.getItem('sen_connect_card_dismissed') === '1'; } catch (e) {}
+  card.style.display = (!gsUrl && !dismissed) ? 'flex' : 'none';
+}
+function dismissConnectCard() {
+  try { sessionStorage.setItem('sen_connect_card_dismissed', '1'); } catch (e) {}
+  refreshConnectCard();
+}
 function openSettings()  { document.getElementById('settings-modal').classList.add('show'); }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
 function saveSettings() {
@@ -4439,6 +4463,7 @@ function saveSettings() {
   gsId  = document.getElementById('s-gs-id').value.trim();
   localStorage.setItem('sen_gs_url',gsUrl);
   localStorage.setItem('sen_gs_id',gsId);
+  refreshConnectCard();   // v10.96: 连上(或清空)后即时更新兜底卡显隐
   const res = document.getElementById('test-result');
   if (!gsUrl) { res.innerHTML='<span class="red">No URL entered.</span>'; updateGsStatus('warn','Not configured'); return; }
   res.innerHTML='<span class="spinner"></span> Testing...';
