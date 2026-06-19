@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v11.2</title>
+<title>Sen Labels — Contract Generator v11.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -429,15 +429,9 @@ function mobileTab(tab) {
     });
   }
   window.checkPW = function() {
-    const val = document.getElementById('pw-input').value;
-    if (val === 'Senlabels123123') {
-      sessionStorage.setItem('sen_auth', '1');
-      document.getElementById('pw-overlay').style.display = 'none';
-    } else {
-      document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
-      document.getElementById('pw-input').value = '';
-      document.getElementById('pw-input').focus();
-    }
+    // v11.3 安全：生成器密码门已停用(门移到 CRM)。移除硬编码密码字面量，避免在公开源码里白白泄漏。
+    const ov = document.getElementById('pw-overlay'); if (ov) ov.style.display = 'none';
+    try { sessionStorage.setItem('sen_auth', '1'); } catch (e) {}
   };
 })();
 </script>
@@ -445,7 +439,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.2</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.3</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">

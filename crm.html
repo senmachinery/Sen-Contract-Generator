@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.40</title>
+<title>Sen Labels — CRM v2.41</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -536,7 +536,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.40</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.41</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1522,8 +1522,8 @@ function renderCustomerList() {
             ${c.activeContracts > 0 ? `<span class="pill pill-info" style="margin:0">${c.activeContracts}</span>` : ''}
           </span>
         </div>
-        ${c.latestStatus ? `<div style="margin-top:3px"><span class="customer-status-pill ${statusClass}">${c.latestStatus}</span></div>` : ''}
-        ${c.latestMachine ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.latestMachine}</div>` : ''}
+        ${c.latestStatus ? `<div style="margin-top:3px"><span class="customer-status-pill ${statusClass}">${escapeHtml(c.latestStatus)}</span></div>` : ''}
+        ${c.latestMachine ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.latestMachine)}</div>` : ''}
         <div class="customer-item-meta" style="margin-top:3px">
           ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}${c.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(c.openValueRM).toLocaleString()}</b>` : ''}
         </div>
@@ -1630,7 +1630,7 @@ function renderCustomerDetail(c, followups) {
           <span onclick="openRenameModal('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:13px;margin-left:6px" title="Rename customer (override only — does not change Google Sheet)">✏️</span>
         </h2>
         <div class="meta-row">
-          ${c.country} · ${c.contracts.length} total contract(s)
+          ${escapeHtml(c.country)} · ${c.contracts.length} total contract(s)
           <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change country</span>
           ${isRenamed ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Original name (in Google Sheet): ${escapeHtml(c.company)}</div>` : ''}
         </div>
@@ -1694,10 +1694,10 @@ function renderCustomerDetail(c, followups) {
         return `
         <div class="contract-row" onclick="openContractInGenerator('${ct.contractNo}')">
           <div class="contract-info">
-            <div class="contract-no">${ct.contractNo}</div>
-            <div class="contract-machine">${ct.machine}</div>
+            <div class="contract-no">${escapeHtml(ct.contractNo)}</div>
+            <div class="contract-machine">${escapeHtml(ct.machine)}</div>
             <div style="margin-top:4px">
-              <span class="pill ${statusColor(ct.status)}">${ct.status}</span>
+              <span class="pill ${statusColor(ct.status)}">${escapeHtml(ct.status)}</span>
               <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
               <span style="font-size:11px;margin-left:6px"><svg class="ic"><use href="#i-users"></use></svg> ${ct.salesRep ? escapeHtml(repCanon(ct.salesRep)) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(repCanon(c.defaultRep))+' (default)</span>' : '<span style="color:var(--text-muted)">Not set</span>')}</span>
               <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="Set agent for this contract"><svg class="ic"><use href="#i-edit"></use></svg></span>
@@ -1738,7 +1738,7 @@ function renderCustomerDetail(c, followups) {
             </div>
             <div class="followup-desc">${escapeHtml(f.description)}</div>
             <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">
-              ${f.contractNo ? `📋 ${f.contractNo}` : ''}
+              ${f.contractNo ? `📋 ${escapeHtml(f.contractNo)}` : ''}
               ${f.nextFollowupDate ? ` · Next: <strong style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${fmtDate(f.nextFollowupDate)}${isOverdue ? ' ⚠ OVERDUE' : ''}</strong>` : ''}
               ${f.outcome ? ` · <span class="pill pill-${f.outcome==='Positive'?'success':f.outcome==='Negative'?'danger':'gray'}">${f.outcome}</span>` : ''}
             </div>
@@ -4661,7 +4661,7 @@ function renderPackCustomerCard(x, today) {
         <div style="flex:1;min-width:0">
           <div class="pack-customer-name">${c.flag} ${escapeHtml(displayName)}</div>
           <div class="pack-customer-meta">
-            ${c.country}
+            ${escapeHtml(c.country)}
             ${tel ? ` · 📞 ${escapeHtml(tel)}` : ''}
             ${email ? ` · 📧 ${escapeHtml(email)}` : ''}
           </div>
@@ -5329,7 +5329,7 @@ function refreshScriptModal() {
 function openFollowupModal(customer) {
   const c = STATE.customers.find(x => x.company === customer);
   const today = new Date().toISOString().split('T')[0];
-  const opts = c ? c.contracts.map(ct => `<option value="${ct.contractNo}">${ct.contractNo} — ${ct.machine.substring(0,40)}</option>`).join('') : '';
+  const opts = c ? c.contracts.map(ct => `<option value="${escapeHtml(ct.contractNo)}">${escapeHtml(ct.contractNo)} — ${escapeHtml((ct.machine||'').substring(0,40))}</option>`).join('') : '';
   
   $('modal-title').textContent = `Add Follow-up — ${customer}`;
   $('modal-body').innerHTML = `
