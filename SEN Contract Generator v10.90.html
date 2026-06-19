@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v11.4</title>
+<title>Sen Labels — Contract Generator v10.90</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -23,11 +23,6 @@ button{cursor:pointer;font-family:inherit}
 .tab-btn{flex:1;padding:9px 4px;font-size:11px;font-weight:600;background:none;border:none;border-bottom:3px solid transparent;color:#666;transition:.15s;text-align:center;white-space:nowrap}
 .tab-btn.active{border-bottom-color:#1a3a5c;color:#1a3a5c;background:#fff}
 .tab-btn:hover:not(.active){background:#eef}
-/* v10.93: 顶栏"更多▾"下拉，把次要导出/JSON 收起来 */
-.more-menu{position:relative;display:inline-block}
-.more-panel{position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #dde;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;display:none;flex-direction:column;gap:4px;z-index:1200;min-width:160px}
-.more-menu.open .more-panel{display:flex}
-.more-panel .btn{justify-content:flex-start;width:100%;margin:0}
 .tab-content{display:none;padding:14px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .tab-content.active{display:block}
 #tab-machine.active{display:flex;flex-direction:column;padding:0}
@@ -144,7 +139,6 @@ button{cursor:pointer;font-family:inherit}
 body.cp-preview-only #topbar,
 body.cp-preview-only #form-panel,
 body.cp-preview-only #mobile-preview-toggle,
-body.cp-preview-only #connect-card,
 body.cp-preview-only #preview-panel>h3{display:none!important}
 body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!important;padding:24px 0!important}
 #cp-preview-bar{position:fixed;top:10px;right:14px;z-index:99999;display:flex;gap:8px}
@@ -223,7 +217,7 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   #app{display:block;height:auto}
-  #topbar,#form-panel,#preview-panel>h3,#mobile-preview-toggle,#connect-card{display:none!important}
+  #topbar,#form-panel,#preview-panel>h3,#mobile-preview-toggle{display:none!important}
   #preview-panel{background:#fff!important;padding:0!important;overflow:visible!important;width:100%!important}
   #contract-paper{
     box-shadow:none!important;
@@ -267,9 +261,8 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
 }
 @media(max-width:900px){
   #main{flex-direction:column}
-  /* v10.98: iPad/手机表单全高 — 表单与预览靠顶部 Form|预览 切换(一次只显一个)，活动面板占满高度并内部滚动，不再锁 60vh 留白 */
-  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
-  #preview-panel{padding:10px;flex:1;min-height:0}
+  #form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid #dde;flex-shrink:0;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:60vh}
+  #preview-panel{padding:10px;flex-shrink:0}
   #contract-paper{width:100%!important;padding:10px!important;font-size:9pt}
   #mobile-preview-toggle{display:flex!important}
 }
@@ -350,8 +343,8 @@ body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
 .section-title{color:#143047;border-bottom:2px solid #e8eaf0;font-weight:700;}
 .field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:#27557d;box-shadow:0 0 0 3px rgba(39,85,125,.12);}
 .m-tab.active{background:#143047;border-color:#143047;}
-.mdb-cat-header,.lib-cat-header{color:#143047;}
-.mdb-chip.active{background:#143047;border-color:#143047;color:#fff;}  /* v11.2: 选中的筛选chip必须白字——之前误设成深navy字+深navy底=黑成一团看不见 */
+.mdb-chip.active,.mdb-cat-header,.lib-cat-header{color:#143047;}
+.mdb-chip.active{background:#143047;border-color:#143047;}
 
 /* Mobile toggle */
 #mobile-preview-toggle button.active{border-bottom-color:#d8392b;color:#143047;}
@@ -429,9 +422,15 @@ function mobileTab(tab) {
     });
   }
   window.checkPW = function() {
-    // v11.3 安全：生成器密码门已停用(门移到 CRM)。移除硬编码密码字面量，避免在公开源码里白白泄漏。
-    const ov = document.getElementById('pw-overlay'); if (ov) ov.style.display = 'none';
-    try { sessionStorage.setItem('sen_auth', '1'); } catch (e) {}
+    const val = document.getElementById('pw-input').value;
+    if (val === 'Senlabels123123') {
+      sessionStorage.setItem('sen_auth', '1');
+      document.getElementById('pw-overlay').style.display = 'none';
+    } else {
+      document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-input').focus();
+    }
   };
 })();
 </script>
@@ -439,7 +438,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.4</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.90</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -451,30 +450,15 @@ function mobileTab(tab) {
     <a href="crm.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)"><svg class="ic"><use href="#i-users"></use></svg> CRM</a>
     <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff"><svg class="ic"><use href="#i-wrench"></use></svg> Machine DB</button>
     <button class="btn btn-orange btn-sm" onclick="doPrint()"><svg class="ic"><use href="#i-printer"></use></svg> Print / PDF</button>
-    <div class="more-menu" id="more-menu">
-      <button class="btn btn-outline btn-sm" onclick="toggleMoreMenu(event)" title="更多导出/JSON · More export & JSON tools">&#8943; 更多 &#9662;</button>
-      <div class="more-panel">
-        <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true);closeMoreMenu()" style="background:#217346"><svg class="ic"><use href="#i-sheet"></use></svg> Export Excel</button>
-        <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true);closeMoreMenu()" style="background:#2B579A"><svg class="ic"><use href="#i-doc"></use></svg> Export Word</button>
-        <button class="btn btn-outline btn-sm" onclick="saveStateJSON();closeMoreMenu()" title="Save full contract data as .json for future re-editing"><svg class="ic"><use href="#i-save"></use></svg> Save JSON</button>
-        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file"><svg class="ic"><use href="#i-folder"></use></svg> Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this);closeMoreMenu()"></label>
-        <button class="btn btn-outline btn-sm" onclick="openPasteModal();closeMoreMenu()" title="Paste JSON text to load contract (iPad friendly)"><svg class="ic"><use href="#i-clipboard"></use></svg> Paste JSON</button>
-      </div>
-    </div>
+    <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true)" style="background:#217346"><svg class="ic"><use href="#i-sheet"></use></svg> Export Excel</button>
+    <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true)" style="background:#2B579A"><svg class="ic"><use href="#i-doc"></use></svg> Export Word</button>
+    <button class="btn btn-outline btn-sm" onclick="saveStateJSON()" title="Save full contract data as .json for future re-editing"><svg class="ic"><use href="#i-save"></use></svg> Save JSON</button>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Load a previously saved .json contract file"><svg class="ic"><use href="#i-folder"></use></svg> Open JSON<input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadStateJSON(this)"></label>
+    <button class="btn btn-outline btn-sm" onclick="openPasteModal()" title="Paste JSON text to load contract (iPad friendly)"><svg class="ic"><use href="#i-clipboard"></use></svg> Paste JSON</button>
     <button class="btn btn-sm" onclick="openAppendMachineModal()" title="Paste a single machine's JSON to ADD it to the current contract (does not overwrite)" style="background:#2e7d32;color:#fff"><svg class="ic"><use href="#i-plus"></use></svg> Add Machine</button>
     <button class="btn btn-sm" onclick="duplicateAsNew()" title="Copy current contract as a new draft with new contract number" style="background:#00897b;color:#fff"><svg class="ic"><use href="#i-copy"></use></svg> Duplicate</button>
     <button class="btn btn-primary btn-sm" onclick="newContract()"><svg class="ic"><use href="#i-plus"></use></svg> New Contract</button>
   </div>
-</div>
-
-<!-- v10.96: 未连 Sheets 友好兜底卡（新设备引导一次性连接；机密 webhook 不硬编码，仅引导去设置粘贴） -->
-<div id="connect-card" style="display:none;margin:0;padding:11px 16px;background:#fff8e1;border-bottom:1px solid #ffe082;font-size:13px;color:#6d4c1b;align-items:center;gap:12px;flex-wrap:wrap">
-  <div style="flex:1;min-width:220px;line-height:1.5">
-    <b style="color:#e65100">⚠️ 还没连接数据库</b> —— 机型库 / 自动取合同号 / 保存到云 / 客户库 / 发票 都需要一次性连接 Google Sheets。
-    <span style="color:#8a6d3b">（没连也能照常做合同 + 出 PDF / Word / Excel。）</span>
-  </div>
-  <button onclick="openSettings()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">🔗 去连接（设置）</button>
-  <button onclick="dismissConnectCard()" title="暂时离线用，本次不再提示" style="background:transparent;border:1px solid #d8c79a;color:#8a6d3b;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap">暂时离线用 ✕</button>
 </div>
 
 <div id="mobile-preview-toggle">
@@ -485,11 +469,11 @@ function mobileTab(tab) {
 
 <div id="form-panel">
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('basic')" title="Basic"><svg class="ic"><use href="#i-clipboard"></use></svg> 基本</button>
-    <button class="tab-btn" onclick="switchTab('machine')" title="Machine"><svg class="ic"><use href="#i-cube"></use></svg> 机器</button>
-    <button class="tab-btn" onclick="switchTab('price')" title="Price"><svg class="ic"><use href="#i-money"></use></svg> 价格</button>
-    <button class="tab-btn" onclick="switchTab('extras')" title="Extras"><svg class="ic"><use href="#i-package"></use></svg> 附加</button>
-    <button class="tab-btn" onclick="switchTab('history')" title="History"><svg class="ic"><use href="#i-doc"></use></svg> 历史</button>
+    <button class="tab-btn active" onclick="switchTab('basic')"><svg class="ic"><use href="#i-clipboard"></use></svg> Basic</button>
+    <button class="tab-btn" onclick="switchTab('machine')"><svg class="ic"><use href="#i-cube"></use></svg> Machine</button>
+    <button class="tab-btn" onclick="switchTab('price')"><svg class="ic"><use href="#i-money"></use></svg> Price</button>
+    <button class="tab-btn" onclick="switchTab('extras')"><svg class="ic"><use href="#i-package"></use></svg> Extras</button>
+    <button class="tab-btn" onclick="switchTab('history')"><svg class="ic"><use href="#i-doc"></use></svg> History</button>
   </div>
 
   <!-- TAB: BASIC -->
@@ -501,7 +485,7 @@ function mobileTab(tab) {
       <div style="display:flex;gap:5px">
         <input type="text" id="f-contract-no" placeholder="SEN/SC/NR/26-XXXX" style="flex:1" oninput="updatePreview()">
         <button class="btn btn-outline btn-sm" onclick="fetchNextNo()" title="Get next number from Sheets">&#8635;</button>
-        <button class="btn btn-outline btn-sm" onclick="makeVariantNo()" title="做变体 / Variant copy — 同号不同内容: 2453 &#8594; 2453(B)。改完内容再存档，原合同不被覆盖。">做变体</button>
+        <button class="btn btn-outline btn-sm" onclick="makeVariantNo()" title="Variant copy — same number, different content: 2453 &#8594; 2453(B). Edit content then Save Record; the original is NOT overwritten.">+B</button>
       </div>
       <div class="field-hint" id="next-no-hint">Click &#8635; to fetch next sequence</div>
     </div>
@@ -627,14 +611,6 @@ function mobileTab(tab) {
       <button onclick="applyBulkDiscount()" title="Apply same % discount to all machines" style="background:#fbe9e7;color:#bf360c;border:1px solid #ffab91;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap">% Bulk Discount</button>
     </div>
     <div class="machine-body">
-      <!-- v10.94: 机型选择器置顶 — 一键从机型库带出全名+规格+随机配件，免手打（打开现有 Machine DB 选择器） -->
-      <div id="machine-pick-bar" style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="flex:1;min-width:150px">
-          <div style="font-weight:700;font-size:12px;color:#e65100">📋 从机型库选机型 · Pick from Machine DB</div>
-          <div style="font-size:11px;color:#a06a2c;margin-top:2px">一键带出全名 + 规格 + 随机配件，免逐项手打</div>
-        </div>
-        <button onclick="openMachineDB()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"><svg class="ic"><use href="#i-wrench"></use></svg> 选机型 Choose</button>
-      </div>
       <div class="field-group">
         <label>Machine Type</label>
         <select id="f-machine-type" onchange="onMachineTypeChange()">
@@ -756,9 +732,6 @@ function mobileTab(tab) {
         </select>
       </div>
     </div>
-    <!-- v10.97: 价格简单/高级 — 默认只露 单价/数量/折扣/订金/付款方式；以旧换新/分期/有效期/保修/自定义付款 收进高级（有数据会自动展开，绝不藏住已填内容） -->
-    <button type="button" id="price-adv-toggle" onclick="togglePriceAdvanced()" style="width:100%;padding:8px 10px;margin:4px 0 10px;background:#f0f4ff;border:1px dashed #9ab;border-radius:6px;color:#1a3a5c;font-size:12px;font-weight:600;cursor:pointer;text-align:left">⚙️ 高级选项 Advanced<span style="font-weight:400;color:#888"> · 以旧换新 / 分期 / 有效期 / 保修 / 自定义付款</span><span class="adv-caret" style="float:right">&#9662;</span></button>
-    <div id="price-advanced" style="display:none">
     <div class="field-group">
       <label>Trade-In Machine (optional)</label>
       <input type="text" id="f-tradein-desc" placeholder="e.g. SMP-320 Letterpress Machine (2015)" oninput="updatePreview()">
@@ -844,7 +817,6 @@ function mobileTab(tab) {
         <option value="No Warranty.">No Warranty</option>
       </select>
     </div>
-    </div><!-- /#price-advanced -->
   </div>
 
   <!-- TAB: EXTRAS -->
@@ -852,10 +824,10 @@ function mobileTab(tab) {
     <div class="m-selector-bar" id="extras-selector-bar"></div>
     <div style="padding:14px">
     <div id="extras-machine-label" class="alert alert-info" style="margin-bottom:8px;font-size:11px">Come With: Machine 1</div>
-    <div class="section-title" style="margin-top:0">Come With Items <span style="font-weight:400;font-size:11px;color:#888">随机配件（随机附送）</span></div>
+    <div class="section-title" style="margin-top:0">Come With Items</div>
     <div id="cw-list"></div>
     <button id="add-cw-btn" onclick="addCwItem()">+ Add Item</button>
-    <div class="section-title" style="margin-top:16px">Optional Items <span style="font-weight:400;font-size:11px;color:#888">选配（列在合同但不计入价格）</span></div>
+    <div class="section-title" style="margin-top:16px">Optional Items <span style="font-weight:400;font-size:11px;color:#888">(shown in contract but NOT included in price)</span></div>
     <div id="opt-list"></div>
     <button id="add-opt-btn" onclick="addOptItem()">+ Add Optional Item</button>
     <div class="section-title" style="margin-top:16px">Machine Images <span id="img-machine-label" style="font-weight:400;font-size:11px;color:#666"></span></div>
@@ -1095,11 +1067,6 @@ function mobileTab(tab) {
       <input type="text" id="s-gs-url" placeholder="https://script.google.com/macros/s/...">
     </div>
     <div class="field-group">
-      <label>访问令牌 Access Token</label>
-      <input type="text" id="s-api-token" placeholder="Claude 给你的那串令牌（没有就留空）">
-      <div style="font-size:11px;color:#888;margin-top:4px">🔒 加固后才需要：Claude 会给你这串，每台设备粘一次。留空 = 不启用。</div>
-    </div>
-    <div class="field-group">
       <label>Google Sheet ID (from URL)</label>
       <input type="text" id="s-gs-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
     </div>
@@ -1169,8 +1136,6 @@ function newMachine() {
     costMachine:0, costAddons:0, costStd:60000, costTradein:0,
     custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
     inPackage:false,
-    refPrice:0,   // v11.0: 机型库参考售价(USD)，用来算「最低售价」底价显示，绝不显示成本
-    floorPrice:0, // v11.1: 机型库「FloorPrice」列设定的底价(USD)，优先于 ref×0.9；后端部署该列后才有值
     _finalPrice:0
   };
 }
@@ -1206,72 +1171,10 @@ let state = {
 };
 
 let gsUrl = localStorage.getItem('sen_gs_url') || '';
-// ===== v11.4 安全：webhook 访问令牌全局注入 =========================
-// 本页有 24+ 处散落 fetch(gsUrl...)，用一个 fetch 拦截器统一加令牌，免逐个改。
-// 空令牌 = 不加(后端放行)，向后兼容；只作用于后端(script.google.com)请求。
-(function(){
-  if (window.__senTokenShim) return; window.__senTokenShim = true;
-  const _fetch = window.fetch.bind(window);
-  let _tokPrompted = false;
-  function apiToken(){ return localStorage.getItem('sen_api_token') || ''; }
-  function isBackend(u){ return typeof u === 'string' && u.indexOf('script.google.com/macros/') !== -1; }
-  function promptToken(){
-    if (_tokPrompted) return; _tokPrompted = true;
-    const t = prompt('需要访问令牌才能连接。\n请粘贴 Claude 给你的访问令牌：', apiToken());
-    if (t && t.trim()) { localStorage.setItem('sen_api_token', t.trim()); location.reload(); }
-  }
-  window.fetch = function(input, init){
-    try {
-      const t = apiToken();
-      const url = (typeof input === 'string') ? input : (input && input.url) || '';
-      if (isBackend(url)) {
-        if (t && typeof input === 'string') {
-          const method = (init && init.method ? String(init.method) : 'GET').toUpperCase();
-          if (method !== 'GET' && init && typeof init.body === 'string') {
-            try { const o = JSON.parse(init.body); o.token = t; init = Object.assign({}, init, { body: JSON.stringify(o) }); }
-            catch(e) { input = url + (url.indexOf('?') !== -1 ? '&' : '?') + 'token=' + encodeURIComponent(t); }
-          } else {
-            input = url + (url.indexOf('?') !== -1 ? '&' : '?') + 'token=' + encodeURIComponent(t);
-          }
-        }
-        return _fetch(input, init).then(function(resp){
-          try { resp.clone().json().then(function(j){ if (j && j.error === 'unauthorized') promptToken(); }).catch(function(){}); } catch(e){}
-          return resp;
-        });
-      }
-    } catch(e){}
-    return _fetch(input, init);
-  };
-})();
 let gsId  = localStorage.getItem('sen_gs_id')  || '';
-// v10.91: 记住"自动取号"最后写入的合同号字符串。仅当号还原封不动(未被加载/手改)时，切换文档类型才重新取号(Q/SC 是不同序列)。
-let _autoNoValue = null;
-
-// v11.1: 每日实时汇率(1 USD = X 各币种)，client 端拉取一次(公开中间价源,只取汇率不传任何数据)，失败用本地缓存/粗略表。仅用于「最低售价」折算显示，不影响合同金额。
-let FX_RATES = null;
-async function loadFxRates() {
-  try { const c = JSON.parse(localStorage.getItem('sen_fx_rates') || 'null'); if (c && c.rates && c.rates.MYR) FX_RATES = c.rates; } catch (e) {}
-  try {
-    const r = await fetch('https://open.er-api.com/v6/latest/USD');
-    const d = await r.json();
-    if (d && d.rates && Number(d.rates.MYR)) {
-      FX_RATES = d.rates;
-      try { localStorage.setItem('sen_fx_rates', JSON.stringify({ date: d.time_last_update_utc || '', rates: d.rates })); } catch (e) {}
-      if (typeof calcPrice === 'function') { try { calcPrice(); } catch (e) {} }   // 拉到后刷新底价折算(calcPrice 重建价格框+触发预览)
-    }
-  } catch (e) { /* 离线/被墙 → 用本地缓存或粗略兜底表 */ }
-}
 
 // Active machine shortcut
 function M() { return state.machines[state.activeMachineIdx]; }
-
-// v10.93: 顶栏"更多▾"下拉开关
-function toggleMoreMenu(e) { if (e) e.stopPropagation(); const m = document.getElementById('more-menu'); if (m) m.classList.toggle('open'); }
-function closeMoreMenu() { const m = document.getElementById('more-menu'); if (m) m.classList.remove('open'); }
-document.addEventListener('click', function(e) {
-  const m = document.getElementById('more-menu');
-  if (m && m.classList.contains('open') && !m.contains(e.target)) m.classList.remove('open');
-});
 
 // ============================================================
 // INIT
@@ -1282,9 +1185,6 @@ document.addEventListener('DOMContentLoaded', () => {
   state.date = today;
   if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','&#10003; Configured'); }
   if (gsId)  document.getElementById('s-gs-id').value = gsId;
-  { const _t = localStorage.getItem('sen_api_token') || '', _te = document.getElementById('s-api-token'); if (_te) _te.value = _t; }  // v11.4: 回填令牌
-  refreshConnectCard();   // v10.96: 没连 Sheets 就显示友好兜底卡
-  loadFxRates();          // v11.1: 拉当日实时汇率(给「最低售价」折算用，失败有兜底)
   document.getElementById('apps-script-code').textContent = getAppsScriptCode();
   genContractNo();
   renderRemarkItems();
@@ -1294,19 +1194,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updatePreview();
   if (window.innerWidth <= 900) { mobileTab('form'); }
   setTimeout(loadHistory, 500);
-
-  // ─── v10.91: 全新会话自动取下一个合同号（免手动点 ↺）。仅当已配 Sheets，且 URL 不是要加载/预览既有合同时；只在号还是空白前缀时填，避免覆盖。
-  {
-    const _p = new URLSearchParams(location.search);
-    const _loadingExisting = _p.get('preview') || (_p.get('contract') && _p.get('load') === 'true');
-    if (gsUrl && !_loadingExisting) {
-      setTimeout(() => {
-        const cur = (document.getElementById('f-contract-no').value || '').trim();
-        if (!cur || cur.endsWith('-')) fetchNextNo({ auto: true });
-      }, 250);
-    }
-  }
-
+  
   // ─── v10.55: Handle URL params from CRM ───
   setTimeout(handleCrmUrlParams, 800);
 });
@@ -1598,8 +1486,8 @@ function updateMachineLabels() {
   const lbl = 'Machine ' + n + (M().machineType ? ' — ' + shortTitle(M()) : '');
   const el1 = document.getElementById('price-machine-label');
   const el2 = document.getElementById('extras-machine-label');
-  if (el1) el1.textContent = '价格 Pricing: ' + lbl;
-  if (el2) el2.textContent = '附加 Extras for: ' + lbl;
+  if (el1) el1.textContent = 'Pricing: ' + lbl;
+  if (el2) el2.textContent = 'Extras for: ' + lbl;
 }
 
 // ============================================================
@@ -1831,8 +1719,6 @@ function onDoctypeChange() {
   const noField = document.getElementById('f-contract-no');
   let no = noField.value;
   const dt = document.getElementById('f-doctype').value;
-  // v10.91: 切换前若号还是"自动取得且未改动"的，切完类型要按新表(Q/SC 独立序列)重新取号，否则只是把 /SC/ 换成 /Q/ 会留下错序列号。
-  const wasAuto = !!(_autoNoValue && no === _autoNoValue);
   if (dt === 'Invoice') {
     // Invoice numbers come from the CRM / typed manually — don't rewrite the number.
   } else if (dt === 'Quotation') {
@@ -1843,32 +1729,23 @@ function onDoctypeChange() {
   noField.value = no;
   state.contractNo = no;
   updatePreview();
-  if (wasAuto && gsUrl && dt !== 'Invoice') fetchNextNo();   // 用正确序列覆盖（fetchNextNo 用 docPrefix() = 新类型）
 }
 
-async function fetchNextNo(opts) {
-  opts = opts || {};
-  if (!gsUrl) { if (!opts.auto) alert('Please configure Google Sheets URL in Settings first.'); return; }
-  // v10.91: 自动取号时记下取号前的值，回来若已被改(手打/加载)则不覆盖，避免抢走用户输入
-  const startVal = (document.getElementById('f-contract-no').value || '');
+async function fetchNextNo() {
+  if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
   document.getElementById('next-no-hint').innerHTML = '<span class="spinner"></span> Fetching...';
   try {
     const resp = await fetch(gsUrl + '?action=nextNo&admin=' + (document.getElementById('f-admin').value) + '&doctype=' + encodeURIComponent(docPrefix()));
     const data = await resp.json();
-    if (opts.auto && (document.getElementById('f-contract-no').value || '') !== startVal) {
-      document.getElementById('next-no-hint').textContent = '';   // 用户在等待中已自行填号，放手
-      return;
-    }
     const yr = new Date().getFullYear().toString().slice(-2);
     const seqStr = String(data.next).padStart(4, '0');
     const no = `SEN/${docPrefix()}/${document.getElementById('f-admin').value}/${yr}-${seqStr}`;
     document.getElementById('f-contract-no').value = no;
     state.contractNo = no;
-    _autoNoValue = no;   // v10.91: 标记此号为"自动取得且未被改动"
     document.getElementById('next-no-hint').textContent = `Next: ${data.next} (last used: ${data.last})`;
     updatePreview();
   } catch(e) {
-    document.getElementById('next-no-hint').innerHTML = opts.auto ? '' : '<span class="red">Failed. Check URL.</span>';
+    document.getElementById('next-no-hint').innerHTML = '<span class="red">Failed. Check URL.</span>';
   }
 }
 
@@ -2010,7 +1887,7 @@ function renderMachineParams(type, condition) {
       <div id="part-groups-wrap"></div>
       <button id="btn-add-group" style="width:100%;padding:8px;background:#e8f4e8;border:2px dashed #5a9a5a;border-radius:6px;color:#2d6a2d;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer">+ Add New Group (New 1) 2) 3)...)</button>
       <div style="margin-top:10px;padding:8px;background:#fff8f0;border:1px solid #f0d0a0;border-radius:4px">
-        <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount 折扣 <span style="font-weight:400;color:#888">(applies to total, fill one only 折在总价，只填一个)</span></div>
+        <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount <span style="font-weight:400;color:#888">(applies to total, fill one only)</span></div>
         <div style="margin-bottom:6px">
           <label style="font-size:11px;color:#555;font-weight:600">Discount Label</label>
           <input type="text" id="f-discount-label" placeholder="e.g. Special Discount / VVIP Discount" style="width:100%;padding:5px 8px;border:1px solid #ccd;border-radius:4px;font-size:12px;box-sizing:border-box;margin-top:2px">
@@ -2447,26 +2324,6 @@ function calcPrice() {
       }
       html += `<div class="pc-row deposit"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span class="price-tag">${fmt(dep)}</span></div>`;
       html += `<div class="pc-row balance"><span>Balance</span><span class="price-tag">${fmt(bal)}</span></div>`;
-      // v11.0/11.1: 最低售价(底价)提示 —— 仅售价、不碰成本。
-      // 底价(USD) = 机型库 floorPrice(若机型库有设)否则 refPrice×0.90；折成当前币种(优先每日实时汇率 FX_RATES，退回粗略表)。
-      const _ref  = Number(m.refPrice)   || 0;
-      const _fset = Number(m.floorPrice) || 0;   // 机型库「FloorPrice」列设定的底价(USD)，优先于 ref×0.9
-      const _floorUSD = _fset > 0 ? _fset : (_ref > 0 ? _ref * 0.90 : 0);
-      if (_floorUSD > 0 && !isParts) {
-        const USD2CUR = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };  // 粗略兜底,仅作提示,不影响合同金额
-        const mult = (FX_RATES && Number(FX_RATES[curr])) || USD2CUR[curr];
-        if (mult) {
-          const floorCur = _floorUSD * mult;
-          const uq = m.unitQty || 1;
-          const netUnit = uq > 0 ? sellPrice / uq : sellPrice;
-          const _src = _fset > 0 ? '机型库设定' : '参考价 −10%';
-          html += `<div class="pc-row" style="border-top:1px dashed #e0c08a;margin-top:5px;padding-top:6px"><span style="color:#a06a2c">💡 最低售价/台 <span style="font-weight:400;font-size:10px">(${_src})</span></span><span class="price-tag" style="color:#a06a2c">${fmt(floorCur)}</span></div>`;
-          // 仅当售价已被改动(≠刚带出的 refPrice 原值)才比对，避免非美元合同刚选机型时(售价暂为 USD 数值)误报
-          if (netUnit < floorCur - 0.5 && Math.abs(netUnit - _ref) > 0.5) {
-            html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ 低于最低售价</span><span style="color:#c0392b;font-size:11px">每台净价 ${fmt(netUnit)}</span></div>`;
-          }
-        }
-      }
       resultDiv.innerHTML = html;
     } else {
       resultDiv.style.display = 'none';
@@ -3248,35 +3105,6 @@ function removeSpecRow(idx) {
 }
 
 // ============================================================
-// v10.97: 价格高级区——有数据返回 true（用来决定是否自动展开，绝不据此收起）
-function priceAdvHasData() {
-  const v = id => (document.getElementById(id)?.value || '').trim();
-  if (parseFloat(v('f-tradein-value')) > 0) return true;
-  if (v('f-tradein-desc')) return true;
-  if (document.getElementById('f-installment-on')?.checked) return true;
-  if (v('f-pay-terms-text')) return true;
-  if (v('f-balance-label')) return true;
-  if (v('f-warranty-override')) return true;
-  const val = v('f-validity'); if (val && val !== 'One (1) Month only') return true;
-  const del = v('f-delivery'); if (del && del !== 'To be determined upon confirmation and/or full payment.') return true;
-  if (Array.isArray(state.customPayRows) && state.customPayRows.length) return true;
-  return false;
-}
-// 只展开、绝不自动收起 → 加载含以旧换新/分期等的合同会自动露出，且永不藏住已填内容
-function syncPriceAdvanced() {
-  const wrap = document.getElementById('price-advanced'); if (!wrap) return;
-  if (wrap.style.display === 'none' && priceAdvHasData()) {
-    wrap.style.display = 'block';
-    const c = document.querySelector('#price-adv-toggle .adv-caret'); if (c) c.innerHTML = '&#9652;';
-  }
-}
-function togglePriceAdvanced() {
-  const wrap = document.getElementById('price-advanced'); if (!wrap) return;
-  const show = wrap.style.display === 'none';
-  wrap.style.display = show ? 'block' : 'none';
-  const c = document.querySelector('#price-adv-toggle .adv-caret'); if (c) c.innerHTML = show ? '&#9652;' : '&#9662;';
-}
-
 function updatePreview() {
   try {
     const g = id => document.getElementById(id)?.value || '';
@@ -3322,7 +3150,6 @@ function updatePreview() {
     if (paper) paper.innerHTML = '<div style="color:red;padding:20px;font-family:sans-serif"><b>Preview error:</b><br>' + e.message + '</div>';
     console.error('updatePreview error:', e);
   }
-  try { syncPriceAdvanced(); } catch (e) {}   // v10.97: 有高级数据则自动展开（隔离 try，绝不影响预览渲染）
 }
 
 function buildContractHTML() {
@@ -4138,30 +3965,32 @@ function showFilenameDialog(fname, onContinue) {
   dialog.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:520px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
   
   dialog.innerHTML = `
-    <h3 style="margin:0 0 10px 0;font-size:17px;color:#1a3a5c">&#128228; 出 PDF / 分享给客户</h3>
-    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-bottom:14px">
-      <div style="font-weight:700;font-size:13px;color:#2e7d32;margin-bottom:4px">&#128172; 想直接发 WhatsApp？（最快，免复制文件名）</div>
-      <div style="font-size:12px;color:#33691e;line-height:1.55">
-        1. 点下面 <b>继续 → 打印/分享</b><br>
-        2. 打印预览页 <b>右上角「分享」图标</b> &#128229;<br>
-        3. 选 <b>WhatsApp</b> 直接发给客户 —— 文件名已自动带合同号，不用复制。
-      </div>
-    </div>
-    <div style="font-size:12px;color:#666;margin-bottom:6px">想<b>存到文件</b>存档？先复制文件名（存档时 iPad 会用网址当默认名，需粘贴）：</div>
-    <div style="background:#f5f9ff;border:1px solid #c0cde0;border-radius:6px;padding:10px;margin-bottom:12px">
-      <div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600">SUGGESTED FILENAME 建议文件名：</div>
+    <h3 style="margin:0 0 12px 0;font-size:17px;color:#1a3a5c">&#128194; iPad Filename Helper</h3>
+    <p style="margin:0 0 14px 0;font-size:13px;color:#555;line-height:1.5">
+      iPad Safari uses the URL as the default filename. Copy the suggested name below, 
+      then paste it in the iPad "Save to Files" dialog.
+    </p>
+    <div style="background:#f5f9ff;border:1px solid #c0cde0;border-radius:6px;padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;color:#666;margin-bottom:6px;font-weight:600">SUGGESTED FILENAME:</div>
       <div id="fname-display" style="font-family:'SF Mono',Menlo,monospace;font-size:13px;line-height:1.4;color:#1a3a5c;word-break:break-word;user-select:all;-webkit-user-select:all">${fname}</div>
     </div>
+    <p style="margin:0 0 18px 0;font-size:12px;color:#888;line-height:1.5">
+      <b>Steps:</b><br>
+      1. Tap <b>Copy Filename</b> below<br>
+      2. Tap <b>Continue to Print</b> &rarr; Save to Files<br>
+      3. In Save dialog, long-press filename field &rarr; <b>Paste</b><br>
+      4. Tap Save
+    </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button id="fname-continue-btn" style="flex:2;min-width:160px;background:#00897b;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer">
-        &#128424; 继续 &rarr; 打印/分享
+      <button id="fname-copy-btn" style="flex:1;min-width:140px;background:#1a3a5c;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">
+        &#128203; Copy Filename
       </button>
-      <button id="fname-copy-btn" style="flex:1;min-width:120px;background:#1a3a5c;color:#fff;border:none;padding:12px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
-        &#128203; 复制文件名
+      <button id="fname-continue-btn" style="flex:1;min-width:140px;background:#00897b;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">
+        &#128424; Continue to Print
       </button>
     </div>
     <button id="fname-cancel-btn" style="margin-top:10px;width:100%;background:transparent;color:#999;border:none;padding:8px;font-size:13px;cursor:pointer">
-      取消 Cancel
+      Cancel
     </button>
   `;
   
@@ -4171,11 +4000,13 @@ function showFilenameDialog(fname, onContinue) {
   const copyBtn = document.getElementById('fname-copy-btn');
   const continueBtn = document.getElementById('fname-continue-btn');
   const cancelBtn = document.getElementById('fname-cancel-btn');
-
+  let didCopy = false;
+  
   copyBtn.onclick = async () => {
     try {
       await navigator.clipboard.writeText(fname);
-      copyBtn.innerHTML = '&#10003; 已复制 Copied';
+      didCopy = true;
+      copyBtn.innerHTML = '&#10003; Copied! Paste in Save dialog';
       copyBtn.style.background = '#388e3c';
     } catch (e) {
       // Fallback: select the text manually
@@ -4186,13 +4017,15 @@ function showFilenameDialog(fname, onContinue) {
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        copyBtn.innerHTML = '&#9888; 长按选中文字 &rarr; 拷贝';
+        copyBtn.innerHTML = '&#9888; Tap selected text &rarr; Copy';
       }
     }
   };
-
-  // v10.95: 复制文件名只在"存到文件"时才需要；分享给客户用打印预览的分享键、文件名已自动带合同号 → 不再拦截/追问是否已复制
+  
   continueBtn.onclick = () => {
+    if (!didCopy) {
+      if (!confirm('You haven\'t copied the filename yet. Continue anyway?')) return;
+    }
     overlay.remove();
     onContinue();
   };
@@ -4571,18 +4404,6 @@ function loadFromHistory(i) {
 // ============================================================
 // SETTINGS
 // ============================================================
-// v10.96: 未连 Sheets 兜底卡——仅在没配 URL 且本次未关掉时显示；连上后自动消失
-function refreshConnectCard() {
-  const card = document.getElementById('connect-card');
-  if (!card) return;
-  let dismissed = false;
-  try { dismissed = sessionStorage.getItem('sen_connect_card_dismissed') === '1'; } catch (e) {}
-  card.style.display = (!gsUrl && !dismissed) ? 'flex' : 'none';
-}
-function dismissConnectCard() {
-  try { sessionStorage.setItem('sen_connect_card_dismissed', '1'); } catch (e) {}
-  refreshConnectCard();
-}
 function openSettings()  { document.getElementById('settings-modal').classList.add('show'); }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
 function saveSettings() {
@@ -4590,8 +4411,6 @@ function saveSettings() {
   gsId  = document.getElementById('s-gs-id').value.trim();
   localStorage.setItem('sen_gs_url',gsUrl);
   localStorage.setItem('sen_gs_id',gsId);
-  { const _te = document.getElementById('s-api-token'); if (_te) localStorage.setItem('sen_api_token', _te.value.trim()); }  // v11.4: 存令牌(空=清除)
-  refreshConnectCard();   // v10.96: 连上(或清空)后即时更新兜底卡显隐
   const res = document.getElementById('test-result');
   if (!gsUrl) { res.innerHTML='<span class="red">No URL entered.</span>'; updateGsStatus('warn','Not configured'); return; }
   res.innerHTML='<span class="spinner"></span> Testing...';
@@ -4621,10 +4440,6 @@ function newContract() {
     depositPct:30, depositAmt:0, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
     installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
     installmentRate:0, installmentStartDate:'', installmentRows:[],
-    // v10.99: 这些合同级字段以前没在 newContract 重置 → 会从上一单残留，现一并清回默认
-    salesRep:'', balanceLabel:'', payTermsText:'', warrantyOverride:'',
-    bankOverride:false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
-    packagePrice:0, packageLabel:'', customPayRows:[],
     validity:'One (1) Month only',
     delivery:'To be determined upon confirmation and/or full payment.',
     docType:'Sales Contract', status:'Quotation Sent', revised:'',
@@ -4647,26 +4462,6 @@ function newContract() {
   document.getElementById('f-rate-sgd').value='1.35'; document.getElementById('f-rate-idr').value='16200';
   document.getElementById('f-deposit-pct').value='30'; document.getElementById('f-delivery').value='To be determined upon confirmation and/or full payment.';
   document.getElementById('f-tradein-desc').value=''; document.getElementById('f-tradein-value').value='';
-  // v10.99: 把以前漏清的合同级 DOM 字段也清回默认，避免上一单残留串到新合同
-  document.getElementById('f-contract-no').value='';   // 清旧合同号→genContractNo 重填前缀(离线也不残留)、连网时 fetchNextNo 再补序号
-  setVal('f-sales-rep','');
-  { const pa=document.getElementById('price-advanced'); if(pa) pa.style.display='none'; const cc=document.querySelector('#price-adv-toggle .adv-caret'); if(cc) cc.innerHTML='&#9662;'; }   // 新合同高级区收起
-  setVal('f-doctype','Sales Contract');
-  setVal('f-status','Quotation Sent'); toggleSignedPDFSection('Quotation Sent');
-  setVal('f-pay-cond','30/70'); setVal('f-deposit-amt','');
-  setVal('f-validity','One (1) Month only');
-  setVal('f-balance-label',''); setVal('f-pay-terms-text',''); setVal('f-warranty-override','');
-  setVal('f-package-price',''); setVal('f-package-label','');
-  { const pr=document.getElementById('package-price-row'); if(pr) pr.style.display='none'; }
-  { const ip=document.getElementById('f-in-package'); if(ip) ip.checked=false; }
-  { const bo=document.getElementById('f-bank-override'); if(bo) bo.checked=false; }
-  ['f-bank-account','f-bank-beneficiary','f-bank-name','f-bank-swift','f-bank-branch'].forEach(id=>setVal(id,''));
-  onBankOverrideChange();   // bankOverride=false → 用按币种的默认银行
-  { const io=document.getElementById('f-installment-on'); if(io) io.checked=false; }
-  setVal('f-inst-count','3'); setVal('f-inst-freq','12'); setVal('f-inst-rate','0'); setVal('f-inst-start','');
-  toggleInstallmentPanel();   // 收起分期面板
-  { const ir=document.getElementById('inst-rows-wrap'); if(ir) ir.innerHTML='Fill in the fields above and click Calculate'; }
-  state.customPayRows=[]; renderCustomPayRows();   // 清自定义付款行(state+DOM)
   document.getElementById('cw-list').innerHTML='';
   document.getElementById('opt-list').innerHTML='';
   document.getElementById('img-thumbs').innerHTML='';
@@ -4679,7 +4474,6 @@ function newContract() {
   renderMachineTabs();
   updateMachineLabels();
   genContractNo();
-  if (gsUrl) fetchNextNo({ auto: true });   // v10.91: 新建合同自动取下一个号，免手动点 ↺
   updatePreview();
   switchTabDirect('basic');
 }
@@ -5693,8 +5487,6 @@ function loadMachineFromDB(idx) {
   machine.unitPrice    = m.refPrice || 0;
   machine.sellPrice    = m.refPrice || 0;
   machine._finalPrice  = m.refPrice || 0;
-  machine.refPrice     = Number(m.refPrice) || 0;   // v11.0: 留存机型库参考售价，用于「最低售价」底价(ref×0.9)显示
-  machine.floorPrice   = Number(m.floorPrice) || 0; // v11.1: 留存机型库设定底价(USD,若后端有该列)
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
     label: s.label, value: s.value,
     bold: s.bold || false, boldLabel: s.boldLabel || false,
@@ -5734,8 +5526,6 @@ function loadMachineFromDB(idx) {
 
     // Re-save customTitle to state (DOM rebuild clears it)
     M().customTitle = m.modelName || '';
-    M().refPrice = Number(m.refPrice) || 0;   // v11.0: 面板重建后重新留存参考售价
-    M().floorPrice = Number(m.floorPrice) || 0;   // v11.1: 面板重建后重新留存机型库设定底价
 
     const setF = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
     setF('f-custom-title', m.modelName || '');
