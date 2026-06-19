@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v11.0</title>
+<title>Sen Labels — Contract Generator v11.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -445,7 +445,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.0</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.1</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1154,6 +1154,7 @@ function newMachine() {
     custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
     inPackage:false,
     refPrice:0,   // v11.0: 机型库参考售价(USD)，用来算「最低售价」底价显示，绝不显示成本
+    floorPrice:0, // v11.1: 机型库「FloorPrice」列设定的底价(USD)，优先于 ref×0.9；后端部署该列后才有值
     _finalPrice:0
   };
 }
@@ -1193,6 +1194,21 @@ let gsId  = localStorage.getItem('sen_gs_id')  || '';
 // v10.91: 记住"自动取号"最后写入的合同号字符串。仅当号还原封不动(未被加载/手改)时，切换文档类型才重新取号(Q/SC 是不同序列)。
 let _autoNoValue = null;
 
+// v11.1: 每日实时汇率(1 USD = X 各币种)，client 端拉取一次(公开中间价源,只取汇率不传任何数据)，失败用本地缓存/粗略表。仅用于「最低售价」折算显示，不影响合同金额。
+let FX_RATES = null;
+async function loadFxRates() {
+  try { const c = JSON.parse(localStorage.getItem('sen_fx_rates') || 'null'); if (c && c.rates && c.rates.MYR) FX_RATES = c.rates; } catch (e) {}
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
+    const d = await r.json();
+    if (d && d.rates && Number(d.rates.MYR)) {
+      FX_RATES = d.rates;
+      try { localStorage.setItem('sen_fx_rates', JSON.stringify({ date: d.time_last_update_utc || '', rates: d.rates })); } catch (e) {}
+      if (typeof calcPrice === 'function') { try { calcPrice(); } catch (e) {} }   // 拉到后刷新底价折算(calcPrice 重建价格框+触发预览)
+    }
+  } catch (e) { /* 离线/被墙 → 用本地缓存或粗略兜底表 */ }
+}
+
 // Active machine shortcut
 function M() { return state.machines[state.activeMachineIdx]; }
 
@@ -1214,6 +1230,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','&#10003; Configured'); }
   if (gsId)  document.getElementById('s-gs-id').value = gsId;
   refreshConnectCard();   // v10.96: 没连 Sheets 就显示友好兜底卡
+  loadFxRates();          // v11.1: 拉当日实时汇率(给「最低售价」折算用，失败有兜底)
   document.getElementById('apps-script-code').textContent = getAppsScriptCode();
   genContractNo();
   renderRemarkItems();
@@ -2376,16 +2393,20 @@ function calcPrice() {
       }
       html += `<div class="pc-row deposit"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span class="price-tag">${fmt(dep)}</span></div>`;
       html += `<div class="pc-row balance"><span>Balance</span><span class="price-tag">${fmt(bal)}</span></div>`;
-      // v11.0: 最低售价(底价)提示 —— 仅售价、不碰成本。底价 = 机型库参考售价 refPrice(USD) × 0.90，折成当前币种显示。
-      const _ref = Number(m.refPrice) || 0;
-      if (_ref > 0 && !isParts) {
-        const USD2CUR = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };  // 1 USD = X <curr>(粗略,仅作底价提示用,不影响合同金额)
-        const mult = USD2CUR[curr];
+      // v11.0/11.1: 最低售价(底价)提示 —— 仅售价、不碰成本。
+      // 底价(USD) = 机型库 floorPrice(若机型库有设)否则 refPrice×0.90；折成当前币种(优先每日实时汇率 FX_RATES，退回粗略表)。
+      const _ref  = Number(m.refPrice)   || 0;
+      const _fset = Number(m.floorPrice) || 0;   // 机型库「FloorPrice」列设定的底价(USD)，优先于 ref×0.9
+      const _floorUSD = _fset > 0 ? _fset : (_ref > 0 ? _ref * 0.90 : 0);
+      if (_floorUSD > 0 && !isParts) {
+        const USD2CUR = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };  // 粗略兜底,仅作提示,不影响合同金额
+        const mult = (FX_RATES && Number(FX_RATES[curr])) || USD2CUR[curr];
         if (mult) {
-          const floorCur = _ref * 0.90 * mult;
+          const floorCur = _floorUSD * mult;
           const uq = m.unitQty || 1;
           const netUnit = uq > 0 ? sellPrice / uq : sellPrice;
-          html += `<div class="pc-row" style="border-top:1px dashed #e0c08a;margin-top:5px;padding-top:6px"><span style="color:#a06a2c">💡 最低售价/台 <span style="font-weight:400;font-size:10px">(参考价 −10%)</span></span><span class="price-tag" style="color:#a06a2c">${fmt(floorCur)}</span></div>`;
+          const _src = _fset > 0 ? '机型库设定' : '参考价 −10%';
+          html += `<div class="pc-row" style="border-top:1px dashed #e0c08a;margin-top:5px;padding-top:6px"><span style="color:#a06a2c">💡 最低售价/台 <span style="font-weight:400;font-size:10px">(${_src})</span></span><span class="price-tag" style="color:#a06a2c">${fmt(floorCur)}</span></div>`;
           // 仅当售价已被改动(≠刚带出的 refPrice 原值)才比对，避免非美元合同刚选机型时(售价暂为 USD 数值)误报
           if (netUnit < floorCur - 0.5 && Math.abs(netUnit - _ref) > 0.5) {
             html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ 低于最低售价</span><span style="color:#c0392b;font-size:11px">每台净价 ${fmt(netUnit)}</span></div>`;
@@ -5618,6 +5639,7 @@ function loadMachineFromDB(idx) {
   machine.sellPrice    = m.refPrice || 0;
   machine._finalPrice  = m.refPrice || 0;
   machine.refPrice     = Number(m.refPrice) || 0;   // v11.0: 留存机型库参考售价，用于「最低售价」底价(ref×0.9)显示
+  machine.floorPrice   = Number(m.floorPrice) || 0; // v11.1: 留存机型库设定底价(USD,若后端有该列)
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
     label: s.label, value: s.value,
     bold: s.bold || false, boldLabel: s.boldLabel || false,
@@ -5658,6 +5680,7 @@ function loadMachineFromDB(idx) {
     // Re-save customTitle to state (DOM rebuild clears it)
     M().customTitle = m.modelName || '';
     M().refPrice = Number(m.refPrice) || 0;   // v11.0: 面板重建后重新留存参考售价
+    M().floorPrice = Number(m.floorPrice) || 0;   // v11.1: 面板重建后重新留存机型库设定底价
 
     const setF = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
     setF('f-custom-title', m.modelName || '');
