@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v11.3</title>
+<title>Sen Labels — Contract Generator v11.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -439,7 +439,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.3</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.4</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1095,6 +1095,11 @@ function mobileTab(tab) {
       <input type="text" id="s-gs-url" placeholder="https://script.google.com/macros/s/...">
     </div>
     <div class="field-group">
+      <label>访问令牌 Access Token</label>
+      <input type="text" id="s-api-token" placeholder="Claude 给你的那串令牌（没有就留空）">
+      <div style="font-size:11px;color:#888;margin-top:4px">🔒 加固后才需要：Claude 会给你这串，每台设备粘一次。留空 = 不启用。</div>
+    </div>
+    <div class="field-group">
       <label>Google Sheet ID (from URL)</label>
       <input type="text" id="s-gs-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
     </div>
@@ -1184,6 +1189,43 @@ let state = {
 };
 
 let gsUrl = localStorage.getItem('sen_gs_url') || '';
+// ===== v11.4 安全：webhook 访问令牌全局注入 =========================
+// 本页有 24+ 处散落 fetch(gsUrl...)，用一个 fetch 拦截器统一加令牌，免逐个改。
+// 空令牌 = 不加(后端放行)，向后兼容；只作用于后端(script.google.com)请求。
+(function(){
+  if (window.__senTokenShim) return; window.__senTokenShim = true;
+  const _fetch = window.fetch.bind(window);
+  let _tokPrompted = false;
+  function apiToken(){ return localStorage.getItem('sen_api_token') || ''; }
+  function isBackend(u){ return typeof u === 'string' && u.indexOf('script.google.com/macros/') !== -1; }
+  function promptToken(){
+    if (_tokPrompted) return; _tokPrompted = true;
+    const t = prompt('需要访问令牌才能连接。\n请粘贴 Claude 给你的访问令牌：', apiToken());
+    if (t && t.trim()) { localStorage.setItem('sen_api_token', t.trim()); location.reload(); }
+  }
+  window.fetch = function(input, init){
+    try {
+      const t = apiToken();
+      const url = (typeof input === 'string') ? input : (input && input.url) || '';
+      if (isBackend(url)) {
+        if (t && typeof input === 'string') {
+          const method = (init && init.method ? String(init.method) : 'GET').toUpperCase();
+          if (method !== 'GET' && init && typeof init.body === 'string') {
+            try { const o = JSON.parse(init.body); o.token = t; init = Object.assign({}, init, { body: JSON.stringify(o) }); }
+            catch(e) { input = url + (url.indexOf('?') !== -1 ? '&' : '?') + 'token=' + encodeURIComponent(t); }
+          } else {
+            input = url + (url.indexOf('?') !== -1 ? '&' : '?') + 'token=' + encodeURIComponent(t);
+          }
+        }
+        return _fetch(input, init).then(function(resp){
+          try { resp.clone().json().then(function(j){ if (j && j.error === 'unauthorized') promptToken(); }).catch(function(){}); } catch(e){}
+          return resp;
+        });
+      }
+    } catch(e){}
+    return _fetch(input, init);
+  };
+})();
 let gsId  = localStorage.getItem('sen_gs_id')  || '';
 // v10.91: 记住"自动取号"最后写入的合同号字符串。仅当号还原封不动(未被加载/手改)时，切换文档类型才重新取号(Q/SC 是不同序列)。
 let _autoNoValue = null;
@@ -1223,6 +1265,7 @@ document.addEventListener('DOMContentLoaded', () => {
   state.date = today;
   if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','&#10003; Configured'); }
   if (gsId)  document.getElementById('s-gs-id').value = gsId;
+  { const _t = localStorage.getItem('sen_api_token') || '', _te = document.getElementById('s-api-token'); if (_te) _te.value = _t; }  // v11.4: 回填令牌
   refreshConnectCard();   // v10.96: 没连 Sheets 就显示友好兜底卡
   loadFxRates();          // v11.1: 拉当日实时汇率(给「最低售价」折算用，失败有兜底)
   document.getElementById('apps-script-code').textContent = getAppsScriptCode();
@@ -4530,6 +4573,7 @@ function saveSettings() {
   gsId  = document.getElementById('s-gs-id').value.trim();
   localStorage.setItem('sen_gs_url',gsUrl);
   localStorage.setItem('sen_gs_id',gsId);
+  { const _te = document.getElementById('s-api-token'); if (_te) localStorage.setItem('sen_api_token', _te.value.trim()); }  // v11.4: 存令牌(空=清除)
   refreshConnectCard();   // v10.96: 连上(或清空)后即时更新兜底卡显隐
   const res = document.getElementById('test-result');
   if (!gsUrl) { res.innerHTML='<span class="red">No URL entered.</span>'; updateGsStatus('warn','Not configured'); return; }

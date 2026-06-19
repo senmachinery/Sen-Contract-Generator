@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.41</title>
+<title>Sen Labels — CRM v2.42</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -536,7 +536,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.41</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.42</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1116,21 +1116,43 @@ function statusColor(status) {
 }
 
 // ─── API Layer ─────────────────────────────────────────────────
+// v2.42 安全：webhook 访问令牌。空令牌=不带(后端放行)，加固启用后带上才能用。
+const TOKEN_STORAGE_KEY = 'sen_api_token';
+function getApiToken() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ''; }
+let _tokenPrompted = false;
+function ensureApiToken() {
+  // 后端返回 unauthorized 时：弹一次输入框让 Max 粘令牌，存好后刷新（多个并发请求只弹一次）。
+  if (_tokenPrompted) return;
+  _tokenPrompted = true;
+  const t = prompt('需要访问令牌才能连接 CRM。\n请粘贴 Claude 给你的访问令牌：', getApiToken());
+  if (t && t.trim()) { localStorage.setItem(TOKEN_STORAGE_KEY, t.trim()); location.reload(); }
+}
+
 async function apiGet(action, params) {
   if (!STATE.appsScriptUrl) throw new Error('Apps Script URL not configured');
-  const qs = new URLSearchParams({ action, ...(params || {}) }).toString();
+  const all = { action, ...(params || {}) };
+  const tok = getApiToken();
+  if (tok) all.token = tok;
+  const qs = new URLSearchParams(all).toString();
   const r = await fetch(STATE.appsScriptUrl + '?' + qs);
-  return r.json();
+  const j = await r.json();
+  if (j && j.error === 'unauthorized') { ensureApiToken(); throw new Error('unauthorized'); }
+  return j;
 }
 
 async function apiPost(action, data) {
   if (!STATE.appsScriptUrl) throw new Error('Apps Script URL not configured');
+  const body = { action, ...data };
+  const tok = getApiToken();
+  if (tok) body.token = tok;
   const r = await fetch(STATE.appsScriptUrl, {
     method: 'POST',
-    body: JSON.stringify({ action, ...data }),
+    body: JSON.stringify(body),
     headers: { 'Content-Type': 'text/plain;charset=utf-8' }
   });
-  return r.json();
+  const j = await r.json();
+  if (j && j.error === 'unauthorized') { ensureApiToken(); throw new Error('unauthorized'); }
+  return j;
 }
 
 // ─── Connection & Setup ────────────────────────────────────────
@@ -1173,6 +1195,13 @@ function openSettings() {
         💡 This is the same URL you set in Generator. Copy from Generator Settings.
       </div>
     </div>
+    <div class="form-row">
+      <label>访问令牌 Access Token</label>
+      <input type="text" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Claude 给你的那串令牌（没有就留空）">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+        🔒 加固后才需要：Claude 会给你这串，每台设备粘一次。留空 = 不启用。
+      </div>
+    </div>
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -1184,6 +1213,8 @@ function openSettings() {
 async function saveAndTestSettings() {
   const url = $('settings-url').value.trim();
   if (!url) { showToast('URL required', 'error'); return; }
+  const tokEl = $('settings-token');
+  if (tokEl) localStorage.setItem(TOKEN_STORAGE_KEY, tokEl.value.trim());  // v2.42: 存令牌(空=清除)
   saveUrl(url);
   closeModal();
   const ok = await testConnection();
