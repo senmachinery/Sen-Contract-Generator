@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v11.1</title>
+<title>Sen Labels — Contract Generator v11.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -350,8 +350,8 @@ body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
 .section-title{color:#143047;border-bottom:2px solid #e8eaf0;font-weight:700;}
 .field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:#27557d;box-shadow:0 0 0 3px rgba(39,85,125,.12);}
 .m-tab.active{background:#143047;border-color:#143047;}
-.mdb-chip.active,.mdb-cat-header,.lib-cat-header{color:#143047;}
-.mdb-chip.active{background:#143047;border-color:#143047;}
+.mdb-cat-header,.lib-cat-header{color:#143047;}
+.mdb-chip.active{background:#143047;border-color:#143047;color:#fff;}  /* v11.2: 选中的筛选chip必须白字——之前误设成深navy字+深navy底=黑成一团看不见 */
 
 /* Mobile toggle */
 #mobile-preview-toggle button.active{border-bottom-color:#d8392b;color:#143047;}
@@ -445,7 +445,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.1</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.2</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
