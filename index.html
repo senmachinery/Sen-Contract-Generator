@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.99</title>
+<title>Sen Labels — Contract Generator v11.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -445,7 +445,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.99</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.0</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1153,6 +1153,7 @@ function newMachine() {
     costMachine:0, costAddons:0, costStd:60000, costTradein:0,
     custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
     inPackage:false,
+    refPrice:0,   // v11.0: 机型库参考售价(USD)，用来算「最低售价」底价显示，绝不显示成本
     _finalPrice:0
   };
 }
@@ -2375,6 +2376,22 @@ function calcPrice() {
       }
       html += `<div class="pc-row deposit"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span class="price-tag">${fmt(dep)}</span></div>`;
       html += `<div class="pc-row balance"><span>Balance</span><span class="price-tag">${fmt(bal)}</span></div>`;
+      // v11.0: 最低售价(底价)提示 —— 仅售价、不碰成本。底价 = 机型库参考售价 refPrice(USD) × 0.90，折成当前币种显示。
+      const _ref = Number(m.refPrice) || 0;
+      if (_ref > 0 && !isParts) {
+        const USD2CUR = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };  // 1 USD = X <curr>(粗略,仅作底价提示用,不影响合同金额)
+        const mult = USD2CUR[curr];
+        if (mult) {
+          const floorCur = _ref * 0.90 * mult;
+          const uq = m.unitQty || 1;
+          const netUnit = uq > 0 ? sellPrice / uq : sellPrice;
+          html += `<div class="pc-row" style="border-top:1px dashed #e0c08a;margin-top:5px;padding-top:6px"><span style="color:#a06a2c">💡 最低售价/台 <span style="font-weight:400;font-size:10px">(参考价 −10%)</span></span><span class="price-tag" style="color:#a06a2c">${fmt(floorCur)}</span></div>`;
+          // 仅当售价已被改动(≠刚带出的 refPrice 原值)才比对，避免非美元合同刚选机型时(售价暂为 USD 数值)误报
+          if (netUnit < floorCur - 0.5 && Math.abs(netUnit - _ref) > 0.5) {
+            html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ 低于最低售价</span><span style="color:#c0392b;font-size:11px">每台净价 ${fmt(netUnit)}</span></div>`;
+          }
+        }
+      }
       resultDiv.innerHTML = html;
     } else {
       resultDiv.style.display = 'none';
@@ -5600,6 +5617,7 @@ function loadMachineFromDB(idx) {
   machine.unitPrice    = m.refPrice || 0;
   machine.sellPrice    = m.refPrice || 0;
   machine._finalPrice  = m.refPrice || 0;
+  machine.refPrice     = Number(m.refPrice) || 0;   // v11.0: 留存机型库参考售价，用于「最低售价」底价(ref×0.9)显示
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
     label: s.label, value: s.value,
     bold: s.bold || false, boldLabel: s.boldLabel || false,
@@ -5639,6 +5657,7 @@ function loadMachineFromDB(idx) {
 
     // Re-save customTitle to state (DOM rebuild clears it)
     M().customTitle = m.modelName || '';
+    M().refPrice = Number(m.refPrice) || 0;   // v11.0: 面板重建后重新留存参考售价
 
     const setF = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
     setF('f-custom-title', m.modelName || '');
