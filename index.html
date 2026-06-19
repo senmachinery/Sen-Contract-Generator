@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v10.98</title>
+<title>Sen Labels — Contract Generator v10.99</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -445,7 +445,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.98</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v10.99</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -4528,6 +4528,10 @@ function newContract() {
     depositPct:30, depositAmt:0, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
     installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
     installmentRate:0, installmentStartDate:'', installmentRows:[],
+    // v10.99: 这些合同级字段以前没在 newContract 重置 → 会从上一单残留，现一并清回默认
+    salesRep:'', balanceLabel:'', payTermsText:'', warrantyOverride:'',
+    bankOverride:false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
+    packagePrice:0, packageLabel:'', customPayRows:[],
     validity:'One (1) Month only',
     delivery:'To be determined upon confirmation and/or full payment.',
     docType:'Sales Contract', status:'Quotation Sent', revised:'',
@@ -4550,6 +4554,26 @@ function newContract() {
   document.getElementById('f-rate-sgd').value='1.35'; document.getElementById('f-rate-idr').value='16200';
   document.getElementById('f-deposit-pct').value='30'; document.getElementById('f-delivery').value='To be determined upon confirmation and/or full payment.';
   document.getElementById('f-tradein-desc').value=''; document.getElementById('f-tradein-value').value='';
+  // v10.99: 把以前漏清的合同级 DOM 字段也清回默认，避免上一单残留串到新合同
+  document.getElementById('f-contract-no').value='';   // 清旧合同号→genContractNo 重填前缀(离线也不残留)、连网时 fetchNextNo 再补序号
+  setVal('f-sales-rep','');
+  { const pa=document.getElementById('price-advanced'); if(pa) pa.style.display='none'; const cc=document.querySelector('#price-adv-toggle .adv-caret'); if(cc) cc.innerHTML='&#9662;'; }   // 新合同高级区收起
+  setVal('f-doctype','Sales Contract');
+  setVal('f-status','Quotation Sent'); toggleSignedPDFSection('Quotation Sent');
+  setVal('f-pay-cond','30/70'); setVal('f-deposit-amt','');
+  setVal('f-validity','One (1) Month only');
+  setVal('f-balance-label',''); setVal('f-pay-terms-text',''); setVal('f-warranty-override','');
+  setVal('f-package-price',''); setVal('f-package-label','');
+  { const pr=document.getElementById('package-price-row'); if(pr) pr.style.display='none'; }
+  { const ip=document.getElementById('f-in-package'); if(ip) ip.checked=false; }
+  { const bo=document.getElementById('f-bank-override'); if(bo) bo.checked=false; }
+  ['f-bank-account','f-bank-beneficiary','f-bank-name','f-bank-swift','f-bank-branch'].forEach(id=>setVal(id,''));
+  onBankOverrideChange();   // bankOverride=false → 用按币种的默认银行
+  { const io=document.getElementById('f-installment-on'); if(io) io.checked=false; }
+  setVal('f-inst-count','3'); setVal('f-inst-freq','12'); setVal('f-inst-rate','0'); setVal('f-inst-start','');
+  toggleInstallmentPanel();   // 收起分期面板
+  { const ir=document.getElementById('inst-rows-wrap'); if(ir) ir.innerHTML='Fill in the fields above and click Calculate'; }
+  state.customPayRows=[]; renderCustomPayRows();   // 清自定义付款行(state+DOM)
   document.getElementById('cw-list').innerHTML='';
   document.getElementById('opt-list').innerHTML='';
   document.getElementById('img-thumbs').innerHTML='';
