@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.45</title>
+<title>Sen Labels — CRM v2.46</title>
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -494,10 +494,10 @@
 .card{ box-shadow:0 1px 2px rgba(16,40,64,.05),0 1px 1px rgba(16,40,64,.03); }
 /* ── 手机 / iPad 友好（≤900px）── */
 @media (max-width:900px){
-  /* v2.45 修手机：顶栏在窄屏会换成两行变高，原本钉死 44px 的标签栏会跟它撞在一起。
-     → 手机上顶栏不再 sticky（随页面滚走），标签栏改贴最顶(top:0)，不再重叠。 */
+  /* v2.46 修手机：顶栏在窄屏会换两行变高，sticky 会互相遮挡（标签栏盖住 Connected/Open 按钮）。
+     → 手机上顶栏和标签栏都不 sticky，正常顺序往下排、随页面滚动，谁也不盖谁。 */
   .topbar{ position:static; }
-  .tab-bar{ top:0; }
+  .tab-bar{ position:static; }
   .topbar{ padding:10px 14px; }
   .topbar-btn{ padding:8px 12px; font-size:13px; }
   .tab{ padding:13px 14px; font-size:14px; }
@@ -582,7 +582,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.45</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.46</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="点击打开设置（URL / 访问令牌）">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
