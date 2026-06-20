@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — Contract Generator v11.4</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sen Labels — Contract Generator v11.5</title>
+<!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sen 报价">
+<link rel="manifest" href="manifest-gen.json">
+<link rel="apple-touch-icon" href="icon-gen-180.png">
+<link rel="icon" type="image/png" href="icon-gen-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -357,6 +366,39 @@ body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
 #mobile-preview-toggle button.active{border-bottom-color:#d8392b;color:#143047;}
 #mobile-preview-toggle button{display:inline-flex;align-items:center;justify-content:center;gap:6px;}
 #mobile-preview-toggle .ic{width:15px;height:15px;}
+
+/* ════════ v11.5 Modern Clean 皮 + 手机/iPad 友好（只换外观；合同纸/导出完全不动）════════ */
+/* 顶栏白底（Sen 红字 + navy 文字），替代原深色条 */
+#topbar{ background:#fff; border-bottom:1px solid #e6ebf1; box-shadow:0 1px 2px rgba(16,40,64,.05); }
+#topbar h1{ color:#1b2a3a; }
+#topbar h1 .brand-sen{ color:#d8392b; }
+#topbar .logo-sub{ color:#5a6b7e; opacity:1; }
+/* 顶栏按钮统一干净浅色（原本是 navy 上的杂色/半透明白）；只留两个强调色 */
+.topbar-actions .btn{ background:#fff; color:#143047; border:1px solid #dce3ea; }
+.topbar-actions .btn:hover{ background:#f1f5f9; }
+.topbar-actions .btn-outline{ background:#fff !important; color:#143047 !important; border:1px solid #dce3ea !important; }
+.topbar-actions .btn-outline:hover{ background:#f1f5f9 !important; }
+/* 所有带内联色的按钮（Library/Duplicate/Machine DB/Add Machine/Export Excel/Word）统一翻成浅色 */
+.topbar-actions [style*="6a1b9a"],.topbar-actions [style*="00897b"],.topbar-actions [style*="e67e00"],
+.topbar-actions [style*="2e7d32"],.topbar-actions [style*="217346"],.topbar-actions [style*="2B579A"],.topbar-actions [style*="2b579a"]{ background:#fff !important; color:#143047 !important; border:1px solid #dce3ea !important; }
+.topbar-actions [style*="6a1b9a"]:hover,.topbar-actions [style*="00897b"]:hover,.topbar-actions [style*="e67e00"]:hover,
+.topbar-actions [style*="2e7d32"]:hover,.topbar-actions [style*="217346"]:hover,.topbar-actions [style*="2B579A"]:hover,.topbar-actions [style*="2b579a"]:hover{ background:#f1f5f9 !important; }
+.topbar-actions .btn-outline .ic,.topbar-actions .btn .ic{ color:#5a6b7e; }
+/* 两个强调：New Contract = navy，Print/PDF = Sen 红 */
+.topbar-actions .btn-primary{ background:#1b3e5c !important; color:#fff !important; border-color:#1b3e5c !important; }
+.topbar-actions .btn-primary .ic{ color:#fff; }
+.topbar-actions .btn-orange{ background:#d8392b !important; color:#fff !important; border-color:#d8392b !important; }
+.topbar-actions .btn-orange .ic{ color:#fff; }
+/* ── 手机 / iPad 友好（≤900px）── */
+@media (max-width:900px){
+  #topbar{ padding:9px 13px; }
+  .btn{ padding:9px 13px; font-size:13px; }
+  .btn-sm{ padding:8px 11px; font-size:12.5px; }
+  .tab-btn{ padding:12px 8px; font-size:13px; }
+  /* 输入≥16px：iOS 聚焦不自动放大页面 */
+  input,select,textarea{ font-size:16px !important; }
+  body{ overflow-x:hidden; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
@@ -439,7 +481,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.4</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.5</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">

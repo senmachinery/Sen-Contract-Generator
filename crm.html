@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sen Labels — CRM v2.43</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sen Labels — CRM v2.44</title>
+<!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sen CRM">
+<link rel="manifest" href="manifest-crm.json">
+<link rel="apple-touch-icon" href="icon-crm-180.png">
+<link rel="icon" type="image/png" href="icon-crm-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -464,6 +473,39 @@
 
 /* Toasts */
 .toast{border-radius:10px;}
+
+/* ════════ v2.44 Modern Clean 皮 + 手机/iPad 友好（只换外观，功能/结构不动）════════ */
+:root{ --bg:#f4f7fa; --border:#e6ebf1; }
+/* 顶栏：干净白底（Sen 红字 + navy 文字），替代原深色条 */
+.topbar{ background:#fff; color:var(--text); border-bottom:1px solid var(--border); box-shadow:0 1px 2px rgba(16,40,64,.05); }
+.topbar h1{ color:var(--text); }
+.topbar h1 .brand-sen{ color:var(--brand-red); }
+.topbar h1 .version{ color:var(--text-faint); opacity:1; }
+.topbar-btn{ background:#fff; color:var(--text); border:1px solid var(--border); }
+.topbar-btn:hover{ background:var(--bg); }
+.topbar-btn.primary{ background:var(--primary); color:#fff; border-color:var(--primary); font-weight:600; }
+.topbar-btn.primary:hover{ background:var(--primary-light); }
+/* 标签栏：选中改 Sen 红下划线（呼应预览①） */
+.tab.active{ color:var(--primary); border-bottom-color:var(--brand-red); }
+.tab.active .count{ background:var(--brand-red); color:#fff; }
+.tab-bar{ box-shadow:0 1px 2px rgba(16,40,64,.04); }
+/* 卡片/按钮略精致 */
+.btn{ border-radius:9px; }
+.card{ box-shadow:0 1px 2px rgba(16,40,64,.05),0 1px 1px rgba(16,40,64,.03); }
+/* ── 手机 / iPad 友好（≤900px）── */
+@media (max-width:900px){
+  .topbar{ padding:10px 14px; }
+  .topbar-btn{ padding:8px 12px; font-size:13px; }
+  .tab{ padding:13px 14px; font-size:14px; }
+  .btn{ padding:10px 14px; }
+  .btn-sm{ padding:8px 12px; font-size:13px; }
+  .content{ padding:14px; }
+  .qf-chip{ padding:8px 13px; font-size:13px; }
+  /* 输入≥16px：iOS 聚焦不自动放大页面 */
+  input,select,textarea{ font-size:16px !important; }
+  body{ overflow-x:hidden; }
+}
+@media (max-width:560px){ .topbar h1{ font-size:15px; } }
 </style>
 
 </head>
@@ -536,7 +578,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.43</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.44</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="点击打开设置（URL / 访问令牌）">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
