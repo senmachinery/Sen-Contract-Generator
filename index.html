@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v11.5</title>
+<title>Sen Labels — Contract Generator v11.6</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -481,7 +481,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.5</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.6</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1245,6 +1245,7 @@ let gsUrl = localStorage.getItem('sen_gs_url') || '';
     const t = prompt('需要访问令牌才能连接。\n请粘贴 Claude 给你的访问令牌：', apiToken());
     if (t && t.trim()) { localStorage.setItem('sen_api_token', t.trim()); location.reload(); }
   }
+  window.__senPromptToken = promptToken;   // v11.6: 让取号等流程在未授权时也能唤起令牌输入框
   window.fetch = function(input, init){
     try {
       const t = apiToken();
@@ -1882,6 +1883,15 @@ async function fetchNextNo(opts) {
     const data = await resp.json();
     if (opts.auto && (document.getElementById('f-contract-no').value || '') !== startVal) {
       document.getElementById('next-no-hint').textContent = '';   // 用户在等待中已自行填号，放手
+      return;
+    }
+    // v11.6: 没令牌/坏响应时别把 "undefined" 写进合同号——给清楚提示并引导去填令牌
+    if (!data || data.error || data.next === undefined || data.next === null) {
+      const needTok = data && data.error === 'unauthorized';
+      document.getElementById('next-no-hint').innerHTML = needTok
+        ? '<span class="red">⚠ 需先在「设置 ⚙」填访问令牌才能自动取号</span>'
+        : (opts.auto ? '' : '<span class="red">取号失败，请检查连接 / 设置</span>');
+      if (needTok && typeof window.__senPromptToken === 'function') window.__senPromptToken();
       return;
     }
     const yr = new Date().getFullYear().toString().slice(-2);
