@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v11.7</title>
+<title>Sen Labels — Contract Generator v11.8</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -481,7 +481,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.7</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.8</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -832,6 +832,16 @@ function mobileTab(tab) {
           <label>Annual Rate %</label>
           <input type="number" id="f-inst-rate" value="0" min="0" max="50" step="0.1" style="width:100%;padding:6px 8px;border:1px solid #ccd;border-radius:4px;font-size:13px">
         </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;font-weight:600;margin:0">
+          <input type="checkbox" id="f-inst-full" style="width:auto;margin:0" onchange="state.installmentFullAmount=this.checked;instOpt()">
+          全额分期 · 无定金 <span style="font-weight:400;color:#888">(No deposit — installment full amount)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;margin:0">
+          <input type="checkbox" id="f-inst-exact" style="width:auto;margin:0" onchange="state.installmentExactSplit=this.checked;instOpt()">
+          完全平摊到分（小数）<span style="color:#888">— 默认取整、最后一期补差</span>
+        </label>
       </div>
       <div class="field-group" style="margin-bottom:8px">
         <label>First Payment Date</label>
@@ -1229,6 +1239,7 @@ let state = {
   depositPct:30, depositAmt:0, payCond:'30/70',
   tradeinDesc:'', tradeinValue:0,
   installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
+  installmentFullAmount:false, installmentExactSplit:false,
   installmentRate:0, installmentStartDate:'', installmentRows:[],
   validity:'One (1) Month only',
   delivery:'To be determined upon confirmation and/or full payment.',
@@ -1678,6 +1689,8 @@ function saveCurrentMachineToState() {
   state.tradeinDesc  = g('f-tradein-desc');
   state.tradeinValue = n('f-tradein-value') || 0;
   state.installmentEnabled    = document.getElementById('f-installment-on')?.checked || false;
+  state.installmentFullAmount = document.getElementById('f-inst-full')?.checked || false;
+  state.installmentExactSplit = document.getElementById('f-inst-exact')?.checked || false;
   state.installmentCount      = parseInt(g('f-inst-count'))  || 3;
   state.installmentFreqMonths = parseInt(g('f-inst-freq'))   || 12;
   state.installmentRate       = parseFloat(g('f-inst-rate')) || 0;
@@ -2221,21 +2234,29 @@ function toggleInstallmentPanel() {
 function generateInstallments() {
   const count      = parseInt(document.getElementById('f-inst-count').value)  || 3;
   const freqMonths = parseInt(document.getElementById('f-inst-freq').value)   || 12;
-  const annualRate = parseFloat(document.getElementById('f-inst-rate').value) || 0;
+  const annualRate = Math.max(0, parseFloat(document.getElementById('f-inst-rate').value) || 0);
   const startDate  = document.getElementById('f-inst-start').value;
 
-  // Total balance = total price minus deposit minus trade-in
-  const totalPrice = pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m)=>(s + (calcPriceForMachine(m).sellPrice||0)),0);
-  const depositAmt = getDepositFor(totalPrice);
-  const tradeinAmt = (state.tradeinValue>0) ? (state.tradeinValue||0) : 0;
-  const balance    = totalPrice - depositAmt - tradeinAmt;
+  // v11.8: 「全额分期·无定金」+ 取整/精确两种平摊，最后一期补差→总额分毫不差
+  const fullAmount = document.getElementById('f-inst-full')?.checked || false;
+  const exact      = document.getElementById('f-inst-exact')?.checked || false;
+  state.installmentFullAmount = fullAmount;
+  state.installmentExactSplit = exact;
 
-  // Straight-line interest: equal amount every period
-  const totalYears      = (count * freqMonths) / 12;
-  const totalInterest   = balance * (annualRate/100) * totalYears;
-  const principalPerPeriod = balance / count;
-  const interestPerPeriod  = Math.round(totalInterest / count * 100) / 100;
-  const totalPerPeriod     = Math.round((principalPerPeriod + interestPerPeriod) * 100) / 100;
+  const totalPrice = pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m)=>(s + (calcPriceForMachine(m).sellPrice||0)),0);
+  const tradeinAmt = (state.tradeinValue>0) ? (state.tradeinValue||0) : 0;
+  const depositAmt = fullAmount ? 0 : getDepositFor(totalPrice);   // 全额模式：无定金
+  const base       = totalPrice - depositAmt - tradeinAmt;
+
+  // Straight-line interest on the base
+  const totalYears    = (count * freqMonths) / 12;
+  const totalInterest = base * (annualRate/100) * totalYears;
+  const grand         = Math.round((base + totalInterest) * 100) / 100;   // 要分期的总额
+
+  // 每期：默认取整；勾选=精确到分。最后一期 = 总额 − 前面之和（精确补差）
+  const per  = exact ? (Math.floor((grand / count) * 100) / 100) : Math.floor(grand / count);
+  const last = Math.round((grand - per * (count - 1)) * 100) / 100;
+  const perInterest = (count > 0 && annualRate > 0) ? Math.round((totalInterest / count) * 100) / 100 : 0;
 
   state.installmentRows = [];
   for (let i = 0; i < count; i++) {
@@ -2245,16 +2266,32 @@ function generateInstallments() {
       d.setMonth(d.getMonth() + i * freqMonths);
       date = d.toISOString().slice(0,10);
     }
+    const amt = (i === count - 1) ? last : per;
     state.installmentRows.push({
       label: `Instalment ${i+1} of ${count}`,
       date,
-      principal: Math.round(principalPerPeriod*100)/100,
-      interest:  interestPerPeriod,
-      total:     totalPerPeriod
+      principal: Math.round((amt - perInterest) * 100) / 100,
+      interest:  perInterest,
+      total:     amt
     });
   }
   renderInstallmentRows();
   updatePreview();
+}
+// v11.8: 切换全额/精确选项时，已有排期就重算，否则只刷新预览
+function instOpt(){ if (state.installmentRows && state.installmentRows.length) generateInstallments(); else updatePreview(); }
+// v11.8: 分期排期的实际合计（=各期之和，全额行用它，确保和下方排期分毫一致、含息正确）
+function instScheduleTotal(){ return Math.round((state.installmentRows||[]).reduce((s,r)=>s+(Number(r.total)||0),0)*100)/100; }
+// v11.8: 生成分期排期表 HTML（两条预览路共用；只在已启用且有排期时输出）
+function buildInstScheduleHTML(fmt){
+  if (!(state.installmentEnabled && state.installmentRows && state.installmentRows.length > 0)) return '';
+  const fmtDate = s => { if(!s) return '—'; const p=String(s).split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); };
+  let html = `<tr><td colspan="5" style="padding-top:3mm;font-size:9.5pt;color:#1a3a5c"><strong>Installment Payment Schedule :</strong></td></tr>`;
+  state.installmentRows.forEach(row => {
+    const interestNote = row.interest > 0 ? `&nbsp;<span style="color:#777;font-size:8.5pt">(incl. interest ${fmt(row.interest)})</span>` : '';
+    html += `<tr><td colspan="4" style="padding-left:6mm"><strong>~ ${esc(row.label)} &nbsp;&ndash;&nbsp; ${fmtDate(row.date)}</strong>${interestNote}</td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(row.total)}</td></tr>`;
+  });
+  return html;
 }
 
 function renderInstallmentRows() {
@@ -3518,7 +3555,9 @@ function buildContractHTML() {
     const balLbl = state.balanceLabel || 'Before Delivery';
     const depLbl = (state.depositAmt||0) > 0 ? 'Deposit' : ((state.depositPct||30) + '% Deposit');
     let payRows = '';
-    if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
+    if (state.installmentEnabled && state.installmentFullAmount && state.installmentRows && state.installmentRows.length) {
+      payRows = `<tr><td colspan="4"><strong>~ Full Amount Payable by Installment (see schedule below)</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(instScheduleTotal())}</td></tr>`;
+    } else if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
       payRows = buildCustomPayRowsHTML(totalAll, fmt);
     } else if (state.payCond !== 'full') {
       payRows = `
@@ -3578,7 +3617,7 @@ function buildContractHTML() {
   ${remarksHtml}
   ${state.machines.filter(m=>m.machineType==='parts'&&m.machineRemarks).map(m=>`<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>`).join('')}
   <div style="margin:5mm 0 2mm;font-size:8.5pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1e3a5f;font-family:'IBM Plex Sans',Arial,sans-serif;padding:0 0 2px 0;border-bottom:1px solid #e0e8f0;display:block">Remark</div>
-  <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}</table>
+  <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${buildInstScheduleHTML(fmt)}</table>
   ${(function(){
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
       return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
@@ -3691,7 +3730,9 @@ function buildContractHTML() {
 
   let payRows = '';
   // Use custom pay rows if defined
-  if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
+  if (state.installmentEnabled && state.installmentFullAmount && state.installmentRows && state.installmentRows.length) {
+    payRows = `<tr><td colspan="4"><strong>~ Full Amount Payable by Installment (see schedule below)</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(instScheduleTotal())}</td></tr>`;
+  } else if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
     payRows = buildCustomPayRowsHTML(totalPrice, fmt);
   } else if (state.payCond === 'tradein') {
     // Trade-In Offset: no deposit, just trade-in deduction then balance
@@ -4700,6 +4741,7 @@ function newContract() {
     currency:'USD', rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
     depositPct:30, depositAmt:0, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
     installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
+    installmentFullAmount:false, installmentExactSplit:false,
     installmentRate:0, installmentStartDate:'', installmentRows:[],
     // v10.99: 这些合同级字段以前没在 newContract 重置 → 会从上一单残留，现一并清回默认
     salesRep:'', balanceLabel:'', payTermsText:'', warrantyOverride:'',
@@ -4743,6 +4785,7 @@ function newContract() {
   ['f-bank-account','f-bank-beneficiary','f-bank-name','f-bank-swift','f-bank-branch'].forEach(id=>setVal(id,''));
   onBankOverrideChange();   // bankOverride=false → 用按币种的默认银行
   { const io=document.getElementById('f-installment-on'); if(io) io.checked=false; }
+  { const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=false; }
   setVal('f-inst-count','3'); setVal('f-inst-freq','12'); setVal('f-inst-rate','0'); setVal('f-inst-start','');
   toggleInstallmentPanel();   // 收起分期面板
   { const ir=document.getElementById('inst-rows-wrap'); if(ir) ir.innerHTML='Fill in the fields above and click Calculate'; }
@@ -4850,6 +4893,7 @@ function loadStateJSON(input) {
       sv('f-tradein-value',state.tradeinValue);
       const instOn = document.getElementById('f-installment-on');
       if (instOn) instOn.checked = state.installmentEnabled || false;
+      { const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false; }
       if (state.installmentEnabled) toggleInstallmentPanel();
       sv('f-inst-count', state.installmentCount||3);
       sv('f-inst-freq',  state.installmentFreqMonths||12);
@@ -4952,6 +4996,7 @@ function loadFromPastedJSON() {
     sv('f-tradein-value',state.tradeinValue);
     const instOn = document.getElementById('f-installment-on');
     if (instOn) instOn.checked = state.installmentEnabled || false;
+    { const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false; }
     if (state.installmentEnabled) toggleInstallmentPanel();
     sv('f-inst-count', state.installmentCount||3);
     sv('f-inst-freq',  state.installmentFreqMonths||12);
