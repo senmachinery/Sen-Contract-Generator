@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v11.8</title>
+<title>Sen Labels — Contract Generator v11.9</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -481,7 +481,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.8</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.9</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1232,7 +1232,7 @@ function newMachine() {
 // STATE
 // ============================================================
 let state = {
-  contractNo:'', date:'', admin:'NR', salesRep:'',
+  contractNo:'', recordId:'', date:'', admin:'NR', salesRep:'',
   company:'', addr:'', tel:'', email:'', attn:'', port:'',
   currency:'USD',
   rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
@@ -1971,6 +1971,7 @@ async function makeVariantNo() {
   const newNo = base + '(' + letter + ')';
   noField.value = newNo;
   state.contractNo = newNo;
+  state.recordId = '';   // v10.66: 变体=新记录，清 recordId 免覆盖原合同
   if (hint) hint.textContent = 'Variant of ' + base + ' — edit the content, then Save Record (saved as a separate record; the original is untouched).';
   updatePreview();
 }
@@ -4587,32 +4588,50 @@ async function saveToSheets(silent=false) {
   try {
     const totalAmt = pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0);
     const machineTitle = state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
+    if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
-      contractNo: state.contractNo, date: state.date, company: state.company,
+      contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company,
       machineTitle, currency: state.currency, amount: totalAmt,
       status: state.status||'Quotation Sent', admin: state.admin||'NR', port: state.port,
       notes: state.notes||'', signedPdfUrl: state.signedPdfUrl||'', salesRep: state.salesRep||''
     };
     if (!silent) setBtn('💾 Saving...', '#888');
     const cleanState = await stripImagesForSave(state);
-    fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+    // 1) 先存合同行（no-cors 只发不读），await 等服务端处理完——让后端锁先把号定下来
+    await fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ action:'save', record }) });
+    // 2) v10.66 先到先得：读回我这张实际挂的号。撞号时后端已自动改号，前端在此同步
+    let finalNo = state.contractNo;
+    try {
+      const dt = (String(state.contractNo).indexOf('/Q/')!==-1) ? 'Q' : 'SC';
+      const rr = await fetch(gsUrl + '?action=myNo&recordId=' + encodeURIComponent(state.recordId) + '&doctype=' + dt);
+      const jj = await rr.json();
+      if (jj && jj.contractNo && jj.contractNo !== state.contractNo) {
+        finalNo = jj.contractNo;
+        state.contractNo = finalNo;
+        const f = document.getElementById('f-contract-no'); if (f) f.value = finalNo;
+        _autoNoValue = null;
+        updatePreview();
+        if (!silent) showSaveStamp('⚠️ 此号已被占用，已自动改为 ' + finalNo + '（先到先得，原合同未被覆盖）', true);
+      }
+    } catch (e) { /* 读不到就按原号继续，后端锁仍保证不覆盖别人 */ }
+    // 3) 存完整 state（用最终号 + recordId，保持内外一致）
+    cleanState.contractNo = finalNo; cleanState.recordId = state.recordId;
     fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'saveState', contractNo: state.contractNo, state: cleanState }) });
-    // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo,
-    // so repeated saves / Print / Export won't create duplicates).
-    if (state.contractNo && state.company) {
+      body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });
+    // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
+    if (finalNo && state.company) {
       const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
       fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'crm_autoFollowupFromQuote', followup: {
-          customer: state.company, contractNo: state.contractNo, date: state.date,
+          customer: state.company, contractNo: finalNo, date: state.date,
           currency: state.currency, amount: totalAmt, nextFollowupDate: fuDate
         } }) });
     }
     if (!silent) {
       // ── VERIFY the save actually landed (no-cors can't confirm, so we read it back) ──
       setBtn('🔍 Verifying...', '#888');
-      const verified = await verifySaved(state.contractNo);
+      const verified = await verifySaved(finalNo);
       if (verified) {
         setBtn('✅ Saved & Verified!', '#2e7d32');
         const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
@@ -4735,7 +4754,7 @@ function copyAppsScript() {
 function newContract() {
   if (!confirm('Start a new contract? Current data will be cleared.')) return;
   state = {
-    contractNo:'', date: new Date().toISOString().split('T')[0],
+    contractNo:'', recordId:'', date: new Date().toISOString().split('T')[0],
     admin: document.getElementById('f-admin').value || 'NR',
     company:'', addr:'', tel:'', email:'', attn:'', port:'',
     currency:'USD', rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
@@ -7326,6 +7345,7 @@ function duplicateAsNew() {
   saveCurrentMachineToState();
   const dup = JSON.parse(JSON.stringify(state));
   dup.contractNo = '';
+  dup.recordId = '';   // v10.66: 复制=新记录，清 recordId 免覆盖原合同
   dup.date = new Date().toISOString().split('T')[0];
   dup.revised = '';
   dup.status = 'Quotation Sent';
