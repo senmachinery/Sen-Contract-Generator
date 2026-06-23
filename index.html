@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v11.6</title>
+<title>Sen Labels — Contract Generator v11.7</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -481,7 +481,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.6</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v11.7</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -905,13 +905,14 @@ function mobileTab(tab) {
       ondragover="event.preventDefault();this.classList.add('drag')"
       ondragleave="this.classList.remove('drag')"
       ondrop="handleImgDrop(event)">
-      &#128247; Click or drag images here (JPG, PNG)
+      &#128247; Click, drag, or paste (Ctrl+V) images here (JPG, PNG)
     </div>
     <input type="file" id="img-input" accept="image/*" multiple style="display:none" onchange="handleImgSelect(event)">
     <div class="img-thumbs" id="img-thumbs"></div>
     <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <button onclick="saveImagesToDrive()" style="background:#1a73e8;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#9729;&#65039; Save to Drive</button>
       <button onclick="openImagePicker()" style="background:#34a853;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#128247; Pick from Drive</button>
+      <button onclick="pasteImageFromClipboard()" style="background:#6c5ce7;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer" title="或直接按 Ctrl+V 粘贴">&#128203; Paste image (Ctrl+V)</button>
       <span id="drive-upload-status" style="font-size:11px;color:#888"></span>
     </div>
     <div class="section-title" style="margin-top:16px">Machine Remark <span style="font-weight:400;font-size:11px;color:#888">(per machine, printed below unit price)</span></div>
@@ -3172,6 +3173,33 @@ function addImage(file) {
     updatePreview();
   };
   reader.readAsDataURL(file);
+}
+// v11.7: 剪贴板粘贴图片（任意处 Ctrl+V，或点 📋 按钮）— 复用 addImage，不下载不上传
+function _imgPasteBlob(blob){
+  if(!blob) return false;
+  try{ if(typeof M!=='function' || !M()){ _imgPasteStatus('请先选一台机器，再粘贴图片'); return false; } }
+  catch(e){ _imgPasteStatus('请先选一台机器，再粘贴图片'); return false; }
+  addImage(new File([blob],'pasted-'+Date.now()+'.png',{type:blob.type||'image/png'}));
+  return true;
+}
+function _imgPasteStatus(m){ const s=document.getElementById('drive-upload-status'); if(s){ s.textContent=m; setTimeout(()=>{ if(s.textContent===m) s.textContent=''; },4000); } }
+function handleImgPaste(e){
+  const items=(e.clipboardData||window.clipboardData||{}).items||[];
+  let found=false;
+  for(const it of items){ if(it.type && it.type.indexOf('image/')===0){ const f=it.getAsFile(); if(f && _imgPasteBlob(f)) found=true; } }
+  if(found){ e.preventDefault(); _imgPasteStatus('✅ 已粘贴图片到当前机器'); }
+}
+document.addEventListener('paste', handleImgPaste);
+async function pasteImageFromClipboard(){
+  try{
+    if(!navigator.clipboard || !navigator.clipboard.read){ _imgPasteStatus('浏览器不支持读剪贴板，请直接按 Ctrl+V'); return; }
+    let found=false;
+    for(const it of await navigator.clipboard.read()){
+      const t=(it.types||[]).find(x=>x.indexOf('image/')===0);
+      if(t){ if(_imgPasteBlob(await it.getType(t))) found=true; }
+    }
+    _imgPasteStatus(found ? '✅ 已粘贴图片到当前机器' : '剪贴板里没有图片（先 Win+Shift+S 截图，再点）');
+  }catch(err){ _imgPasteStatus('读不到剪贴板，请改用 Ctrl+V 直接粘贴'); }
 }
 function removeImg(idx) {
   document.getElementById('img-'+idx)?.remove();
