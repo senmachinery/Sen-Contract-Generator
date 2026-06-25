@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.1</title>
+<title>Sen Labels — Contract Generator v12.0</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -84,9 +84,6 @@ button{cursor:pointer;font-family:inherit}
 .drag-handle:active{cursor:grabbing}
 .spec-label-input{width:100%;font-size:12px;padding:3px 6px;border:1px solid #ccd;border-radius:3px;min-width:0;box-sizing:border-box;resize:none;overflow:hidden;font-family:inherit;line-height:1.4;vertical-align:middle}
 .spec-value-input{width:100%;font-size:12px;padding:3px 6px;border:1px solid #ccd;border-radius:3px;min-width:0}
-.rich-bar{display:flex;gap:4px;margin-bottom:4px}
-.rich-bar button{font-size:11px;line-height:1;padding:2px 8px;border:1px solid #c0cde0;border-radius:3px;background:#f4f7fb;cursor:pointer}
-.rich-bar button:hover{background:#e6eefc}
 .spec-colon{color:#555;font-size:12px;text-align:center}
 .spec-bold-btn{background:#f0f4ff;border:1px solid #ccd;border-radius:3px;width:22px;height:22px;font-size:11px;cursor:pointer;color:#555;flex-shrink:0}
 .spec-bold-btn.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c;font-weight:700}
@@ -484,7 +481,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.1</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.0</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -930,7 +927,6 @@ function mobileTab(tab) {
     </div>
     <div class="section-title" style="margin-top:16px">Machine Remark <span style="font-weight:400;font-size:11px;color:#888">(per machine, printed below unit price)</span></div>
     <div class="field-group">
-      <div class="rich-bar"><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button></div>
       <textarea id="f-machine-remarks" rows="3" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. * Price includes installation and training on-site." oninput="M().machineRemarks=this.value;updatePreview()"></textarea>
     </div>
     <div class="section-title" style="margin-top:16px">Bank Details</div>
@@ -970,7 +966,6 @@ function mobileTab(tab) {
     <div class="section-title" style="margin-top:16px">Remarks (shared)</div>
     <div class="field-group">
       <label>Pre-Remark Note (italic, printed above REMARK section)</label>
-      <div class="rich-bar"><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button></div>
       <textarea id="f-remarks" rows="2" placeholder="e.g. Price not including PPH &amp; PPN" oninput="updatePreview()"></textarea>
     </div>
     <div class="field-group">
@@ -2065,7 +2060,7 @@ function renderMachineParams(type, condition) {
     ]);
   } else if (isRef || isOther) {
     html += field('Custom Title (optional)','f-custom-title','text',null,'e.g. Refurbished SEN Brand Automatic Flat Bed Die Cutting Machine');
-    html += `<div class="field-group"><label>Sub-Title / Note (under title, optional)</label><div class="rich-bar"><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button></div><textarea id="f-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. ~ With Die Cutting Station, 2nd Pass Scanner..." oninput="M().desc=this.value;updatePreview()"></textarea></div>`;
+    html += `<div class="field-group"><label>Sub-Title / Note (under title, optional)</label><textarea id="f-desc" rows="2" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. ~ With Die Cutting Station, 2nd Pass Scanner..." oninput="M().desc=this.value;updatePreview()"></textarea></div>`;
   } else if (isParts) {
     // Migrate old partItems to partGroups if needed
     const m = M();
@@ -2100,7 +2095,6 @@ function renderMachineParams(type, condition) {
       <div id="part-total-display" style="text-align:right;font-weight:700;font-size:13px;color:#1a3a5c;padding:8px 2px;border-top:2px solid #1a3a5c;margin-top:8px"></div>
       <div class="field-group" style="margin-top:10px">
         <label>Remark <span style="font-weight:400;font-size:11px;color:#888">(printed below items)</span></label>
-        <div class="rich-bar"><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(this.parentElement.nextElementSibling,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button></div>
         <textarea id="f-machine-remarks" rows="3" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c0cde0;border-radius:4px;font-size:12px;resize:vertical" placeholder="e.g. Price above not including installation and transportation charges."></textarea>
       </div>`;
 
@@ -3499,10 +3493,10 @@ function buildContractHTML() {
         }
         machineBlocks += `
   <div class="cp-machine-title"><span class="cp-mnum">${mi+1}</span><span>${buildMachineTitle(m)}</span></div>
-  ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${renderRich(m.desc)}</div>` : ''}
+  ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${esc(m.desc)}</div>` : ''}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
-  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${renderRich(m.machineRemarks)}</div>` : ''}
+  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>` : ''}
   ${imgHtml}
   ${unitPriceHtml}`;
         // Add a summary row in the table for this machine
@@ -3575,7 +3569,7 @@ function buildContractHTML() {
       payRows = `<tr><td colspan="4"><strong>~ Full Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;
     }
     const telLine = state.tel||state.fax ? `<div><span class="cp-label">Tel:</span> ${esc(state.tel)||''}${state.fax?` &nbsp;&#124;&nbsp; <span class="cp-label">Fax:</span> ${esc(state.fax)}`:''}` + `</div>` : '';
-    const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${renderRich(state.remarks)}</p>` : '';
+    const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${esc(state.remarks)}</p>` : '';
     return `
   <div class="cp-header-wrap">
     <img class="cp-logo" src="${LOGO_B64}" alt="Sen Labels">
@@ -3623,12 +3617,12 @@ function buildContractHTML() {
     </tbody>
   </table>
   ${remarksHtml}
-  ${state.machines.filter(m=>m.machineType==='parts'&&m.machineRemarks).map(m=>`<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${renderRich(m.machineRemarks)}</div>`).join('')}
+  ${state.machines.filter(m=>m.machineType==='parts'&&m.machineRemarks).map(m=>`<div style="font-size:9.5pt;color:#444;margin:2mm 0 3mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>`).join('')}
   <div style="margin:5mm 0 2mm;font-size:8.5pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1e3a5f;font-family:'IBM Plex Sans',Arial,sans-serif;padding:0 0 2px 0;border-bottom:1px solid #e0e8f0;display:block">Remark</div>
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${buildInstScheduleHTML(fmt)}</table>
   ${(function(){
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
-      return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${renderRich(item)}</div>`).join('');
+      return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
     })()}
   <table class="cp-terms-table">
     <tr><td>Price Validity</td><td>: ${esc(state.validity)}</td></tr>
@@ -3683,10 +3677,10 @@ function buildContractHTML() {
     }
     machineBlocks += `
   <div class="cp-machine-title"><span class="cp-mnum">${i+1}</span><span>${title}</span></div>
-  ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${renderRich(m.desc)}</div>` : ''}
+  ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${esc(m.desc)}</div>` : ''}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
-  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${renderRich(m.machineRemarks)}</div>` : ''}
+  ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${esc(m.machineRemarks)}</div>` : ''}
   ${imgHtml}
   ${unitPriceHtml}
   ${buildOptionalItems(m)}`;
@@ -3773,7 +3767,7 @@ function buildContractHTML() {
     });
   }
 
-  const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${renderRich(state.remarks)}</p>` : '';
+  const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${esc(state.remarks)}</p>` : '';
 
   return `
   <div class="cp-header-wrap">
@@ -3829,7 +3823,7 @@ function buildContractHTML() {
   <table style="width:100%;font-size:10pt;margin-bottom:2mm">${payRows}${typeof instRows!=='undefined'?instRows:''}</table>
   ${(function(){
       let items = (state.remarkItems&&state.remarkItems.length>0)?state.remarkItems.filter(x=>x!==null&&x!==undefined&&x!==''):[];
-      return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${renderRich(item)}</div>`).join('');
+      return items.map((item,idx)=>`<div style="font-size:9pt;color:#333;margin:1.5mm 0;line-height:1.5"><span style="font-weight:600">${idx+1}.</span>&nbsp; ${esc(item)}</div>`).join('');
     })()}
 
   <table class="cp-terms-table">
@@ -4167,31 +4161,6 @@ function buildPayCondText() {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-// Inline rich text for free-text fields (Sub-Title, remarks). Button-inserted markup → spans.
-// SAFETY: renderRich(s) is byte-for-byte === esc(s) whenever no [[ ]] markup is present, so the
-// feature-off path (all existing contracts) renders exactly as before.
-function renderRich(s){
-  let h = esc(s);
-  if (h.indexOf('[[') === -1) return h;
-  return h
-    .replace(/\[\[b\]\]([\s\S]*?)\[\[\/b\]\]/g, '<strong>$1</strong>')
-    .replace(/\[\[u\]\]([\s\S]*?)\[\[\/u\]\]/g, '<u>$1</u>')
-    .replace(/\[\[(red|blue|green|orange)\]\]([\s\S]*?)\[\[\/\1\]\]/g, '<span style="color:$1">$2</span>');
-}
-// For export paths (Word/plain) that can't render spans: strip markup tokens to clean text — never
-// leak a literal [[b]] into a contract. stripRich(s) === esc(s) when no markup is present.
-function stripRich(s){ return esc(s).replace(/\[\[\/?(?:b|u|red|blue|green|orange)\]\]/g, ''); }
-// Wrap the current textarea selection with open/close markup tokens, then fire input.
-function richWrap(ta, open, close){
-  if(!ta) return;
-  const s = ta.selectionStart||0, e = ta.selectionEnd||0, v = ta.value;
-  const inner = v.slice(s,e) || 'text';
-  ta.value = v.slice(0,s) + open + inner + close + v.slice(e);
-  ta.dispatchEvent(new Event('input', {bubbles:true}));
-  ta.focus();
-  ta.selectionStart = s + open.length;
-  ta.selectionEnd   = s + open.length + inner.length;
 }
 function formatDate(iso) {
   if (!iso) return '';
@@ -6336,13 +6305,13 @@ function exportToWord() {
     }
     // Per-machine remarks
     if (m.machineRemarks) {
-      body += `<p style="${S}color:#444;margin:3pt 0 6pt 0;white-space:pre-wrap">${stripRich(m.machineRemarks)}</p>`;
+      body += `<p style="${S}color:#444;margin:3pt 0 6pt 0;white-space:pre-wrap">${esc(m.machineRemarks)}</p>`;
     }
   });
 
   // ── 4. REMARKS ─────────────────────────────────────────────────────────
   if (state.remarks) {
-    body += `<p style="${S}font-style:italic;margin:4pt 0">${stripRich(state.remarks)}</p>`;
+    body += `<p style="${S}font-style:italic;margin:4pt 0">${esc(state.remarks)}</p>`;
   }
 
   // ── 5. PAYMENT SUMMARY ──────────────────────────────────────────────────
@@ -6408,7 +6377,7 @@ function exportToWord() {
   if (state.remarkItems && state.remarkItems.length > 0) {
     const filteredRemarks = state.remarkItems.filter(x => x !== null && x !== undefined && x !== '');
     filteredRemarks.forEach((item, idx) => {
-      body += `<p style="${B}font-size:9pt;color:#333;margin:2pt 0;line-height:1.4"><span style="font-weight:bold">${idx+1}.</span> ${stripRich(item)}</p>`;
+      body += `<p style="${B}font-size:9pt;color:#333;margin:2pt 0;line-height:1.4"><span style="font-weight:bold">${idx+1}.</span> ${esc(item)}</p>`;
     });
   }
 
