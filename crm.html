@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.46</title>
+<title>Sen Labels — CRM v2.47</title>
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -582,9 +582,9 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.46</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.47</span></h1>
   <div class="topbar-right">
-    <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="点击打开设置（URL / 访问令牌）">Connecting…</span>
+    <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
   </div>
 </div>
@@ -657,15 +657,15 @@
     <div class="pipeline-filters" style="background:#fff;padding:10px 12px;border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px">
       <strong style="color:var(--primary)"><svg class="ic"><use href="#i-kanban"></use></svg> Pipeline</strong>
       <div style="flex:1"></div>
-      <select id="pipeline-mobile-stage" class="pipe-mstage" onchange="applyMobileStage()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px" title="手机：只看一个阶段" aria-label="按阶段筛选 Filter by stage">
-        <option value="all">📋 全部阶段（竖排滑看）</option>
-        <option value="inquiry">📞 Inquiry 询盘</option>
-        <option value="quote">🆕 New Quote 新报价</option>
-        <option value="progress">👀 In Progress 跟进中</option>
-        <option value="confirmed">💰 Confirmed 已确认</option>
-        <option value="fulfilling">🏭 Fulfilling 备货中</option>
-        <option value="closed">✅ Closed Won 成交</option>
-        <option value="lost">❌ Lost 流失</option>
+      <select id="pipeline-mobile-stage" class="pipe-mstage" onchange="applyMobileStage()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px" title="Mobile: view one stage" aria-label="Filter by stage">
+        <option value="all">📋 All stages</option>
+        <option value="inquiry">📞 Inquiry</option>
+        <option value="quote">🆕 New Quote</option>
+        <option value="progress">👀 In Progress</option>
+        <option value="confirmed">💰 Confirmed</option>
+        <option value="fulfilling">🏭 Fulfilling</option>
+        <option value="closed">✅ Closed Won</option>
+        <option value="lost">❌ Lost</option>
       </select>
       <select id="pipeline-country-filter" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
         <option value="">All Countries</option>
@@ -1170,7 +1170,7 @@ function ensureApiToken() {
   // 后端返回 unauthorized 时：弹一次输入框让 Max 粘令牌，存好后刷新（多个并发请求只弹一次）。
   if (_tokenPrompted) return;
   _tokenPrompted = true;
-  const t = prompt('需要访问令牌才能连接 CRM。\n请粘贴 Claude 给你的访问令牌：', getApiToken());
+  const t = prompt('Access Token required to connect to the CRM.\nPaste the token Claude gave you:', getApiToken());
   if (t && t.trim()) { localStorage.setItem(TOKEN_STORAGE_KEY, t.trim()); location.reload(); }
 }
 
@@ -1242,10 +1242,10 @@ function openSettings() {
       </div>
     </div>
     <div class="form-row">
-      <label>访问令牌 Access Token</label>
-      <input type="text" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Claude 给你的那串令牌（没有就留空）">
+      <label>Access Token</label>
+      <input type="text" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Your token (leave blank if none)">
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
-        🔒 加固后才需要：Claude 会给你这串，每台设备粘一次。留空 = 不启用。
+        🔒 Only needed after security is on: Claude gives you this — paste once per device. Blank = off.
       </div>
     </div>
   `;
@@ -1681,12 +1681,12 @@ function renderCustomerDetail(c, followups) {
     });
     if (_totRM > 0) {
       owedHtml = `<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:var(--radius);padding:10px 12px;margin:12px 0">
-        <div style="font-weight:700;color:#9a3412">💰 未收款 ≈ RM${Math.round(_totRM).toLocaleString()}（${_items.length} 张发票）</div>
+        <div style="font-weight:700;color:#9a3412">💰 Outstanding ≈ RM${Math.round(_totRM).toLocaleString()} (${_items.length} invoices)</div>
         ${_items.slice(0, 5).map(o => `<div style="font-size:12px;margin-top:5px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
-          <span>${escapeHtml(o.i.invoiceNo)} · 欠 ${escapeHtml(o.i.currency || '')} ${(o.out).toLocaleString()}${o.i.dueDate ? (' · 到期 ' + escapeHtml(o.i.dueDate) + (o.i.dueDate < today ? ' ⚠️逾期' : '')) : ''}</span>
-          <button class="btn btn-sm" onclick="recordInvoicePayment('${String(o.i.invoiceNo).replace(/'/g, "\\'")}')" style="background:var(--primary);color:#fff;font-size:11px;padding:2px 8px">+ 收款</button>
+          <span>${escapeHtml(o.i.invoiceNo)} · owes ${escapeHtml(o.i.currency || '')} ${(o.out).toLocaleString()}${o.i.dueDate ? (' · due ' + escapeHtml(o.i.dueDate) + (o.i.dueDate < today ? ' ⚠️ overdue' : '')) : ''}</span>
+          <button class="btn btn-sm" onclick="recordInvoicePayment('${String(o.i.invoiceNo).replace(/'/g, "\\'")}')" style="background:var(--primary);color:#fff;font-size:11px;padding:2px 8px">+ Payment</button>
         </div>`).join('')}
-        ${_items.length > 5 ? `<div style="font-size:11px;margin-top:4px">+ ${_items.length - 5} 张更多（见 Invoices 标签）</div>` : ''}
+        ${_items.length > 5 ? `<div style="font-size:11px;margin-top:4px">+ ${_items.length - 5} more (see Invoices tab)</div>` : ''}
       </div>`;
     }
   } else {
@@ -1694,11 +1694,11 @@ function renderCustomerDetail(c, followups) {
       INVOICES_STATE._loadingForDetail = true;
       loadInvoices().then(() => { INVOICES_STATE._loadingForDetail = false; if (STATE.activeCustomer === c.company) renderCustomerDetail(c, followups); });
     }
-    owedHtml = '<div style="font-size:11px;color:var(--text-muted);margin:8px 0">💰 未收款加载中…</div>';
+    owedHtml = '<div style="font-size:11px;color:var(--text-muted);margin:8px 0">💰 Loading outstanding…</div>';
   }
 
   $('customer-detail').innerHTML = `
-    <button class="crm-back" onclick="crmBackToList()">← 客户列表</button>
+    <button class="crm-back" onclick="crmBackToList()">← Customer list</button>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div>
         <h2>
@@ -1795,9 +1795,9 @@ function renderCustomerDetail(c, followups) {
     <div class="quick-fu-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 4px">
       <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="No answer → follow up tomorrow"><svg class="ic"><use href="#i-phone"></use></svg> No answer → tomorrow</button>
       <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="No reply → follow up in 3 days"><svg class="ic"><use href="#i-wa"></use></svg> No reply → +3 days</button>
-      <button class="btn btn-sm" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','comparing')" title="还在比价/考虑 → 下周再跟">💬 还在比价 → +1周</button>
-      <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','callback')" title="客户让稍后联系 → +2天">📞 让回电 → +2天</button>
-      <button class="btn btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe082" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','price')" title="客户谈价 → +2天准备方案">💰 谈价 → +2天</button>
+      <button class="btn btn-sm" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','comparing')" title="Still comparing → follow up next week">💬 Comparing → +1wk</button>
+      <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','callback')" title="Asked to call back later → +2 days">📞 Call back → +2d</button>
+      <button class="btn btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe082" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','price')" title="Negotiating price → +2 days">💰 Negotiate → +2d</button>
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin:0 0 10px">Tip: the Follow-up / Won / Lost buttons for each contract are in the contract list above ↑</div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
@@ -1810,7 +1810,7 @@ function renderCustomerDetail(c, followups) {
               <span class="followup-type">${typeIcon(f.type)} ${f.type}</span>
               <span style="display:flex;gap:6px;align-items:center">
                 <span class="followup-date">${fmtDate(f.date)} (${daysAgoText(f.date)})</span>
-                <button onclick="cancelFollowup('${(f.contractNo||'').replace(/'/g, "\\'")}','${c.company.replace(/'/g, "\\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-muted);font-size:11px;padding:1px 6px" title="把这个客户移出催单循环（不删 Sheet 记录）">⏹ 停止催单</button>
+                <button onclick="cancelFollowup('${(f.contractNo||'').replace(/'/g, "\\'")}','${c.company.replace(/'/g, "\\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-muted);font-size:11px;padding:1px 6px" title="Remove from chase loop (keeps the Sheet record)">⏹ Stop chasing</button>
               </span>
             </div>
             <div class="followup-desc">${escapeHtml(f.description)}</div>
@@ -1828,17 +1828,17 @@ function renderCustomerDetail(c, followups) {
 
 // v2.38: 取消跟进 — 后端无删行接口,改用 supersede 清掉此客户待跟进+移出催单循环(原记录保留,不删)
 async function cancelFollowup(contractNo, customer) {
-  if (!confirm('把「' + customer + '」移出催单循环？\n会清掉这个客户所有未完成跟进的「下次跟进」日期（如有多个在谈单，一并清）。\n（原跟进记录仍保留在 Google Sheet，不会删除）')) return;
+  if (!confirm('Remove "' + customer + '" from the chase loop?\nThis clears the Next-follow-up date on all their open follow-ups (if several deals, all of them).\n(Original follow-up records stay in Google Sheet — not deleted.)')) return;
   const today = new Date().toISOString().split('T')[0];
   const fu = { customer, date: today, type: 'Other', contractNo: contractNo || '',
-    description: '❌ 跟进已取消（在 CRM 标记，移出催单）', outcome: '', supersede: true };
-  showToast('⏳ 处理中…', '');
+    description: '❌ Follow-up cancelled (marked in CRM, removed from chase loop)', outcome: '', supersede: true };
+  showToast('⏳ Working…', '');
   try {
     const r = await apiPost('crm_addFollowup', { followup: fu });
-    if (!r.ok) throw new Error(r.error || '失败');
-    showToast('✅ 已标取消，移出催单', 'success');
+    if (!r.ok) throw new Error(r.error || 'Failed');
+    showToast('✅ Cancelled, removed from chase loop', 'success');
     await selectCustomer(customer);
-  } catch (e) { showToast('失败: ' + e.message, 'error'); }
+  } catch (e) { showToast('Failed: ' + e.message, 'error'); }
 }
 
 // v1.2: Delete follow-up (uses Apps Script API) — v2.38 起按钮已改走 cancelFollowup，此函数保留兼容
@@ -4942,8 +4942,8 @@ async function markWon(contractNo, company) {
   if (!cust) return;
   const OPEN = ['Quotation Sent', 'Quotation', 'Following Up', 'Negotiating'];
   const siblings = (cust.contracts || []).filter(x => x.contractNo !== contractNo && OPEN.includes(x.status));
-  if (siblings.length && confirm(`该客户还有 ${siblings.length} 张在谈报价。客户既然选了这台，要把其余 ${siblings.length} 张一并标为 Lost 吗？`)) {
-    showToast('⏳ 批量更新…', '');
+  if (siblings.length && confirm(`This customer has ${siblings.length} other open quotes. Since they chose this one, mark the other ${siblings.length} as Lost too?`)) {
+    showToast('⏳ Updating…', '');
     let done = 0;
     for (const s of siblings) {
       try {
@@ -4951,7 +4951,7 @@ async function markWon(contractNo, company) {
         if (r.ok) { s.status = 'Lost'; const gc = (STATE.contracts || []).find(x => x.contractNo === s.contractNo); if (gc) gc.status = 'Lost'; done++; }
       } catch (e) {}
     }
-    showToast(`✅ 另标 ${done}/${siblings.length} 张为 Lost`, done === siblings.length ? 'success' : 'error');
+    showToast(`✅ Marked ${done}/${siblings.length} as Lost`, done === siblings.length ? 'success' : 'error');
     await refreshAfterChange(company);
   }
 }
@@ -5464,13 +5464,13 @@ async function quickFollowup(customer, kind) {
     desc = '💬 Messaged — no reply yet'; outcome = 'No reply, will follow up in 3 days';
   } else if (kind === 'comparing') {
     nextDays = 7;  type = 'Other';
-    desc = '💬 还在比价/考虑中'; outcome = '客户还在比价，下周再跟';
+    desc = '💬 Still comparing/considering'; outcome = 'Still comparing — follow up next week';
   } else if (kind === 'callback') {
     nextDays = 2;  type = 'Call';
-    desc = '📞 客户让稍后再联系'; outcome = '约稍后回电';
+    desc = '📞 Asked to call back later'; outcome = 'Scheduled callback';
   } else if (kind === 'price') {
     nextDays = 2;  type = 'Other';
-    desc = '💰 客户想谈更好价格'; outcome = '客户谈价，准备方案再跟';
+    desc = '💰 Wants a better price'; outcome = 'Negotiating — prepare proposal';
   } else if (kind === 'done') {
     // "Done" needs a custom next date → just open the full modal pre-filled
     openFollowupModal(customer);
@@ -5671,7 +5671,7 @@ function _invSummaryStrip() {
     + '<div style="font-size:11px;color:var(--text-muted)">' + label + '</div>'
     + '<div style="font-size:17px;font-weight:700' + (red ? ';color:#c0392b' : '') + '">' + m(val) + '</div></div>';
   return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
-    + box('总未收', totOut, false) + box('⚠️ 逾期', overdue, overdue > 0) + box('本周到期', dueWk, false) + '</div>';
+    + box('Total due', totOut, false) + box('⚠️ Overdue', overdue, overdue > 0) + box('Due this week', dueWk, false) + '</div>';
 }
 
 function renderInvoices() {
