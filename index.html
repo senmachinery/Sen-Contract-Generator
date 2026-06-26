@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.3</title>
+<title>Sen Labels — Contract Generator v12.4</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -78,7 +78,8 @@ button{cursor:pointer;font-family:inherit}
 .cw-item .cw-del{background:none;border:none;color:#c0392b;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0}
 #add-cw-btn{width:100%;padding:6px;background:#f0f4ff;border:1px dashed #9ab;border-radius:4px;color:#1a3a5c;font-size:12px;margin-top:4px}
 #add-cw-btn:hover{background:#e0e8ff}
-.spec-row{display:grid;grid-template-columns:20px 1fr 22px 22px 10px 1fr 22px 22px 22px;align-items:center;gap:3px;padding:4px 2px;border-bottom:1px solid #eef}
+.spec-row{display:grid;grid-template-columns:20px 1fr 22px 22px 22px 10px 1fr 22px 22px 22px 22px;align-items:center;gap:3px;padding:4px 2px;border-bottom:1px solid #eef}
+.spec-color-btn{font-size:11px;font-weight:700;line-height:1;padding:2px 4px;border:1px solid #c0cde0;border-radius:3px;background:#f4f7fb;cursor:pointer}
 .spec-row.spec-drag-over{border-top:2px solid #1a3a5c;background:#f0f4ff}
 .drag-handle{cursor:grab;color:#aab;font-size:18px;padding:0 3px;user-select:none;flex-shrink:0}
 .drag-handle:active{cursor:grabbing}
@@ -484,7 +485,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.3</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.4</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3280,14 +3281,18 @@ function renderSpecRowsUI(arr) {
     const isBoldLabel  = item.boldLabel  || false;
     const isUnderLabel = item.underLabel || false;
     const isUnderValue = item.underValue || false;
+    const isColorLabel = item.colorLabel || '';
+    const isColorValue = item.colorValue || '';
     row.innerHTML = `<span class="drag-handle" title="Drag to reorder">⠿</span>`
       + `<textarea class="spec-label-input" rows="1" placeholder="Label" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';specRowChanged()">${esc2((item.label||'').replace(/^[~#]+/,''))}</textarea>`
       + `<button class="spec-bold-btn${isBoldLabel?' active':''}" onclick="toggleSpecLabelBold(${idx})" title="Bold label">${isBoldLabel?'<b>B</b>':'B'}</button>`
       + `<button class="spec-bold-btn${isUnderLabel?' active':''}" onclick="toggleSpecLabelUnder(${idx})" title="Underline label" style="font-size:10px">${isUnderLabel?'<u>U</u>':'U'}</button>`
+      + `<button class="spec-color-btn" data-color="${isColorLabel}" onclick="cycleSpecColor(${idx},'label')" title="Label color: 点一下循环 无/红/蓝/绿" style="color:${isColorLabel||'#bbb'}">A</button>`
       + `<span class="spec-colon">:</span>`
       + `<input class="spec-value-input" type="text" value="${esc2(item.value||'')}" placeholder="Value" oninput="specRowChanged()">`
       + `<button class="spec-bold-btn${isBold?' active':''}" onclick="toggleSpecBold(${idx})" title="Bold value">${isBold?'<b>B</b>':'B'}</button>`
       + `<button class="spec-bold-btn${isUnderValue?' active':''}" onclick="toggleSpecValueUnder(${idx})" title="Underline value" style="font-size:10px">${isUnderValue?'<u>U</u>':'U'}</button>`
+      + `<button class="spec-color-btn" data-color="${isColorValue}" onclick="cycleSpecColor(${idx},'value')" title="Value color: 点一下循环 无/红/蓝/绿" style="color:${isColorValue||'#bbb'}">A</button>`
       + `<button class="rm-spec-btn" onclick="removeSpecRow(${idx})" title="Remove">&#215;</button>`;
     row.addEventListener('dragstart', e => { specDragSrc = idx; e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',idx); });
     row.addEventListener('dragover',  e => { e.preventDefault(); row.classList.add('spec-drag-over'); });
@@ -3335,6 +3340,16 @@ function toggleSpecValueUnder(idx) {
   if (specs[idx]) specs[idx].underValue = !specs[idx].underValue;
   renderSpecRowsUI(specs); updatePreview();
 }
+// v12.4: 点一下循环 无→红→蓝→绿 的整格颜色（Label / Value 各一个）
+function cycleSpecColor(idx, which) {
+  syncSpecRowsFromDOM();
+  const specs = M().extraSpecs;
+  if (!specs[idx]) return;
+  const seq = ['', 'red', 'blue', 'green'];
+  const key = which === 'label' ? 'colorLabel' : 'colorValue';
+  specs[idx][key] = seq[(seq.indexOf(specs[idx][key] || '') + 1) % seq.length];
+  renderSpecRowsUI(specs); updatePreview();
+}
 
 function syncSpecRowsFromDOM() {
   const rows = document.querySelectorAll('#spec-rows-list .spec-row');
@@ -3348,9 +3363,12 @@ function syncSpecRowsFromDOM() {
     const underLabel = btns[1] ? btns[1].classList.contains('active') : false;
     const bold       = btns[2] ? btns[2].classList.contains('active') : false;
     const underValue = btns[3] ? btns[3].classList.contains('active') : false;
+    const colorBtns  = r.querySelectorAll('.spec-color-btn');
+    const colorLabel = colorBtns[0] ? (colorBtns[0].dataset.color || '') : '';
+    const colorValue = colorBtns[1] ? (colorBtns[1].dataset.color || '') : '';
     let label = rawLabel;
     if (!label.startsWith('#') && !label.startsWith('~')) label = '~' + label;
-    return { label, value: val, bold, boldLabel, underLabel, underValue };
+    return { label, value: val, bold, boldLabel, underLabel, underValue, colorLabel, colorValue };
   });
 }
 
@@ -3961,10 +3979,12 @@ function buildSpecRows(m) {
         let lblHtml = esc(dispLbl).replace(/\n/g,'<br>');
         if (isBoldLabel)  lblHtml = `<strong>${lblHtml}</strong>`;
         if (isUnderLabel) lblHtml = `<u>${lblHtml}</u>`;
+        if (['red','blue','green'].includes(spec.colorLabel)) lblHtml = `<span style="color:${spec.colorLabel}">${lblHtml}</span>`;
         if (spec.value) {
           let valHtml = esc(spec.value);
           if (isBold)       valHtml = `<strong>${valHtml}</strong>`;
           if (isUnderValue) valHtml = `<u>${valHtml}</u>`;
+          if (['red','blue','green'].includes(spec.colorValue)) valHtml = `<span style="color:${spec.colorValue}">${valHtml}</span>`;
           rows.push(`<tr><td></td><td>${lblHtml}</td><td>:</td><td class="val-cell">${valHtml}</td></tr>`);
         } else {
           rows.push(`<tr><td></td><td colspan="3">${lblHtml}</td></tr>`);
@@ -4514,6 +4534,7 @@ function normalizeState(s) {
         label: sp.label||'', value: sp.value||'',
         bold: sp.bold||false, boldLabel: sp.boldLabel||false,
         underLabel: sp.underLabel||false, underValue: sp.underValue||false,
+        colorLabel: sp.colorLabel||'', colorValue: sp.colorValue||'',
       }));
     } else { m.extraSpecs = []; }
 
@@ -5697,7 +5718,7 @@ async function saveCurrentMachineToSheetDB() {
     extraSpecs:  (m.extraSpecs || []).map(s => ({
       label: s.label, value: s.value,
       bold: s.bold || false, boldLabel: s.boldLabel || false,
-      underLabel: s.underLabel || false, underValue: s.underValue || false
+      underLabel: s.underLabel || false, underValue: s.underValue || false, colorLabel: s.colorLabel || '', colorValue: s.colorValue || ''
     }))
   };
 
@@ -5874,7 +5895,7 @@ function loadMachineFromDB(idx) {
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
     label: s.label, value: s.value,
     bold: s.bold || false, boldLabel: s.boldLabel || false,
-    underLabel: s.underLabel || false, underValue: s.underValue || false
+    underLabel: s.underLabel || false, underValue: s.underValue || false, colorLabel: s.colorLabel || '', colorValue: s.colorValue || ''
   }));
   machine.images = (m.images || []).filter(Boolean);
   machine.cwItems      = (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty || '', val: c.val || '' }));
@@ -5903,7 +5924,7 @@ function loadMachineFromDB(idx) {
     M().extraSpecs = (m.extraSpecs || []).map(s => ({
       label: s.label, value: s.value,
       bold: s.bold || false, boldLabel: s.boldLabel || false,
-      underLabel: s.underLabel || false, underValue: s.underValue || false
+      underLabel: s.underLabel || false, underValue: s.underValue || false, colorLabel: s.colorLabel || '', colorValue: s.colorValue || ''
     }));
     M().cwItems    = (m.cwItems || []).map(c => ({ desc: c.desc, qty: c.qty || '', val: c.val || '' }));
     M().optItems   = (m.optItems || []).map(o => ({ desc: o.desc, qty: o.qty || '', val: o.val || '' }));
