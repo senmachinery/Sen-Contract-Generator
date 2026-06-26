@@ -15,7 +15,7 @@ Two browser tools, hosted on **GitHub Pages** at `senmachinery.github.io`:
 | File | What it is | Current version |
 |------|------------|-----------------|
 | `index.html` | **Contract Generator** — builds quotes / sales contracts / invoices, prints PDF | **v12.6** |
-| `crm.html` | **CRM** — customers, contract pipeline, tasks, inquiries, invoices | **v2.31** |
+| `crm.html` | **CRM** — customers, contract pipeline, tasks, inquiries, invoices | **v2.47** |
 
 Backend: a **Google Apps Script web app** talking to a Google Sheet named **"Sen Labels Contract Record"**. The backend reports version **v10.62** (plus invoice handlers added 2026-06 — see §9). Its source is a `.gs` file that lives **outside** the Pages repo. Both HTML files call it via `fetch`.
 
