@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.5</title>
+<title>Sen Labels — Contract Generator v12.6</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Sen 报价">
+<meta name="apple-mobile-web-app-title" content="Sen Quotation">
 <link rel="manifest" href="manifest-gen.json">
 <link rel="apple-touch-icon" href="icon-gen-180.png">
 <link rel="icon" type="image/png" href="icon-gen-192.png">
@@ -487,7 +487,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.5</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.6</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -500,7 +500,7 @@ function mobileTab(tab) {
     <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff"><svg class="ic"><use href="#i-wrench"></use></svg> Machine DB</button>
     <button class="btn btn-orange btn-sm" onclick="doPrint()"><svg class="ic"><use href="#i-printer"></use></svg> Print / PDF</button>
     <div class="more-menu" id="more-menu">
-      <button class="btn btn-outline btn-sm" onclick="toggleMoreMenu(event)" title="更多导出/JSON · More export & JSON tools">&#8943; 更多 &#9662;</button>
+      <button class="btn btn-outline btn-sm" onclick="toggleMoreMenu(event)" title="More export / JSON tools">&#8943; More &#9662;</button>
       <div class="more-panel">
         <button class="btn btn-success btn-sm" onclick="exportToExcel();saveToSheets(true);closeMoreMenu()" style="background:#217346"><svg class="ic"><use href="#i-sheet"></use></svg> Export Excel</button>
         <button class="btn btn-success btn-sm" onclick="exportToWord();saveToSheets(true);closeMoreMenu()" style="background:#2B579A"><svg class="ic"><use href="#i-doc"></use></svg> Export Word</button>
@@ -518,11 +518,11 @@ function mobileTab(tab) {
 <!-- v10.96: 未连 Sheets 友好兜底卡（新设备引导一次性连接；机密 webhook 不硬编码，仅引导去设置粘贴） -->
 <div id="connect-card" style="display:none;margin:0;padding:11px 16px;background:#fff8e1;border-bottom:1px solid #ffe082;font-size:13px;color:#6d4c1b;align-items:center;gap:12px;flex-wrap:wrap">
   <div style="flex:1;min-width:220px;line-height:1.5">
-    <b style="color:#e65100">⚠️ 还没连接数据库</b> —— 机型库 / 自动取合同号 / 保存到云 / 客户库 / 发票 都需要一次性连接 Google Sheets。
-    <span style="color:#8a6d3b">（没连也能照常做合同 + 出 PDF / Word / Excel。）</span>
+    <b style="color:#e65100">⚠️ Database not connected</b> — Machine DB / auto contract no. / save to cloud / customer DB / invoices need a one-time Google Sheets connection.
+    <span style="color:#8a6d3b">(You can still make contracts and export PDF / Word / Excel offline.)</span>
   </div>
-  <button onclick="openSettings()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">🔗 去连接（设置）</button>
-  <button onclick="dismissConnectCard()" title="暂时离线用，本次不再提示" style="background:transparent;border:1px solid #d8c79a;color:#8a6d3b;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap">暂时离线用 ✕</button>
+  <button onclick="openSettings()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Connect (Settings)</button>
+  <button onclick="dismissConnectCard()" title="Use offline for now" style="background:transparent;border:1px solid #d8c79a;color:#8a6d3b;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap">Use offline ✕</button>
 </div>
 
 <div id="mobile-preview-toggle">
@@ -533,11 +533,11 @@ function mobileTab(tab) {
 
 <div id="form-panel">
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('basic')" title="Basic"><svg class="ic"><use href="#i-clipboard"></use></svg> 基本</button>
-    <button class="tab-btn" onclick="switchTab('machine')" title="Machine"><svg class="ic"><use href="#i-cube"></use></svg> 机器</button>
-    <button class="tab-btn" onclick="switchTab('price')" title="Price"><svg class="ic"><use href="#i-money"></use></svg> 价格</button>
-    <button class="tab-btn" onclick="switchTab('extras')" title="Extras"><svg class="ic"><use href="#i-package"></use></svg> 附加</button>
-    <button class="tab-btn" onclick="switchTab('history')" title="History"><svg class="ic"><use href="#i-doc"></use></svg> 历史</button>
+    <button class="tab-btn active" onclick="switchTab('basic')" title="Basic"><svg class="ic"><use href="#i-clipboard"></use></svg> Basic</button>
+    <button class="tab-btn" onclick="switchTab('machine')" title="Machine"><svg class="ic"><use href="#i-cube"></use></svg> Machine</button>
+    <button class="tab-btn" onclick="switchTab('price')" title="Price"><svg class="ic"><use href="#i-money"></use></svg> Price</button>
+    <button class="tab-btn" onclick="switchTab('extras')" title="Extras"><svg class="ic"><use href="#i-package"></use></svg> Extras</button>
+    <button class="tab-btn" onclick="switchTab('history')" title="History"><svg class="ic"><use href="#i-doc"></use></svg> History</button>
   </div>
 
   <!-- TAB: BASIC -->
@@ -549,7 +549,7 @@ function mobileTab(tab) {
       <div style="display:flex;gap:5px">
         <input type="text" id="f-contract-no" placeholder="SEN/SC/NR/26-XXXX" style="flex:1" oninput="updatePreview()">
         <button class="btn btn-outline btn-sm" onclick="fetchNextNo()" title="Get next number from Sheets">&#8635;</button>
-        <button class="btn btn-outline btn-sm" onclick="makeVariantNo()" title="做变体 / Variant copy — 同号不同内容: 2453 &#8594; 2453(B)。改完内容再存档，原合同不被覆盖。">做变体</button>
+        <button class="btn btn-outline btn-sm" onclick="makeVariantNo()" title="Variant copy — same number, different content: 2453 &#8594; 2453(B). Save after editing; original not overwritten.">Variant</button>
       </div>
       <div class="field-hint" id="next-no-hint">Click &#8635; to fetch next sequence</div>
     </div>
@@ -678,10 +678,10 @@ function mobileTab(tab) {
       <!-- v10.94: 机型选择器置顶 — 一键从机型库带出全名+规格+随机配件，免手打（打开现有 Machine DB 选择器） -->
       <div id="machine-pick-bar" style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:150px">
-          <div style="font-weight:700;font-size:12px;color:#e65100">📋 从机型库选机型 · Pick from Machine DB</div>
-          <div style="font-size:11px;color:#a06a2c;margin-top:2px">一键带出全名 + 规格 + 随机配件，免逐项手打</div>
+          <div style="font-weight:700;font-size:12px;color:#e65100">📋 Pick from Machine DB</div>
+          <div style="font-size:11px;color:#a06a2c;margin-top:2px">Auto-fills full name + specs + come-with items</div>
         </div>
-        <button onclick="openMachineDB()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"><svg class="ic"><use href="#i-wrench"></use></svg> 选机型 Choose</button>
+        <button onclick="openMachineDB()" style="background:#e67e00;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"><svg class="ic"><use href="#i-wrench"></use></svg> Choose</button>
       </div>
       <div class="field-group">
         <label>Machine Type</label>
@@ -766,7 +766,7 @@ function mobileTab(tab) {
     <div class="field-group" style="margin-top:8px;background:#f0f6ff;border:1px solid #c8d8ee;border-radius:6px;padding:8px 10px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;font-weight:600;margin:0">
         <input type="checkbox" id="f-in-package" style="width:auto;margin:0" onchange="M().inPackage=this.checked;savePriceFields();calcPrice();updatePreview()">
-        🧩 组成配套 / Part of a package (hide this item's individual price)
+        🧩 Part of a package / Part of a package (hide this item's individual price)
       </label>
       <div class="field-hint" style="margin-top:4px">Tick this on each machine you want bundled together. Their individual prices are hidden in the contract; enter ONE combined price in "Package Price" below. The package price shows after the last bundled item.</div>
     </div>
@@ -805,7 +805,7 @@ function mobileTab(tab) {
       </div>
     </div>
     <!-- v10.97: 价格简单/高级 — 默认只露 单价/数量/折扣/订金/付款方式；以旧换新/分期/有效期/保修/自定义付款 收进高级（有数据会自动展开，绝不藏住已填内容） -->
-    <button type="button" id="price-adv-toggle" onclick="togglePriceAdvanced()" style="width:100%;padding:8px 10px;margin:4px 0 10px;background:#f0f4ff;border:1px dashed #9ab;border-radius:6px;color:#1a3a5c;font-size:12px;font-weight:600;cursor:pointer;text-align:left">⚙️ 高级选项 Advanced<span style="font-weight:400;color:#888"> · 以旧换新 / 分期 / 有效期 / 保修 / 自定义付款</span><span class="adv-caret" style="float:right">&#9662;</span></button>
+    <button type="button" id="price-adv-toggle" onclick="togglePriceAdvanced()" style="width:100%;padding:8px 10px;margin:4px 0 10px;background:#f0f4ff;border:1px dashed #9ab;border-radius:6px;color:#1a3a5c;font-size:12px;font-weight:600;cursor:pointer;text-align:left">⚙️ Advanced<span style="font-weight:400;color:#888"> · Trade-in / Installment / Validity / Warranty / Custom payment</span><span class="adv-caret" style="float:right">&#9662;</span></button>
     <div id="price-advanced" style="display:none">
     <div class="field-group">
       <label>Trade-In Machine (optional)</label>
@@ -842,11 +842,11 @@ function mobileTab(tab) {
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;font-weight:600;margin:0">
           <input type="checkbox" id="f-inst-full" style="width:auto;margin:0" onchange="state.installmentFullAmount=this.checked;instOpt()">
-          全额分期 · 无定金 <span style="font-weight:400;color:#888">(No deposit — installment full amount)</span>
+          Full-amount installment · No deposit <span style="font-weight:400;color:#888">(No deposit — installment full amount)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;margin:0">
           <input type="checkbox" id="f-inst-exact" style="width:auto;margin:0" onchange="state.installmentExactSplit=this.checked;instOpt()">
-          完全平摊到分（小数）<span style="color:#888">— 默认取整、最后一期补差</span>
+          Exact split to cents<span style="color:#888">— rounds by default; last term adjusts</span>
         </label>
       </div>
       <div class="field-group" style="margin-bottom:8px">
@@ -910,12 +910,12 @@ function mobileTab(tab) {
     <div class="m-selector-bar" id="extras-selector-bar"></div>
     <div style="padding:14px">
     <div id="extras-machine-label" class="alert alert-info" style="margin-bottom:8px;font-size:11px">Come With: Machine 1</div>
-    <div class="section-title" style="margin-top:0">Come With Items <span style="font-weight:400;font-size:11px;color:#888">随机配件（随机附送）</span></div>
-    <div class="rich-bar"><button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← 先点要改的项目名，再点按钮</span></div>
+    <div class="section-title" style="margin-top:0">Come With Items <span style="font-weight:400;font-size:11px;color:#888">(included free)</span></div>
+    <div class="rich-bar"><button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← Click the item name, then a button</span></div>
     <div id="cw-list"></div>
     <button id="add-cw-btn" onclick="addCwItem()">+ Add Item</button>
-    <div class="section-title" style="margin-top:16px">Optional Items <span style="font-weight:400;font-size:11px;color:#888">选配（列在合同但不计入价格）</span></div>
-    <div class="rich-bar"><button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← 先点要改的项目名，再点按钮</span></div>
+    <div class="section-title" style="margin-top:16px">Optional Items <span style="font-weight:400;font-size:11px;color:#888">(listed, not priced)</span></div>
+    <div class="rich-bar"><button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← Click the item name, then a button</span></div>
     <div id="opt-list"></div>
     <button id="add-opt-btn" onclick="addOptItem()">+ Add Optional Item</button>
     <div class="section-title" style="margin-top:16px">Machine Images <span id="img-machine-label" style="font-weight:400;font-size:11px;color:#666"></span></div>
@@ -930,7 +930,7 @@ function mobileTab(tab) {
     <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <button onclick="saveImagesToDrive()" style="background:#1a73e8;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#9729;&#65039; Save to Drive</button>
       <button onclick="openImagePicker()" style="background:#34a853;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">&#128247; Pick from Drive</button>
-      <button onclick="pasteImageFromClipboard()" style="background:#6c5ce7;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer" title="或直接按 Ctrl+V 粘贴">&#128203; Paste image (Ctrl+V)</button>
+      <button onclick="pasteImageFromClipboard()" style="background:#6c5ce7;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer" title="or press Ctrl+V">&#128203; Paste image (Ctrl+V)</button>
       <span id="drive-upload-status" style="font-size:11px;color:#888"></span>
     </div>
     <div class="section-title" style="margin-top:16px">Machine Remark <span style="font-weight:400;font-size:11px;color:#888">(per machine, printed below unit price)</span></div>
@@ -1062,20 +1062,20 @@ function mobileTab(tab) {
       <button class="btn btn-outline btn-sm" onclick="searchImagePicker()">&#128269; Search</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:5px">
-      <span style="font-size:11px;color:#888;min-width:34px">状态</span>
-      <button type="button" class="ip-pill active" data-k="status" data-v="All" onclick="setIpFilter('status','All')">全部</button>
-      <button type="button" class="ip-pill" data-k="status" data-v="New" onclick="setIpFilter('status','New')">🆕 新机</button>
-      <button type="button" class="ip-pill" data-k="status" data-v="Refurbished" onclick="setIpFilter('status','Refurbished')">♻️ 二手</button>
+      <span style="font-size:11px;color:#888;min-width:34px">Status</span>
+      <button type="button" class="ip-pill active" data-k="status" data-v="All" onclick="setIpFilter('status','All')">All</button>
+      <button type="button" class="ip-pill" data-k="status" data-v="New" onclick="setIpFilter('status','New')">🆕 New</button>
+      <button type="button" class="ip-pill" data-k="status" data-v="Refurbished" onclick="setIpFilter('status','Refurbished')">♻️ Refurbished</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:8px">
-      <span style="font-size:11px;color:#888;min-width:34px">类型</span>
-      <button type="button" class="ip-pill active" data-k="type" data-v="All" onclick="setIpFilter('type','All')">全部</button>
-      <button type="button" class="ip-pill" data-k="type" data-v="Printing" onclick="setIpFilter('type','Printing')">印刷</button>
-      <button type="button" class="ip-pill" data-k="type" data-v="Die Cut" onclick="setIpFilter('type','Die Cut')">模切</button>
-      <button type="button" class="ip-pill" data-k="type" data-v="Slitting" onclick="setIpFilter('type','Slitting')">分切</button>
-      <button type="button" class="ip-pill" data-k="type" data-v="Cutter" onclick="setIpFilter('type','Cutter')">切纸/切管</button>
-      <button type="button" class="ip-pill" data-k="type" data-v="Rewinder" onclick="setIpFilter('type','Rewinder')">复卷</button>
-      <button type="button" class="ip-pill" data-k="type" data-v="Other" onclick="setIpFilter('type','Other')">其他</button>
+      <span style="font-size:11px;color:#888;min-width:34px">Type</span>
+      <button type="button" class="ip-pill active" data-k="type" data-v="All" onclick="setIpFilter('type','All')">All</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Printing" onclick="setIpFilter('type','Printing')">Printing</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Die Cut" onclick="setIpFilter('type','Die Cut')">Die Cut</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Slitting" onclick="setIpFilter('type','Slitting')">Slitting</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Cutter" onclick="setIpFilter('type','Cutter')">Cutter</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Rewinder" onclick="setIpFilter('type','Rewinder')">Rewinder</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Other" onclick="setIpFilter('type','Other')">Other</button>
     </div>
     <div id="imagepicker-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
     <div id="imagepicker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding:4px">
@@ -1174,9 +1174,9 @@ function mobileTab(tab) {
       <input type="text" id="s-gs-url" placeholder="https://script.google.com/macros/s/...">
     </div>
     <div class="field-group">
-      <label>访问令牌 Access Token</label>
-      <input type="text" id="s-api-token" placeholder="Claude 给你的那串令牌（没有就留空）">
-      <div style="font-size:11px;color:#888;margin-top:4px">🔒 加固后才需要：Claude 会给你这串，每台设备粘一次。留空 = 不启用。</div>
+      <label>Access Token</label>
+      <input type="text" id="s-api-token" placeholder="Your token (leave blank if none)">
+      <div style="font-size:11px;color:#888;margin-top:4px">🔒 Only needed after security is on: Claude gives you this string — paste once per device. Blank = off.</div>
     </div>
     <div class="field-group">
       <label>Google Sheet ID (from URL)</label>
@@ -1280,7 +1280,7 @@ let gsUrl = localStorage.getItem('sen_gs_url') || '';
   function isBackend(u){ return typeof u === 'string' && u.indexOf('script.google.com/macros/') !== -1; }
   function promptToken(){
     if (_tokPrompted) return; _tokPrompted = true;
-    const t = prompt('需要访问令牌才能连接。\n请粘贴 Claude 给你的访问令牌：', apiToken());
+    const t = prompt('Access Token required to connect.\nPaste the token Claude gave you:', apiToken());
     if (t && t.trim()) { localStorage.setItem('sen_api_token', t.trim()); location.reload(); }
   }
   window.__senPromptToken = promptToken;   // v11.6: 让取号等流程在未授权时也能唤起令牌输入框
@@ -1662,8 +1662,8 @@ function updateMachineLabels() {
   const lbl = 'Machine ' + n + (M().machineType ? ' — ' + shortTitle(M()) : '');
   const el1 = document.getElementById('price-machine-label');
   const el2 = document.getElementById('extras-machine-label');
-  if (el1) el1.textContent = '价格 Pricing: ' + lbl;
-  if (el2) el2.textContent = '附加 Extras for: ' + lbl;
+  if (el1) el1.textContent = 'Pricing: ' + lbl;
+  if (el2) el2.textContent = 'Extras for: ' + lbl;
 }
 
 // ============================================================
@@ -1929,8 +1929,8 @@ async function fetchNextNo(opts) {
     if (!data || data.error || data.next === undefined || data.next === null) {
       const needTok = data && data.error === 'unauthorized';
       document.getElementById('next-no-hint').innerHTML = needTok
-        ? '<span class="red">⚠ 需先在「设置 ⚙」填访问令牌才能自动取号</span>'
-        : (opts.auto ? '' : '<span class="red">取号失败，请检查连接 / 设置</span>');
+        ? '<span class="red">⚠ Enter the Access Token in Settings ⚙ to auto-number</span>'
+        : (opts.auto ? '' : '<span class="red">Failed to get a number — check connection / Settings</span>');
       if (needTok && typeof window.__senPromptToken === 'function') window.__senPromptToken();
       return;
     }
@@ -2086,7 +2086,7 @@ function renderMachineParams(type, condition) {
       <div id="part-groups-wrap"></div>
       <button id="btn-add-group" style="width:100%;padding:8px;background:#e8f4e8;border:2px dashed #5a9a5a;border-radius:6px;color:#2d6a2d;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer">+ Add New Group (New 1) 2) 3)...)</button>
       <div style="margin-top:10px;padding:8px;background:#fff8f0;border:1px solid #f0d0a0;border-radius:4px">
-        <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount 折扣 <span style="font-weight:400;color:#888">(applies to total, fill one only 折在总价，只填一个)</span></div>
+        <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:6px">Discount <span style="font-weight:400;color:#888">(applies to total, fill one only)</span></div>
         <div style="margin-bottom:6px">
           <label style="font-size:11px;color:#555;font-weight:600">Discount Label</label>
           <input type="text" id="f-discount-label" placeholder="e.g. Special Discount / VVIP Discount" style="width:100%;padding:5px 8px;border:1px solid #ccd;border-radius:4px;font-size:12px;box-sizing:border-box;margin-top:2px">
@@ -2560,11 +2560,11 @@ function calcPrice() {
           const floorCur = _floorUSD * mult;
           const uq = m.unitQty || 1;
           const netUnit = uq > 0 ? sellPrice / uq : sellPrice;
-          const _src = _fset > 0 ? '机型库设定' : '参考价 −10%';
-          html += `<div class="pc-row" style="border-top:1px dashed #e0c08a;margin-top:5px;padding-top:6px"><span style="color:#a06a2c">💡 最低售价/台 <span style="font-weight:400;font-size:10px">(${_src})</span></span><span class="price-tag" style="color:#a06a2c">${fmt(floorCur)}</span></div>`;
+          const _src = _fset > 0 ? 'From Machine DB' : 'ref −10%';
+          html += `<div class="pc-row" style="border-top:1px dashed #e0c08a;margin-top:5px;padding-top:6px"><span style="color:#a06a2c">💡 Floor price/unit <span style="font-weight:400;font-size:10px">(${_src})</span></span><span class="price-tag" style="color:#a06a2c">${fmt(floorCur)}</span></div>`;
           // 仅当售价已被改动(≠刚带出的 refPrice 原值)才比对，避免非美元合同刚选机型时(售价暂为 USD 数值)误报
           if (netUnit < floorCur - 0.5 && Math.abs(netUnit - _ref) > 0.5) {
-            html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ 低于最低售价</span><span style="color:#c0392b;font-size:11px">每台净价 ${fmt(netUnit)}</span></div>`;
+            html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ Below floor price</span><span style="color:#c0392b;font-size:11px">Net/unit ${fmt(netUnit)}</span></div>`;
           }
         }
       }
@@ -2750,7 +2750,7 @@ function renderPartGroups() {
     groupDiv.appendChild(descTA);
     const _rbar = document.createElement('div');
     _rbar.className = 'rich-bar'; _rbar.style.cssText = 'margin-bottom:6px';
-    _rbar.innerHTML = `<button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← 先点 Sub-desc 或某项 Description，再点</span>`;
+    _rbar.innerHTML = `<button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← Click Sub-desc or a Description, then a button</span>`;
     groupDiv.appendChild(_rbar);
 
     // Image upload area for this group
@@ -2798,7 +2798,12 @@ function renderPartGroups() {
     driveBtn.textContent = '📷 Pick from Drive';
     driveBtn.style.cssText = 'padding:4px 10px;background:#e8f5e9;color:#2d6a2d;border:1px solid #8bc;border-radius:4px;font-size:12px;cursor:pointer';
     driveBtn.addEventListener('click', () => { _activeGroupIdx = gi; openImagePicker(); });
-    imgBtns.appendChild(fileInput); imgBtns.appendChild(uploadBtn); imgBtns.appendChild(driveBtn);
+    // v12.6: paste image into this parts group (Ctrl+V)
+    const pasteBtn = document.createElement('button');
+    pasteBtn.textContent = '📋 Paste image (Ctrl+V)';
+    pasteBtn.style.cssText = 'padding:4px 10px;background:#ede7f6;color:#5e35b1;border:1px solid #b39ddb;border-radius:4px;font-size:12px;cursor:pointer';
+    pasteBtn.addEventListener('click', () => { _activeGroupIdx = gi; _activeItemIdx = -1; pasteImageFromClipboard(); });
+    imgBtns.appendChild(fileInput); imgBtns.appendChild(uploadBtn); imgBtns.appendChild(driveBtn); imgBtns.appendChild(pasteBtn);
     imgSection.appendChild(imgBtns);
     groupDiv.appendChild(imgSection);
 
@@ -3240,8 +3245,30 @@ function addImage(file) {
 // v11.7: 剪贴板粘贴图片（任意处 Ctrl+V，或点 📋 按钮）— 复用 addImage，不下载不上传
 function _imgPasteBlob(blob){
   if(!blob) return false;
-  try{ if(typeof M!=='function' || !M()){ _imgPasteStatus('请先选一台机器，再粘贴图片'); return false; } }
-  catch(e){ _imgPasteStatus('请先选一台机器，再粘贴图片'); return false; }
+  let m;
+  try{ if(typeof M!=='function' || !M()){ _imgPasteStatus('Select a machine first, then paste'); return false; } m=M(); }
+  catch(e){ _imgPasteStatus('Select a machine first, then paste'); return false; }
+  // v12.6: parts machine → route paste to the active group (or item), mirroring selectImageFromPicker
+  if(m && m.machineType==='parts' && Array.isArray(m.partGroups)){
+    const gi = typeof _activeGroupIdx==='number'?_activeGroupIdx:0;
+    if(!m.partGroups[gi]){ _imgPasteStatus('Select a parts group first'); return false; }
+    const ai = _activeItemIdx;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      if(ai>=0 && m.partGroups[gi].items[ai]){
+        const item=m.partGroups[gi].items[ai];
+        if(!item.images) item.images=[];
+        item.images.push(ev.target.result);
+      } else {
+        if(!m.partGroups[gi].images) m.partGroups[gi].images=[];
+        m.partGroups[gi].images.push(ev.target.result);
+      }
+      _activeItemIdx=-1;
+      renderPartGroups(); updatePreview();
+    };
+    reader.readAsDataURL(blob);
+    return true;
+  }
   addImage(new File([blob],'pasted-'+Date.now()+'.png',{type:blob.type||'image/png'}));
   return true;
 }
@@ -3250,19 +3277,19 @@ function handleImgPaste(e){
   const items=(e.clipboardData||window.clipboardData||{}).items||[];
   let found=false;
   for(const it of items){ if(it.type && it.type.indexOf('image/')===0){ const f=it.getAsFile(); if(f && _imgPasteBlob(f)) found=true; } }
-  if(found){ e.preventDefault(); _imgPasteStatus('✅ 已粘贴图片到当前机器'); }
+  if(found){ e.preventDefault(); _imgPasteStatus('✅ Image pasted'); }
 }
 document.addEventListener('paste', handleImgPaste);
 async function pasteImageFromClipboard(){
   try{
-    if(!navigator.clipboard || !navigator.clipboard.read){ _imgPasteStatus('浏览器不支持读剪贴板，请直接按 Ctrl+V'); return; }
+    if(!navigator.clipboard || !navigator.clipboard.read){ _imgPasteStatus('Clipboard read not supported — press Ctrl+V'); return; }
     let found=false;
     for(const it of await navigator.clipboard.read()){
       const t=(it.types||[]).find(x=>x.indexOf('image/')===0);
       if(t){ if(_imgPasteBlob(await it.getType(t))) found=true; }
     }
-    _imgPasteStatus(found ? '✅ 已粘贴图片到当前机器' : '剪贴板里没有图片（先 Win+Shift+S 截图，再点）');
-  }catch(err){ _imgPasteStatus('读不到剪贴板，请改用 Ctrl+V 直接粘贴'); }
+    _imgPasteStatus(found ? '✅ Image pasted' : 'No image in clipboard (capture with Win+Shift+S first)');
+  }catch(err){ _imgPasteStatus('Cannot read clipboard — use Ctrl+V instead'); }
 }
 function removeImg(idx) {
   document.getElementById('img-'+idx)?.remove();
@@ -3305,12 +3332,12 @@ function renderSpecRowsUI(arr) {
       + `<textarea class="spec-label-input" rows="1" placeholder="Label" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';specRowChanged()">${esc2((item.label||'').replace(/^[~#]+/,''))}</textarea>`
       + `<button class="spec-bold-btn${isBoldLabel?' active':''}" onclick="toggleSpecLabelBold(${idx})" title="Bold label">${isBoldLabel?'<b>B</b>':'B'}</button>`
       + `<button class="spec-bold-btn${isUnderLabel?' active':''}" onclick="toggleSpecLabelUnder(${idx})" title="Underline label" style="font-size:10px">${isUnderLabel?'<u>U</u>':'U'}</button>`
-      + `<button class="spec-color-btn" data-color="${isColorLabel}" onclick="cycleSpecColor(${idx},'label')" title="Label color: 点一下循环 无/红/蓝/绿" style="color:${isColorLabel||'#bbb'}">A</button>`
+      + `<button class="spec-color-btn" data-color="${isColorLabel}" onclick="cycleSpecColor(${idx},'label')" title="Label color (click to cycle: none/red/blue/green)" style="color:${isColorLabel||'#bbb'}">A</button>`
       + `<span class="spec-colon">:</span>`
       + `<input class="spec-value-input" type="text" value="${esc2(item.value||'')}" placeholder="Value" oninput="specRowChanged()">`
       + `<button class="spec-bold-btn${isBold?' active':''}" onclick="toggleSpecBold(${idx})" title="Bold value">${isBold?'<b>B</b>':'B'}</button>`
       + `<button class="spec-bold-btn${isUnderValue?' active':''}" onclick="toggleSpecValueUnder(${idx})" title="Underline value" style="font-size:10px">${isUnderValue?'<u>U</u>':'U'}</button>`
-      + `<button class="spec-color-btn" data-color="${isColorValue}" onclick="cycleSpecColor(${idx},'value')" title="Value color: 点一下循环 无/红/蓝/绿" style="color:${isColorValue||'#bbb'}">A</button>`
+      + `<button class="spec-color-btn" data-color="${isColorValue}" onclick="cycleSpecColor(${idx},'value')" title="Value color (click to cycle: none/red/blue/green)" style="color:${isColorValue||'#bbb'}">A</button>`
       + `<button class="rm-spec-btn" onclick="removeSpecRow(${idx})" title="Remove">&#215;</button>`;
     row.addEventListener('dragstart', e => { specDragSrc = idx; e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',idx); });
     row.addEventListener('dragover',  e => { e.preventDefault(); row.classList.add('spec-drag-over'); });
@@ -4252,7 +4279,7 @@ function partsTitle(m) {
   }
   if (!descs.length) return main;
   const shown = descs.slice(0, 3).join(', ');
-  const extra = descs.length > 3 ? ` 等${descs.length}项` : '';
+  const extra = descs.length > 3 ? ` +${descs.length} more` : '';
   return `${main} — ${shown}${extra}`;
 }
 
@@ -4330,30 +4357,30 @@ function showFilenameDialog(fname, onContinue) {
   dialog.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:520px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
   
   dialog.innerHTML = `
-    <h3 style="margin:0 0 10px 0;font-size:17px;color:#1a3a5c">&#128228; 出 PDF / 分享给客户</h3>
+    <h3 style="margin:0 0 10px 0;font-size:17px;color:#1a3a5c">&#128228; Export PDF / Share with customer</h3>
     <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-bottom:14px">
-      <div style="font-weight:700;font-size:13px;color:#2e7d32;margin-bottom:4px">&#128172; 想直接发 WhatsApp？（最快，免复制文件名）</div>
+      <div style="font-weight:700;font-size:13px;color:#2e7d32;margin-bottom:4px">&#128172; Send via WhatsApp? (fastest — no need to copy the filename)</div>
       <div style="font-size:12px;color:#33691e;line-height:1.55">
-        1. 点下面 <b>继续 → 打印/分享</b><br>
-        2. 打印预览页 <b>右上角「分享」图标</b> &#128229;<br>
-        3. 选 <b>WhatsApp</b> 直接发给客户 —— 文件名已自动带合同号，不用复制。
+        1. Click <b>Continue &rarr; Print/Share</b> below<br>
+        2. On the print preview, <b>tap the Share icon (top-right)</b> &#128229;<br>
+        3. Choose <b>WhatsApp</b> to send — the filename already includes the contract no.
       </div>
     </div>
-    <div style="font-size:12px;color:#666;margin-bottom:6px">想<b>存到文件</b>存档？先复制文件名（存档时 iPad 会用网址当默认名，需粘贴）：</div>
+    <div style="font-size:12px;color:#666;margin-bottom:6px">Saving to a file? Copy the filename first (iPad uses the URL as the default name):</div>
     <div style="background:#f5f9ff;border:1px solid #c0cde0;border-radius:6px;padding:10px;margin-bottom:12px">
-      <div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600">SUGGESTED FILENAME 建议文件名：</div>
+      <div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600">SUGGESTED FILENAME:</div>
       <div id="fname-display" style="font-family:'SF Mono',Menlo,monospace;font-size:13px;line-height:1.4;color:#1a3a5c;word-break:break-word;user-select:all;-webkit-user-select:all">${fname}</div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button id="fname-continue-btn" style="flex:2;min-width:160px;background:#00897b;color:#fff;border:none;padding:12px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer">
-        &#128424; 继续 &rarr; 打印/分享
+        &#128424; Continue &rarr; Print/Share
       </button>
       <button id="fname-copy-btn" style="flex:1;min-width:120px;background:#1a3a5c;color:#fff;border:none;padding:12px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
-        &#128203; 复制文件名
+        &#128203; Copy filename
       </button>
     </div>
     <button id="fname-cancel-btn" style="margin-top:10px;width:100%;background:transparent;color:#999;border:none;padding:8px;font-size:13px;cursor:pointer">
-      取消 Cancel
+      Cancel
     </button>
   `;
   
@@ -4367,7 +4394,7 @@ function showFilenameDialog(fname, onContinue) {
   copyBtn.onclick = async () => {
     try {
       await navigator.clipboard.writeText(fname);
-      copyBtn.innerHTML = '&#10003; 已复制 Copied';
+      copyBtn.innerHTML = '&#10003; Copied';
       copyBtn.style.background = '#388e3c';
     } catch (e) {
       // Fallback: select the text manually
@@ -4378,7 +4405,7 @@ function showFilenameDialog(fname, onContinue) {
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        copyBtn.innerHTML = '&#9888; 长按选中文字 &rarr; 拷贝';
+        copyBtn.innerHTML = '&#9888; Long-press to select &rarr; copy';
       }
     }
   };
@@ -4683,7 +4710,7 @@ async function saveToSheets(silent=false) {
         const f = document.getElementById('f-contract-no'); if (f) f.value = finalNo;
         _autoNoValue = null;
         updatePreview();
-        if (!silent) showSaveStamp('⚠️ 此号已被占用，已自动改为 ' + finalNo + '（先到先得，原合同未被覆盖）', true);
+        if (!silent) showSaveStamp('⚠️ This number is taken; auto-changed to ' + finalNo + '(first-come; original not overwritten)', true);
       }
     } catch (e) { /* 读不到就按原号继续，后端锁仍保证不覆盖别人 */ }
     // 3) 存完整 state（用最终号 + recordId，保持内外一致）
@@ -5611,7 +5638,7 @@ function renderIpGrid() {
     gridEl.appendChild(div);
   });
   statusEl.textContent = (_ipStatus==='All'&&_ipType==='All') ? `${all.length} image(s)` : `${shown} / ${all.length} image(s)`;
-  if (!shown) gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">这个筛选下没有图，换个筛选试试。</div>';
+  if (!shown) gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images match this filter.</div>';
 }
 
 function selectImageFromPicker(idx) {
@@ -5951,7 +5978,7 @@ function loadMachineFromDB(idx) {
   machine.sellPrice    = m.refPrice || 0;
   machine._finalPrice  = m.refPrice || 0;
   machine.refPrice     = Number(m.refPrice) || 0;   // v11.0: 留存机型库参考售价，用于「最低售价」底价(ref×0.9)显示
-  machine.floorPrice   = Number(m.floorPrice) || 0; // v11.1: 留存机型库设定底价(USD,若后端有该列)
+  machine.floorPrice   = Number(m.floorPrice) || 0; // v11.1: 留存From Machine DB底价(USD,若后端有该列)
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
     label: s.label, value: s.value,
     bold: s.bold || false, boldLabel: s.boldLabel || false,
@@ -5992,7 +6019,7 @@ function loadMachineFromDB(idx) {
     // Re-save customTitle to state (DOM rebuild clears it)
     M().customTitle = m.modelName || '';
     M().refPrice = Number(m.refPrice) || 0;   // v11.0: 面板重建后重新留存参考售价
-    M().floorPrice = Number(m.floorPrice) || 0;   // v11.1: 面板重建后重新留存机型库设定底价
+    M().floorPrice = Number(m.floorPrice) || 0;   // v11.1: 面板重建后重新留存From Machine DB底价
 
     const setF = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
     setF('f-custom-title', m.modelName || '');
