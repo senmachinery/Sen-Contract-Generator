@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.4</title>
+<title>Sen Labels — Contract Generator v12.5</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -80,6 +80,8 @@ button{cursor:pointer;font-family:inherit}
 #add-cw-btn:hover{background:#e0e8ff}
 .spec-row{display:grid;grid-template-columns:20px 1fr 22px 22px 22px 10px 1fr 22px 22px 22px 22px;align-items:center;gap:3px;padding:4px 2px;border-bottom:1px solid #eef}
 .spec-color-btn{font-size:11px;font-weight:700;line-height:1;padding:2px 4px;border:1px solid #c0cde0;border-radius:3px;background:#f4f7fb;cursor:pointer}
+.ip-pill{font-size:11px;padding:3px 10px;border:1px solid #c0cde0;border-radius:14px;background:#fff;color:#445;cursor:pointer}
+.ip-pill.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c;font-weight:600}
 .spec-row.spec-drag-over{border-top:2px solid #1a3a5c;background:#f0f4ff}
 .drag-handle{cursor:grab;color:#aab;font-size:18px;padding:0 3px;user-select:none;flex-shrink:0}
 .drag-handle:active{cursor:grabbing}
@@ -485,7 +487,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.4</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.5</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1058,6 +1060,22 @@ function mobileTab(tab) {
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <input type="text" id="imagepicker-search" placeholder="Search by filename..." style="flex:1;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px" oninput="searchImagePicker()">
       <button class="btn btn-outline btn-sm" onclick="searchImagePicker()">&#128269; Search</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:5px">
+      <span style="font-size:11px;color:#888;min-width:34px">状态</span>
+      <button type="button" class="ip-pill active" data-k="status" data-v="All" onclick="setIpFilter('status','All')">全部</button>
+      <button type="button" class="ip-pill" data-k="status" data-v="New" onclick="setIpFilter('status','New')">🆕 新机</button>
+      <button type="button" class="ip-pill" data-k="status" data-v="Refurbished" onclick="setIpFilter('status','Refurbished')">♻️ 二手</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:8px">
+      <span style="font-size:11px;color:#888;min-width:34px">类型</span>
+      <button type="button" class="ip-pill active" data-k="type" data-v="All" onclick="setIpFilter('type','All')">全部</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Printing" onclick="setIpFilter('type','Printing')">印刷</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Die Cut" onclick="setIpFilter('type','Die Cut')">模切</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Slitting" onclick="setIpFilter('type','Slitting')">分切</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Cutter" onclick="setIpFilter('type','Cutter')">切纸/切管</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Rewinder" onclick="setIpFilter('type','Rewinder')">复卷</button>
+      <button type="button" class="ip-pill" data-k="type" data-v="Other" onclick="setIpFilter('type','Other')">其他</button>
     </div>
     <div id="imagepicker-status" style="font-size:12px;color:#888;margin-bottom:8px"></div>
     <div id="imagepicker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding:4px">
@@ -5523,35 +5541,77 @@ async function searchImagePicker() {
     const qLower = q.toLowerCase();
     if (qLower) images = images.filter(im => (im.name || '').toLowerCase().includes(qLower));
     _imagePickerCache = images;
-    statusEl.textContent = `${images.length} image(s) found`;
     if (!images.length) {
+      statusEl.textContent = '0 image(s)';
       gridEl.innerHTML = qLower
         ? `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images match "${esc(q)}".<br>Try a different keyword, or clear the search.</div>`
         : '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
       return;
     }
-    gridEl.innerHTML = '';
-    images.forEach((img, i) => {
-      const div = document.createElement('div');
-      div.className = 'img-pick-item';
-      div.title = img.name;
-      const imgEl = document.createElement('img');
-      imgEl.src = img.url;
-      imgEl.loading = 'lazy';
-      imgEl.style.cssText = 'width:100%;height:110px;object-fit:cover;display:block';
-      imgEl.onerror = () => { imgEl.style.background='#eee'; imgEl.alt='Image'; };
-      const nameEl = document.createElement('div');
-      nameEl.className = 'img-pick-name';
-      nameEl.textContent = img.name;
-      div.appendChild(imgEl);
-      div.appendChild(nameEl);
-      div.addEventListener('click', () => selectImageFromPicker(i));
-      gridEl.appendChild(div);
-    });
+    renderIpGrid();
   } catch(e) {
     statusEl.textContent = 'Error: ' + e.message;
     gridEl.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#c0392b">${e.message}</div>`;
   }
+}
+
+// v12.5: 图片选择器 Status + Type 筛选（从文件名 [条件·类型] 前缀解析，无前缀走关键词）
+let _ipStatus = 'All', _ipType = 'All';
+function _ipParse(name) {
+  name = name || '';
+  const mm = /^\[([^·\]]+)·([^\]]+)\]/.exec(name);
+  let status = mm ? (mm[1].indexOf('新') >= 0 ? 'New' : 'Refurbished')
+                  : (/\bnew[_ ]|^new/i.test(name) ? 'New' : 'Refurbished');
+  const zh = mm ? mm[2] : '';
+  const T = {'模切':'Die Cut','烫金':'Die Cut','分切':'Slitting','复卷':'Rewinder',
+             '切纸':'Cutter','切管':'Cutter','凸版':'Printing','柔版':'Printing','丝印':'Printing'};
+  let type = T[zh];
+  if (!type) {
+    const n = name.toLowerCase();
+    if (/die.?cut|flat.?bed|hot.?stamp/.test(n)) type = 'Die Cut';
+    else if (/slitting/.test(n)) type = 'Slitting';
+    else if (/rewind/.test(n)) type = 'Rewinder';
+    else if (/sheet.?cut|core.?cut|cutter/.test(n)) type = 'Cutter';
+    else if (/letterpress|flexo|silkscreen|printing/.test(n)) type = 'Printing';
+    else type = 'Other';
+  }
+  return { status, type };
+}
+function setIpFilter(kind, val) {
+  if (kind === 'status') _ipStatus = val; else _ipType = val;
+  document.querySelectorAll('#imagepicker-modal .ip-pill').forEach(b => {
+    const cur = b.dataset.k === 'status' ? _ipStatus : _ipType;
+    b.classList.toggle('active', cur === b.dataset.v);
+  });
+  renderIpGrid();
+}
+function renderIpGrid() {
+  const gridEl = document.getElementById('imagepicker-grid');
+  const statusEl = document.getElementById('imagepicker-status');
+  const all = _imagePickerCache || [];
+  gridEl.innerHTML = '';
+  let shown = 0;
+  all.forEach((img, i) => {
+    const c = _ipParse(img.name || '');
+    if (_ipStatus !== 'All' && c.status !== _ipStatus) return;
+    if (_ipType !== 'All' && c.type !== _ipType) return;
+    shown++;
+    const div = document.createElement('div');
+    div.className = 'img-pick-item';
+    div.title = img.name;
+    const imgEl = document.createElement('img');
+    imgEl.src = img.url; imgEl.loading = 'lazy';
+    imgEl.style.cssText = 'width:100%;height:110px;object-fit:cover;display:block';
+    imgEl.onerror = () => { imgEl.style.background='#eee'; imgEl.alt='Image'; };
+    const nameEl = document.createElement('div');
+    nameEl.className = 'img-pick-name';
+    nameEl.textContent = img.name;
+    div.appendChild(imgEl); div.appendChild(nameEl);
+    div.addEventListener('click', () => selectImageFromPicker(i));
+    gridEl.appendChild(div);
+  });
+  statusEl.textContent = (_ipStatus==='All'&&_ipType==='All') ? `${all.length} image(s)` : `${shown} / ${all.length} image(s)`;
+  if (!shown) gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">这个筛选下没有图，换个筛选试试。</div>';
 }
 
 function selectImageFromPicker(idx) {
