@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.47</title>
+<title>Sen Labels — CRM v2.48</title>
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -582,7 +582,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.47</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.48</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1924,7 +1924,7 @@ function openCustomerRepEditor(company) {
         <option value="">— Unassigned / clear —</option>
         ${repOpts}
       </select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 Once set, this customer's contracts are grouped under this agent in the pack filter (unless a contract specifies its own)</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 This sets the agent for this customer AND applies it to ALL their contracts at once.</div>
     </div>
   `;
   $('modal-footer').innerHTML = `
@@ -1937,14 +1937,17 @@ function openCustomerRepEditor(company) {
 async function saveCustomerRep(company) {
   const rep = $('cust-rep-select').value;
   try {
-    const r = await apiPost('crm_setCustomerRep', { company: company, defaultRep: rep });
+    const r = await apiPost('crm_setCustomerRep', { company: company, defaultRep: rep, cascade: true });
     if (!r.ok) throw new Error(r.error || 'Save failed');
     // Update local state immediately
     CUSTOMER_DEFAULT_REP[repKey(company)] = rep;
     const cust = STATE.customers.find(x => x.company === company);
     if (cust) cust.defaultRep = rep;
+    // v2.48: backend cascaded the rep onto ALL this customer's contracts — mirror locally
+    const lc = String(company).trim().toLowerCase();
+    (STATE.contracts || []).forEach(ct => { if (String(ct.company||'').trim().toLowerCase() === lc) { ct.salesRep = rep; CONTRACT_REP[ct.contractNo] = rep; } });
     closeModal();
-    showToast(rep ? `✅ Account agent set to ${rep}` : '✅ Account agent cleared', 'success');
+    showToast(rep ? `✅ Agent set to ${rep}${r.cascaded ? ' · ' + r.cascaded + ' contract(s) updated' : ''}` : '✅ Account agent cleared', 'success');
     await selectCustomer(company);  // refresh detail
     if (typeof renderReps === 'function') renderReps();  // v2.25: keep rep-card counts in sync
   } catch (e) {
