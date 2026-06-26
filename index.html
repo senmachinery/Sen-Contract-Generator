@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.1</title>
+<title>Sen Labels — Contract Generator v12.2</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -484,7 +484,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.1</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.2</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -908,9 +908,11 @@ function mobileTab(tab) {
     <div style="padding:14px">
     <div id="extras-machine-label" class="alert alert-info" style="margin-bottom:8px;font-size:11px">Come With: Machine 1</div>
     <div class="section-title" style="margin-top:0">Come With Items <span style="font-weight:400;font-size:11px;color:#888">随机配件（随机附送）</span></div>
+    <div class="rich-bar"><button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← 先点要改的项目名，再点按钮</span></div>
     <div id="cw-list"></div>
     <button id="add-cw-btn" onclick="addCwItem()">+ Add Item</button>
     <div class="section-title" style="margin-top:16px">Optional Items <span style="font-weight:400;font-size:11px;color:#888">选配（列在合同但不计入价格）</span></div>
+    <div class="rich-bar"><button type="button" onclick="richWrap(window.__lastRich,'[[b]]','[[/b]]')" title="Bold"><b>B</b></button><button type="button" onclick="richWrap(window.__lastRich,'[[u]]','[[/u]]')" title="Underline"><u>U</u></button><button type="button" onclick="richWrap(window.__lastRich,'[[red]]','[[/red]]')" title="Red" style="color:#c00;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[blue]]','[[/blue]]')" title="Blue" style="color:#06c;font-weight:700">A</button><button type="button" onclick="richWrap(window.__lastRich,'[[green]]','[[/green]]')" title="Green" style="color:#080;font-weight:700">A</button><span style="font-size:10px;color:#aaa;align-self:center">← 先点要改的项目名，再点按钮</span></div>
     <div id="opt-list"></div>
     <button id="add-opt-btn" onclick="addOptItem()">+ Add Optional Item</button>
     <div class="section-title" style="margin-top:16px">Machine Images <span id="img-machine-label" style="font-weight:400;font-size:11px;color:#666"></span></div>
@@ -3980,7 +3982,7 @@ function buildComeWith(m) {
     if (!items.length) return '';
     let pin = '<div style="font-size:10pt;font-weight:600;margin:2mm 0 1mm 0">Come With :</div>';
     items.forEach(item => {
-      const label = esc(item.qty) ? esc(item.qty)+' '+esc(item.desc) : esc(item.desc);
+      const label = esc(item.qty) ? esc(item.qty)+' '+renderRich(item.desc) : renderRich(item.desc);
       pin += `<div style="font-size:10pt;margin-left:4mm;margin-bottom:0.5mm">- ${label}</div>`;
     });
     return `<div style="background:#fff;border:1px solid #d4dbe3;border-left:4px solid #1e3a5f;border-radius:0 3px 3px 0;padding:3mm 4mm;margin:3mm 0;color:#1a1a1a">${pin}</div>`;
@@ -4015,7 +4017,7 @@ function buildComeWith(m) {
     inner += `<div style="font-size:10pt;font-weight:600;margin:2mm 0 1mm 0">Come With :</div>`;
     items.forEach(item => {
       const itemAmt = parseCwVal(item.val);
-      const label = esc(item.qty) ? esc(item.qty)+' '+esc(item.desc) : esc(item.desc);
+      const label = esc(item.qty) ? esc(item.qty)+' '+renderRich(item.desc) : renderRich(item.desc);
       if (itemAmt > 0) {
         inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;margin-left:4mm;margin-bottom:0.5mm;align-items:baseline">
           <span>- ${label}</span>
@@ -4064,7 +4066,7 @@ function buildOptionalItems(m) {
   items.forEach(item => {
     const valStr = item.val ? (item.val.startsWith('@')?item.val:'@'+item.val) : '';
     html += `<div style="display:flex;justify-content:space-between;font-size:10pt;margin-left:20mm">
-      <span>- ${esc(item.qty)?esc(item.qty)+' '+esc(item.desc):esc(item.desc)}</span>
+      <span>- ${esc(item.qty)?esc(item.qty)+' '+renderRich(item.desc):renderRich(item.desc)}</span>
       <span>${valStr}</span></div>`;
   });
   html += '</div>';
@@ -6055,7 +6057,7 @@ function exportToExcel() {
       r([c('Come With :',ST.label), c(''), c(''), c(''), c('')]);
       cw.forEach(item => {
         const valStr = item.val ? (item.val.startsWith('@')?item.val:'@'+item.val) : '';
-        r([c(''), c('- '+(item.qty?item.qty+' ':'')+item.desc, ST.plain), c(''), c(valStr), c('')]);
+        r([c(''), c('- '+(item.qty?item.qty+' ':'')+stripRich(item.desc), ST.plain), c(''), c(valStr), c('')]);
       });
       blank();
     }
@@ -6286,7 +6288,7 @@ function exportToWord() {
       cwItems.forEach(item => {
         const valStr = item.val ? (item.val.startsWith('@')?item.val:'@'+item.val) : '';
         body += `  <tr>
-    <td style="${B}padding:2pt 8pt 2pt 22pt">- ${item.qty?esc(item.qty)+' '+esc(item.desc):esc(item.desc)}</td>
+    <td style="${B}padding:2pt 8pt 2pt 22pt">- ${item.qty?esc(item.qty)+' '+stripRich(item.desc):stripRich(item.desc)}</td>
     <td style="${B}text-align:right;padding:2pt 8pt;white-space:nowrap">${esc(valStr)}</td>
   </tr>`;
       });
@@ -6309,7 +6311,7 @@ function exportToWord() {
       optItems.forEach(item => {
         const valStr = item.val ? (item.val.startsWith('@')?item.val:'@'+item.val) : '';
         body += `  <tr>
-    <td style="${B}padding:2pt 8pt 2pt 22pt">- ${item.qty?esc(item.qty)+' '+esc(item.desc):esc(item.desc)}</td>
+    <td style="${B}padding:2pt 8pt 2pt 22pt">- ${item.qty?esc(item.qty)+' '+stripRich(item.desc):stripRich(item.desc)}</td>
     <td style="${B}text-align:right;padding:2pt 8pt;white-space:nowrap">${esc(valStr)}</td>
   </tr>`;
       });
@@ -7671,6 +7673,11 @@ document.addEventListener('keydown', e => {
       }
     }
   }
+});
+
+// v12.2: 记住最后聚焦的 Come-With / Optional 项目名输入框，供该区 rich-bar 按钮格式化
+document.addEventListener('focusin', e => {
+  if (e.target && e.target.classList && e.target.classList.contains('cw-desc')) window.__lastRich = e.target;
 });
 
 // ───── INIT all v10.46 features ─────────────────────────────
