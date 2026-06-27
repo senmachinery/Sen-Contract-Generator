@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.8</title>
+<title>Sen Labels — Contract Generator v12.9</title>
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -487,7 +487,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.8</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.9</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1166,8 +1166,7 @@ function mobileTab(tab) {
     <button class="close-btn" onclick="closeSettings()">&#215;</button>
     <h2>&#9881; Settings &#8212; Google Sheets Integration</h2>
     <div class="alert alert-info" style="margin-bottom:14px">
-      Deploy a Google Apps Script Web App and paste the URL below to enable history &amp; auto-incrementing contract numbers.<br><br>
-      <strong>Steps:</strong> Open script.google.com &#8594; New project &#8594; Paste the code below &#8594; Deploy &#8594; Web App &#8594; Anyone &#8594; Copy URL
+      <strong>For sales staff / agents:</strong> paste the <strong>Web App URL</strong> and your personal <strong>Access Token</strong> below (both given to you by your admin), then press <strong>Save</strong>. That's all you need.
     </div>
     <div class="field-group">
       <label>Google Apps Script Web App URL</label>
@@ -1175,18 +1174,16 @@ function mobileTab(tab) {
     </div>
     <div class="field-group">
       <label>Access Token</label>
-      <input type="text" id="s-api-token" placeholder="Your token (leave blank if none)">
-      <div style="font-size:11px;color:#888;margin-top:4px">🔒 Only needed after security is on: Claude gives you this string — paste once per device. Blank = off.</div>
+      <input type="text" id="s-api-token" placeholder="Access Token (from your admin) — required">
+      <div style="font-size:11px;color:#888;margin-top:4px">🔒 Paste the Access Token your admin gave you (one-time per device).</div>
     </div>
     <div class="field-group">
       <label>Google Sheet ID (from URL)</label>
       <input type="text" id="s-gs-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
     </div>
-    <div style="margin:14px 0">
-      <button class="btn btn-outline btn-sm" onclick="copyAppsScript()">&#128203; Copy Apps Script Code</button>
-    </div>
-    <details>
-      <summary style="cursor:pointer;font-size:11px;color:#1a3a5c;font-weight:700;margin-bottom:8px">&#9658; View Apps Script Code</summary>
+    <details style="margin:14px 0">
+      <summary style="cursor:pointer;font-size:11px;color:#1a3a5c;font-weight:700;margin-bottom:8px">&#9658; Admin only — set up / update the backend (sales staff don't need this)</summary>
+      <button class="btn btn-outline btn-sm" onclick="copyAppsScript()" style="margin:0 0 8px">&#128203; Copy Apps Script Code</button>
       <pre id="apps-script-code" style="background:#f5f6f8;padding:10px;border-radius:4px;font-size:10px;overflow:auto;max-height:200px;white-space:pre-wrap"></pre>
     </details>
     <div class="field-group" style="margin-top:14px">
@@ -1280,7 +1277,7 @@ let gsUrl = localStorage.getItem('sen_gs_url') || '';
   function isBackend(u){ return typeof u === 'string' && u.indexOf('script.google.com/macros/') !== -1; }
   function promptToken(){
     if (_tokPrompted) return; _tokPrompted = true;
-    const t = prompt('Access Token required to connect.\nPaste the token Claude gave you:', apiToken());
+    const t = prompt('Access Token required to connect.\nPaste the Access Token your admin gave you:', apiToken());
     if (t && t.trim()) { localStorage.setItem('sen_api_token', t.trim()); location.reload(); }
   }
   window.__senPromptToken = promptToken;   // v11.6: 让取号等流程在未授权时也能唤起令牌输入框
@@ -1390,7 +1387,7 @@ function handleCrmUrlParams() {
     const go = () => {
       if (typeof gsUrl !== 'undefined' && gsUrl) loadFromLibrary(previewNo, { silent: true, preview: true });
       else if (tries-- > 0) setTimeout(go, 300);
-      else _previewLoadError(previewNo, 'Backend URL not configured,Cannot load contract. Please configure the Google Sheets URL in Generator Settings first.');
+      else _previewLoadError(previewNo, 'Backend URL not configured. Cannot load contract. Please configure the Google Sheets URL in Generator Settings first.');
     };
     go();
     return;
@@ -1425,7 +1422,7 @@ function handleCrmUrlParams() {
     // v10.73: fill full customer header from recent contracts / CustomerDB, then confirm
     setTimeout(async () => {
       if (typeof gsUrl !== 'undefined' && gsUrl) await fillCustomerHeaderFromContract(fromContract, customer);
-      alert('✅ New quote for: ' + customer + (inqImgCount ? ('\n📷 ' + inqImgCount + ' inquiry photo(s) added to Machine 1.') : '') + '\n\nCustomer details auto-filled where possible,Please review and complete. You can now add machines, set pricing, and save.');
+      alert('✅ New quote for: ' + customer + (inqImgCount ? ('\n📷 ' + inqImgCount + ' inquiry photo(s) added to Machine 1.') : '') + '\n\nCustomer details auto-filled where possible. Please review and complete. You can now add machines, set pricing, and save.');
     }, 350);
   } else if (contractNo && loadFlag) {
     // Load existing contract from Library
@@ -4848,6 +4845,11 @@ function saveSettings() {
   fetch(gsUrl+'?action=test').then(r=>r.json()).then(d=>{
     res.innerHTML=`<span class="green">&#10003; Connected! ${d.sheetName||'OK'}</span>`;
     updateGsStatus('ok','&#10003; Connected');
+    // v12.9: after connecting, populate data-driven fields so the app isn't half-empty until a manual reload
+    try { loadSalesReps(); } catch(e){}
+    try { setupCompanyAutocomplete(); } catch(e){}
+    try { loadHistory(); } catch(e){}
+    try { const _cn=document.getElementById('f-contract-no'); if (_cn && (!_cn.value || _cn.value.trim().endsWith('-'))) fetchNextNo({auto:true}); } catch(e){}
   }).catch(()=>{
     res.innerHTML='<span style="color:#e65100">&#9888; Saved. Test failed &#8212; check deploy settings.</span>';
     updateGsStatus('warn','&#9888; Saved (test failed)');
@@ -5290,7 +5292,7 @@ async function loadFromLibrary(contractNo, opts) {
     const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
     const data = await resp.json();
     if (!data.ok || !data.state) {
-      if (opts.silent) { _previewLoadError(contractNo, data.error || 'No saved record found for this contract (may be an old contract,please re-save once using Save Record in the Generator)'); return; }
+      if (opts.silent) { _previewLoadError(contractNo, data.error || 'No saved record found for this contract (may be an old contract — please re-save once using Save Record in the Generator)'); return; }
       alert('❌ Could not load contract: ' + (data.error || 'No state found.\n\nThis contract was saved before the Library update. Please re-save it using Save Record first.'));
       statusEl.textContent = 'Load failed';
       return;
@@ -5586,7 +5588,7 @@ async function searchImagePicker() {
       statusEl.textContent = '0 image(s)';
       gridEl.innerHTML = qLower
         ? `<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images match "${esc(q)}".<br>Try a different keyword, or clear the search.</div>`
-        : '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images found.<br>Upload images to Google Drive → SenLabels_MachineImages folder.</div>';
+        : '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">No images available yet.</div>';
       return;
     }
     renderIpGrid();
@@ -5783,8 +5785,10 @@ async function saveCurrentCustomerToDB() {
     });
     _customerDBCache = [];
     _pickCache.cust = null;   // v12.8: invalidate picker cache so the newly-saved customer shows immediately
-    setStatus(`✅ "${company}" saved!`, '#2e7d32');
-    setTimeout(() => setStatus('', '#888'), 3000);
+    let _ok = false;          // v12.9: no-cors can't confirm — re-read to verify it actually saved (don't claim success falsely)
+    try { const _r = await fetch(`${gsUrl}?action=customerDB&q=${encodeURIComponent(company)}`); const _d = await _r.json(); _ok = (_d.customers||[]).some(c => (c.company||'').trim().toLowerCase() === company.trim().toLowerCase()); } catch(e){}
+    setStatus(_ok ? `✅ "${company}" saved!` : `⚠ "${company}" may not have saved — check connection/token and try again.`, _ok ? '#2e7d32' : '#e65100');
+    setTimeout(() => setStatus('', '#888'), 4000);
   } catch(e) {
     setStatus('❌ ' + e.message, '#c0392b');
   }
@@ -5839,8 +5843,10 @@ async function saveCurrentMachineToSheetDB() {
     });
     // Invalidate cache so next DB open shows updated list
     _machineDBCache = [];
-    statusEl.textContent = `✅ "${modelName}" saved to Machine DB!`;
-    statusEl.style.color = '#2e7d32';
+    let _ok = false;          // v12.9: no-cors can't confirm — re-read to verify
+    try { const _r = await fetch(`${gsUrl}?action=machineDB&q=${encodeURIComponent(modelName)}`); const _d = await _r.json(); _ok = (_d.machines||[]).some(m => ((m.modelName||m.model||m.name||'')+'').trim().toLowerCase() === modelName.trim().toLowerCase()); } catch(e){}
+    statusEl.textContent = _ok ? `✅ "${modelName}" saved to Machine DB!` : `⚠ "${modelName}" may not have saved — check connection/token and try again.`;
+    statusEl.style.color = _ok ? '#2e7d32' : '#e65100';
     setTimeout(() => { statusEl.textContent = ''; }, 4000);
   } catch(e) {
     statusEl.textContent = '❌ Save failed: ' + e.message;
@@ -5924,7 +5930,7 @@ function setMachineTypeFilter(type) {
 function renderMachineDBList(machines) {
   const listEl = document.getElementById('machinedb-list');
   if (!machines || !machines.length) {
-    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No machines found. Add them in Google Sheet → MachineDB tab.</div>';
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No machines available yet.</div>';
     return;
   }
   // Tag each machine with its category + original index (for loadMachineFromDB)

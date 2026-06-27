@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.52</title>
+<title>Sen Labels — CRM v2.53</title>
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -549,7 +549,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.52</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.53</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1137,7 +1137,7 @@ function ensureApiToken() {
   // 后端返回 unauthorized 时：弹一次输入框让 Max 粘令牌，存好后刷新（多个并发请求只弹一次）。
   if (_tokenPrompted) return;
   _tokenPrompted = true;
-  const t = prompt('Access Token required to connect to the CRM.\nPaste the token Claude gave you:', getApiToken());
+  const t = prompt('Access Token required to connect to the CRM.\nPaste the Access Token you were given by your admin:', getApiToken());
   if (t && t.trim()) { localStorage.setItem(TOKEN_STORAGE_KEY, t.trim()); location.reload(); }
 }
 
@@ -1212,7 +1212,7 @@ function openSettings() {
       <label>Access Token</label>
       <input type="text" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Your token (leave blank if none)">
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
-        🔒 Only needed after security is on: Claude gives you this — paste once per device. Blank = off.
+        🔒 Paste the Access Token you were given by your admin (one-time per device).
       </div>
     </div>
   `;
@@ -1438,8 +1438,10 @@ async function refreshData() {
     }
     
     showToast(`Loaded ${STATE.customers.length} customers, ${STATE.contracts.length} contracts`, 'success');
+    try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(_e){}   // v2.53: render landing tab after data loads (was stuck spinning)
   } catch (e) {
     $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${e.message}</div>`;
+    const _sc = $('snapshot-content'); if (_sc) _sc.innerHTML = `<div class="empty" style="padding:30px">❌ Couldn't load data: ${e.message}<br><br><button class="btn btn-sm" onclick="refreshData()">Retry</button></div>`;
     showToast('Failed to load data: ' + e.message, 'error');
   } finally {
     $('refresh-btn').disabled = false;
@@ -2609,7 +2611,7 @@ function renderDashboard() {
   const el = $('dashboard-content');
   if (!el) return;
   if (!STATE.contracts || STATE.contracts.length === 0) {
-    el.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
+    el.innerHTML = '<div class="empty">No data yet</div>';
     return;
   }
   
@@ -4177,14 +4179,14 @@ function renderSnapshot() {
   if (hour < 12) greeting = '☀️ Good morning';
   else if (hour < 18) greeting = '🌤 Good afternoon';
   else greeting = '🌙 Good evening';
-  if (greetingEl) greetingEl.textContent = greeting + ", Max!";
+  if (greetingEl) greetingEl.textContent = greeting + "!";
   
   if (dateEl) {
     dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
   
   if (!STATE.customers || STATE.customers.length === 0) {
-    content.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
+    content.innerHTML = '<div class="empty">No data yet</div>';
     return;
   }
   
@@ -4642,7 +4644,7 @@ function renderPack() {
   const summary = $('pack-summary');
   if (!list || !summary) return;
   if (!STATE.customers || STATE.customers.length === 0) {
-    list.innerHTML = '<div class="empty">No data yet — sync from Sheets first</div>';
+    list.innerHTML = '<div class="empty">No data yet</div>';
     summary.innerHTML = '';
     return;
   }
@@ -5563,6 +5565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('setup-banner').style.display = 'flex';
     $('conn-status').innerHTML = '⚠ Not configured';
     $('customer-list').innerHTML = '<div class="empty">⚠ Please configure Apps Script URL in Settings</div>';
+    { const _sc = $('snapshot-content'); if (_sc) _sc.innerHTML = '<div class="empty" style="padding:30px">👋 Welcome! Open ⚙ Settings and paste the Web App URL + your Access Token (from your admin) to begin.</div>'; }
   }
 });
 
