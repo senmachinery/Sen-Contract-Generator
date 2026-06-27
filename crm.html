@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.49</title>
+<title>Sen Labels — CRM v2.50</title>
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -582,7 +582,7 @@
 </script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.49</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.50</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1370,9 +1370,10 @@ async function refreshData() {
     
     // Group by customer (unique companies)
     const custMap = {};
+    const custKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');  // v2.50: ignore case AND punctuation/spaces ("LTD"="LTD.", "SDN BHD"="SDN. BHD.")
     STATE.contracts.forEach(c => {
       if (!c.company) return;
-      const key = repKey(c.company);   // v2.49: group case-insensitively so "(Penang)" & "(PENANG)" are ONE customer card
+      const key = custKey(c.company);   // v2.50: merge punctuation/case variants into ONE customer card
       if (!custMap[key]) {
         custMap[key] = {
           company: c.company, contracts: [], country: c.country,
@@ -1409,7 +1410,7 @@ async function refreshData() {
     // Apply followups: compute overdueFollowups + nextDueDate per customer
     const today = new Date().toISOString().split('T')[0];
     allFollowups.forEach(f => {
-      const cust = custMap[repKey(f.customer || '')];
+      const cust = custMap[custKey(f.customer || '')];
       if (!cust) return;
       if (f.nextFollowupDate && f.nextFollowupDate < today) {
         cust.overdueFollowups++;
@@ -1428,9 +1429,9 @@ async function refreshData() {
     // existing customer whose contract company string differs only by casing/spacing.
     const _haveCo = new Set(Object.keys(custMap));   // v2.49: keys are already repKey-normalized
     Object.keys(CUSTOMER_ADDR_BLOB).forEach(co => {
-      if (!co || _haveCo.has(repKey(co))) return;
+      if (!co || _haveCo.has(custKey(co))) return;
       const _ctry = getCustomerCountry(co);
-      custMap[repKey(co)] = {
+      custMap[custKey(co)] = {
         company: co, contracts: [], country: _ctry,
         flag: flagFor(_ctry), totalSpent: 0, totalConfirmed: 0,
         lastDate: null, latestContract: null, latestStatus: '',
