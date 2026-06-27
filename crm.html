@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.51</title>
+<title>Sen Labels — CRM v2.52</title>
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -545,44 +545,11 @@
   <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-recycle" viewBox="0 0 24 24"><path d="M7 19H4.8a2 2 0 0 1-1.7-3l1.3-2.2M17 19h2.2a2 2 0 0 0 1.7-3l-1-1.7M12 5l1.5 2.6M9 19l1.5-2.6h3L15 19M14 5h-4l-1 1.7"/></symbol>
 </svg>
-<!-- v2.13: CRM is staff-only — password gate (session-based) -->
-<div id="pw-overlay">
-  <div id="pw-box">
-    <div id="pw-logo">Sen Labels</div>
-    <div id="pw-sub">CRM &mdash; Staff Only</div>
-    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPW()">
-    <button id="pw-btn" onclick="checkPW()">Enter</button>
-    <div id="pw-error"></div>
-  </div>
-</div>
-<script>
-(function(){
-  var OK = 'Senlabels123123';
-  if (sessionStorage.getItem('sen_crm_auth') === '1') {
-    document.addEventListener('DOMContentLoaded', function(){
-      var ov = document.getElementById('pw-overlay'); if (ov) ov.style.display = 'none';
-    });
-  } else {
-    document.addEventListener('DOMContentLoaded', function(){
-      var inp = document.getElementById('pw-input'); if (inp) inp.focus();
-    });
-  }
-  window.checkPW = function(){
-    var val = document.getElementById('pw-input').value;
-    if (val === OK) {
-      sessionStorage.setItem('sen_crm_auth', '1');
-      document.getElementById('pw-overlay').style.display = 'none';
-    } else {
-      document.getElementById('pw-error').textContent = 'Incorrect password. Please try again.';
-      document.getElementById('pw-input').value = '';
-      document.getElementById('pw-input').focus();
-    }
-  };
-})();
-</script>
+<!-- v2.52: client-side password gate removed — access is protected by the backend Access Token (token-gated), not a soft client-side password. Agents just enter their own token in Settings. -->
+<script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.51</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.52</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
