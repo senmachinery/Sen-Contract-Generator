@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v12.9</title>
+<title>Sen Labels — Contract Generator v13.0</title>
+<!-- v13.0: when Company is empty, fall back to the Attn (contact person) name (phone stripped) so the CRM row is never blank/unidentifiable. -->
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -487,7 +488,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v12.9</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.0</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -4702,7 +4703,7 @@ async function saveToSheets(silent=false) {
     const machineTitle = state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
     if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
-      contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company,
+      contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
       machineTitle, currency: state.currency, amount: totalAmt,
       status: state.status||'Quotation Sent', admin: state.admin||'NR', port: state.port,
       notes: state.notes||'', signedPdfUrl: state.signedPdfUrl||'', salesRep: state.salesRep||''
@@ -5454,7 +5455,7 @@ async function importJSONFiles(input) {
       const totalAmt = (s.machines||[]).reduce((sum,m) => sum + (m.sellPrice||0), 0);
       const machineTitle = (s.machines||[]).map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
       const summary = {
-        contractNo: s.contractNo, date: s.date, company: s.company,
+        contractNo: s.contractNo, date: s.date, company: s.company || String(s.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
         machineTitle, currency: s.currency, amount: totalAmt,
         status: s.status||'Confirmed', admin: s.admin||'NR', port: s.port||'', notes: s.notes||''
       };
