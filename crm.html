@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.53</title>
+<title>Sen Labels — CRM v2.54</title>
+<!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -549,7 +550,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.53</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.54</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -985,6 +986,27 @@ const COUNTRY_META_CONTRACT = '_META_COUNTRY';  // special task that holds synce
 let COUNTRY_OVERRIDES = {};
 // Address text blob per company (from CustomerDB) for accurate country detection
 let CUSTOMER_ADDR_BLOB = {};
+let CUSTOMER_CONTACT = {};   // v2.54: custKey(company) → {tel, attn, email}（修 WhatsApp/Call 按钮从不出现的洞）
+// v2.54: 本地时区的 YYYY-MM-DD。修 UTC 洞：toISOString() 是 UTC——马来西亚(UTC+8)凌晨 0:00-8:00
+// 之间"今天"会算成昨天，到期/逾期/Today's Tasks 全错位（Max 正是早晨跑催单）。全站统一用这个。
+function localISO(d) {
+  d = d || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// v2.54: wa.me 链接需要「国码+号码、无前导0」，而 CustomerDB 的 tel 多存本地格式(如 012-518 7130)。
+// 规则：+开头→去+；00开头→去00；0开头(本地格式)→去0补该客户国家的国码(默认马来西亚60)；其余(已带国码)原样。
+const WA_CC = { 'Malaysia':'60','Indonesia':'62','Philippines':'63','Singapore':'65','Thailand':'66',
+  'Vietnam':'84','South Korea':'82','Korea':'82','Japan':'81','China':'86','India':'91','Taiwan':'886',
+  'Hong Kong':'852','Australia':'61','Bangladesh':'880','Sri Lanka':'94','Myanmar':'95','Cambodia':'855',
+  'Brunei':'673','Pakistan':'92','UAE':'971','Saudi Arabia':'966','USA':'1','UK':'44' };
+function waNumber(tel, country) {
+  let d = String(tel || '').replace(/[^0-9+]/g, '');
+  if (!d) return '';
+  if (d.startsWith('+')) return d.slice(1);
+  if (d.startsWith('00')) return d.slice(2);
+  if (d.startsWith('0')) return (WA_CC[String(country || '').trim()] || '60') + d.slice(1);
+  return d;
+}
 // v2.1: set of lowercase company names that exist in Customer DB (for new/existing detection)
 let CUSTOMER_DB_NAMES = new Set();
 // v2.6: company → default sales rep; contractNo → rep set on that contract
@@ -1263,14 +1285,19 @@ async function refreshData() {
     CUSTOMER_ADDR_BLOB = {};
     CUSTOMER_DB_NAMES = new Set();
     CUSTOMER_DEFAULT_REP = {};
+    CUSTOMER_CONTACT = {};
     {
       const custList = (_custRes && _custRes.customers) ? _custRes.customers : [];
+      // v2.54: 与下面 custMap 的 custKey 同一套归一(小写+去标点)，这里先定义局部版避开 const TDZ
+      const _ckey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       custList.forEach(c => {
         if (!c.company) return;
         const blob = [c.addr, c.address, c.attn, c.notes, c.port, c.tel].filter(Boolean).join(' ');
         CUSTOMER_ADDR_BLOB[c.company.trim()] = blob;
         CUSTOMER_DB_NAMES.add(c.company.trim().toLowerCase());
         if (c.defaultRep) CUSTOMER_DEFAULT_REP[repKey(c.company)] = c.defaultRep;
+        // v2.54: tel/attn/email 原来只进了 blob 字符串、从没挂回客户对象 → WhatsApp/Call 全站失效
+        CUSTOMER_CONTACT[_ckey(c.company)] = { tel: c.tel || '', attn: c.attn || '', email: c.email || '' };
       });
     }
 
@@ -1325,13 +1352,15 @@ async function refreshData() {
       if (!c.company) return;
       const key = custKey(c.company);   // v2.50: merge punctuation/case variants into ONE customer card
       if (!custMap[key]) {
+        const _ct = CUSTOMER_CONTACT[key] || {};   // v2.54: 挂上 CustomerDB 的联系方式
         custMap[key] = {
           company: c.company, contracts: [], country: c.country,
           flag: flagFor(c.country), totalSpent: 0, totalConfirmed: 0,
           lastDate: null, latestContract: null, latestStatus: '',
           latestMachine: '', overdueFollowups: 0, nextDueDate: null,
           activeContracts: 0, openValueRM: 0,
-          defaultRep: CUSTOMER_DEFAULT_REP[repKey(c.company)] || ''
+          defaultRep: CUSTOMER_DEFAULT_REP[repKey(c.company)] || '',
+          tel: _ct.tel || '', attn: _ct.attn || '', email: _ct.email || ''   // v2.54
         };
       }
       const cust = custMap[key];
@@ -1358,7 +1387,7 @@ async function refreshData() {
     });
     
     // Apply followups: compute overdueFollowups + nextDueDate per customer
-    const today = new Date().toISOString().split('T')[0];
+    const today = localISO();
     allFollowups.forEach(f => {
       const cust = custMap[custKey(f.customer || '')];
       if (!cust) return;
@@ -1381,13 +1410,15 @@ async function refreshData() {
     Object.keys(CUSTOMER_ADDR_BLOB).forEach(co => {
       if (!co || _haveCo.has(custKey(co))) return;
       const _ctry = getCustomerCountry(co);
+      const _ct0 = CUSTOMER_CONTACT[custKey(co)] || {};   // v2.54
       custMap[custKey(co)] = {
         company: co, contracts: [], country: _ctry,
         flag: flagFor(_ctry), totalSpent: 0, totalConfirmed: 0,
         lastDate: null, latestContract: null, latestStatus: '',
         latestMachine: '', overdueFollowups: 0, nextDueDate: null,
         activeContracts: 0, openValueRM: 0,
-        defaultRep: CUSTOMER_DEFAULT_REP[repKey(co)] || ''
+        defaultRep: CUSTOMER_DEFAULT_REP[repKey(co)] || '',
+        tel: _ct0.tel || '', attn: _ct0.attn || '', email: _ct0.email || ''   // v2.54
       };
     });
     // v2.32: 催单视角排序——逾期优先 → 在谈金额大 → 最近活动(原排序保底)
@@ -1451,7 +1482,7 @@ async function refreshData() {
 
 // v1.2: Quick filter logic
 function updateQuickFilterCounts() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const COLD_DAYS = 30;
   
   let countAll = STATE.customers.length;
@@ -1497,7 +1528,7 @@ function setQuickFilter(filter) {
 function renderCustomerList() {
   const q = ($('crm-search').value || '').toLowerCase().trim();
   const country = $('crm-country').value;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const COLD_DAYS = 30;
   
   const filtered = STATE.customers.filter(c => {
@@ -1603,14 +1634,14 @@ function renderCustomerDetail(c, followups) {
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
     .slice(0, 5).map(ct => ct.contractNo).filter(Boolean).join(',');
   const newQuoteUrl = `index.html?customer=${encodeURIComponent(c.company)}&autofill=true${_recentCtNos ? '&fromcontract=' + encodeURIComponent(_recentCtNos) : ''}`;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   
   // v1.4: Get display name (may be overridden)
   const displayName = getDisplayName(c.company);
   const isRenamed = displayName !== c.company;
   // v2.15: one-tap WhatsApp / call
   const telRaw = ((c.tel || '') + '').trim();
-  const waNum  = telRaw.replace(/\D/g, '');
+  const waNum  = waNumber(telRaw, c.country);   // v2.54: 补国码(原裸数字 wa.me 打不开)
   const telNum = telRaw.replace(/[^\d+]/g, '');
   const showAddressWarning = !isRenamed && looksLikeAddress(c.company);
   
@@ -1782,7 +1813,7 @@ function renderCustomerDetail(c, followups) {
 // v2.38: 取消跟进 — 后端无删行接口,改用 supersede 清掉此客户待跟进+移出催单循环(原记录保留,不删)
 async function cancelFollowup(contractNo, customer) {
   if (!confirm('Remove "' + customer + '" from the chase loop?\nThis clears the Next-follow-up date on all their open follow-ups (if several deals, all of them).\n(Original follow-up records stay in Google Sheet — not deleted.)')) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const fu = { customer, date: today, type: 'Other', contractNo: contractNo || '',
     description: '❌ Follow-up cancelled (marked in CRM, removed from chase loop)', outcome: '', supersede: true };
   showToast('⏳ Working…', '');
@@ -2229,13 +2260,13 @@ async function loadTasks() {
 function toIsoDate(val) {
   const d = parseAnyDate(val);
   if (!d) return null;
-  return d.toISOString().split('T')[0];
+  return localISO(d);
 }
 
 function updateTaskCounts() {
   const tasks = (TASKS_STATE.tasks || []).filter(t => !isInquiryTask(t) && !isMetaTask(t));  // v1.8/1.9: exclude inquiries + meta
-  const today = new Date().toISOString().split('T')[0];
-  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  const today = localISO();
+  const weekFromNow = localISO(new Date(Date.now() + 7*86400000));
   
   const pending = tasks.filter(t => t.status !== 'done' && t.status !== 'deleted');
   const overdue = pending.filter(t => { const d = toIsoDate(t.dueDate); return d && d < today; });
@@ -2266,8 +2297,8 @@ function renderTasks() {
   const list = $('tasks-list');
   if (!list) return;
   
-  const today = new Date().toISOString().split('T')[0];
-  const weekFromNow = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+  const today = localISO();
+  const weekFromNow = localISO(new Date(Date.now() + 7*86400000));
   
   let filtered = (TASKS_STATE.tasks || []).slice();
   // Exclude deleted always
@@ -2356,7 +2387,7 @@ function renderTaskCard(t, today) {
 }
 
 function openNewTaskModal(prefillCustomer, prefillContractNo) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const customers = (STATE.customers || []).map(c => c.company).sort();
   
   $('modal-title').textContent = '+ New Task';
@@ -2461,7 +2492,7 @@ async function deleteTask(id) {
 function editTask(id) {
   const t = TASKS_STATE.tasks.find(x => x.id === id);
   if (!t) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const customers = (STATE.customers || []).map(c => c.company).sort();
   
   $('modal-title').textContent = '✏️ Edit Task';
@@ -2543,9 +2574,9 @@ function setTimeRange(range) {
 
 function getCutoffDate(range) {
   const now = new Date();
-  if (range === 'month') { const d = new Date(now); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; }
-  if (range === 'quarter') { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d.toISOString().split('T')[0]; }
-  if (range === 'half') { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; }
+  if (range === 'month') { const d = new Date(now); d.setDate(d.getDate() - 30); return localISO(d); }
+  if (range === 'quarter') { const d = new Date(now); d.setMonth(d.getMonth() - 3); return localISO(d); }
+  if (range === 'half') { const d = new Date(now); d.setMonth(d.getMonth() - 6); return localISO(d); }
   if (range === 'ytd') { return now.getFullYear() + '-01-01'; }
   if (range === 'lastyear') { return (now.getFullYear()-1) + '-01-01'; }
   return null; // all-time
@@ -2975,7 +3006,7 @@ function renderRepCard(r) {
   init = init.toUpperCase();
   
   const inactive = !r.isActive;
-  const wa = (r.whatsapp || '').toString().replace(/\D/g, '');
+  const wa = waNumber(r.whatsapp, r.country);   // v2.54: 兼容本地格式号码
   const email = (r.email || '').trim();
   
   // v2.25 BUGFIX: count a rep's customers/contracts by ACTUAL assignment
@@ -3233,7 +3264,7 @@ function renderInquiryCard(inq) {
       <div class="inquiry-actions">
         ${!inq.converted ? `<button class="btn btn-sm" onclick="convertInquiry('${inq.id}')" style="background:var(--success);color:#fff">➡️ Convert to Quote</button>` : ''}
         <button class="btn btn-sm btn-outline" onclick="editInquiry('${inq.id}')">✏️ Edit</button>
-        ${!inq.converted && inq.tel ? `<a class="btn btn-sm" href="https://wa.me/${inq.tel.replace(/\D/g,'')}" target="_blank" style="background:#25d366;color:#fff">💬 WhatsApp</a>` : ''}
+        ${!inq.converted && inq.tel ? `<a class="btn btn-sm" href="https://wa.me/${waNumber(inq.tel, inq.country || '')}" target="_blank" style="background:#25d366;color:#fff">💬 WhatsApp</a>` : ''}
         ${inq.converted ? `<button class="btn btn-sm btn-outline" onclick="reopenInquiry('${inq.id}')">↩ Reopen</button>` : ''}
         <button class="btn btn-sm btn-outline" onclick="deleteInquiry('${inq.id}')" style="color:var(--danger)">🗑 Delete</button>
       </div>
@@ -3520,7 +3551,7 @@ async function batchImportInquiries(arr) {
     };
     const task = {
       title: obj.machine, customer: obj.customer, contractNo: tempNo,
-      dueDate: new Date().toISOString().split('T')[0],
+      dueDate: localISO(),
       priority: (['high','normal','low'].includes((obj.priority||'').toLowerCase()) ? obj.priority.toLowerCase() : 'normal'),
       notes: JSON.stringify(inquiryData)
     };
@@ -3740,7 +3771,7 @@ function removeInqImage(i) {
 }
 
 function openNewInquiryModal(prefill) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const customers = (STATE.customers || []).map(c => c.company).sort();
   prefill = prefill || {};
   _inqImages = Array.isArray(prefill.images) ? prefill.images.slice() : [];
@@ -3901,7 +3932,7 @@ async function saveNewInquiry() {
     title: machine,            // machine goes in title (shown in tasks too)
     customer: customer,
     contractNo: tempNo,        // INQ-26-XXXX marks it as an inquiry
-    dueDate: ($('inq-date').value || new Date().toISOString().split('T')[0]),
+    dueDate: ($('inq-date').value || localISO()),
     priority: $('inq-priority').value,
     notes: JSON.stringify(inquiryData)
   };
@@ -3956,7 +3987,7 @@ function editInquiry(id) {
   $('modal-title').textContent = '✏️ Edit Inquiry ' + inq.tempNo;
   // Set date + priority
   setTimeout(() => {
-    if ($('inq-date')) $('inq-date').value = toIsoDate(inq.dueDate) || new Date().toISOString().split('T')[0];
+    if ($('inq-date')) $('inq-date').value = toIsoDate(inq.dueDate) || localISO();
     if ($('inq-priority')) $('inq-priority').value = inq.priority;
     // Hide the "save to customer DB" default-check for edits (still allow)
   }, 50);
@@ -4190,8 +4221,8 @@ function renderSnapshot() {
     return;
   }
   
-  const today = new Date().toISOString().split('T')[0];
-  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
+  const today = localISO();
+  const weekAgo = localISO(new Date(Date.now() - 7*86400000));
   
   // 1. Today's tasks (exclude inquiry-tasks)
   const tasksToday = (TASKS_STATE.tasks || []).filter(t => 
@@ -4557,12 +4588,12 @@ function syncPackFiltersFromDOM() {
 // Returns { rows:[{customer, overdue[], upcoming[], inquiries[]}], counts, periodLabel, scopeLabel }
 function gatherPackData(onlyChecked) {
   syncPackFiltersFromDOM();
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const dayMs = 86400000;
   const period = PACK_STATE.period || 'week';
   let horizon = null;
-  if (period === 'week')  horizon = new Date(Date.now() + 7*dayMs).toISOString().split('T')[0];
-  if (period === 'month') horizon = new Date(Date.now() + 30*dayMs).toISOString().split('T')[0];
+  if (period === 'week')  horizon = localISO(new Date(Date.now() + 7*dayMs));
+  if (period === 'month') horizon = localISO(new Date(Date.now() + 30*dayMs));
   // 'overdue' → no upcoming; 'all' → no horizon limit
 
   const repCountries = PACK_STATE.repName ? repCountriesFor(PACK_STATE.repName) : [];
@@ -4676,7 +4707,7 @@ function renderPackCustomerCard(x, today) {
   const isOverdue = x.overdue.length > 0;
   const tel = c.tel || '';
   const email = c.email || '';
-  const wa = (tel || '').replace(/\D/g, '');
+  const wa = waNumber(tel, c.country);   // v2.54: 补国码
   const latest = (c.contracts || []).sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
   const waLink = wa && wa.length >= 8 ? `https://wa.me/${wa}` : '';
   const emailLink = email ? `mailto:${email}` : '';
@@ -4759,12 +4790,12 @@ async function packQuickFollowup(company, kind) {
   const c = (STATE.customers || []).find(x => x.company === company);
   if (!c) { showToast('Customer not found', 'error'); return; }
   if (kind === 'done') { openFollowupModal(company); return; }  // detailed flow refreshes the pack on save
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   let nextDays, type, desc, outcome;
   if (kind === 'no_answer')     { nextDays = 1; type = 'Call';     desc = '📞 Called — no answer';     outcome = 'No answer, will retry tomorrow'; }
   else if (kind === 'no_reply') { nextDays = 3; type = 'WhatsApp'; desc = '💬 Messaged — no reply yet'; outcome = 'No reply, will follow up in 3 days'; }
   else return;
-  const nextDate = new Date(Date.now() + nextDays*86400000).toISOString().split('T')[0];
+  const nextDate = localISO(new Date(Date.now() + nextDays*86400000));
   const latest = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
   const contractNo = latest ? latest.contractNo : '';
   const fu = { customer: company, date: today, type, contractNo, description: desc, outcome, nextFollowupDate: nextDate, supersede: true };
@@ -4917,7 +4948,7 @@ function reopenContract(contractNo, company, status) { setContractStatus(contrac
 // One-tap "set next follow-up date" — no notes required. Syncs to the Follow-up list.
 function quickNextFollowup(contractNo, company) {
   const base = new Date();
-  const iso  = d => d.toISOString().split('T')[0];
+  const iso  = d => localISO(d);
   const plus = n => iso(new Date(base.getTime() + n * 86400000));
   const ca = contractNo.replace(/'/g, "\\'");
   const oa = company.replace(/'/g, "\\'");
@@ -4944,7 +4975,7 @@ function quickNextFollowup(contractNo, company) {
 
 async function saveQuickNext(contractNo, company, isoDate) {
   if (!isoDate) { showToast('Please select a date', 'error'); return; }
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const fu = { customer: company, date: today, type: 'Follow-up', contractNo,
     description: '📅 Followed up — next follow-up ' + fmtDate(isoDate), outcome: '',
     nextFollowupDate: isoDate, supersede: true };
@@ -4987,7 +5018,7 @@ function defaultScriptText(company) {
 function waWithScript(company) {
   const c = STATE.customers.find(x => x.company === company);
   if (!c) { showToast('Customer not found', 'error'); return; }
-  const wa = ((c.tel || '') + '').replace(/\D/g, '');
+  const wa = waNumber(c.tel, c.country);   // v2.54: 补国码
   if (wa.length < 8) { showToast('This customer has no valid phone number', 'error'); return; }
   const msg = defaultScriptText(company);
   window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -4997,8 +5028,8 @@ function waWithScript(company) {
 async function snoozeFollowup(company, days) {
   const c = STATE.customers.find(x => x.company === company);
   const latest = c && (c.contracts || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
-  const nextDate = new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
-  const today = new Date().toISOString().split('T')[0];
+  const nextDate = localISO(new Date(Date.now() + days * 86400000));
+  const today = localISO();
   const fu = { customer: company, date: today, type: 'Follow-up', contractNo: latest ? latest.contractNo : '',
     description: '⏰ Snoozed follow-up → ' + fmtDate(nextDate), outcome: '', nextFollowupDate: nextDate, supersede: true };
   showToast('⏳ Snoozing…', '');
@@ -5016,8 +5047,8 @@ async function batchSetNextFollowup(days) {
   if (!rows.length) { showToast('No customers selected', 'error'); return; }
   const label = days === 1 ? 'tomorrow' : ('in ' + days + ' days');
   if (!confirm(`Set next follow-up to ${label} for all ${rows.length} selected customers?`)) return;
-  const nextDate = new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
-  const today = new Date().toISOString().split('T')[0];
+  const nextDate = localISO(new Date(Date.now() + days * 86400000));
+  const today = localISO();
   let ok = 0, fail = 0;
   for (let i = 0; i < rows.length; i++) {
     const x = rows[i];
@@ -5110,7 +5141,7 @@ function downloadPackWord() {
   const html = buildPackDocHTML(true);
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   const { scopeLabel } = gatherPackData();
-  const fname = 'Sen_Followup_' + scopeLabel.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().split('T')[0] + '.doc';
+  const fname = 'Sen_Followup_' + scopeLabel.replace(/[^a-zA-Z0-9]/g,'_') + '_' + localISO() + '.doc';
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = fname; document.body.appendChild(a); a.click();
@@ -5126,7 +5157,7 @@ function buildPackDocHTML(forWord) {
   const rowsHTML = rows.map((x, idx) => {
     const c = x.customer;
     const tel = c.tel || '';
-    const wa = tel.replace(/\D/g,'');
+    const wa = waNumber(tel, c.country);   // v2.54: 补国码
     const waLink = wa.length >= 8 ? `https://wa.me/${wa}` : '';
     const urgency = x.overdue.length > 0 ? '🔴 Overdue' : (x.inquiries.length ? '📞 Inquiry' : '🟡 This Week');
     // What to follow up
@@ -5207,7 +5238,7 @@ function langForCountry(country) {
 
 // Determine which scenario this customer is currently in
 function detectScenario(customer, followups) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const fups = followups || [];
   const overdue = fups.filter(f => { const d = toIsoDate(f.nextFollowupDate); return d && d < today && f.status !== 'completed'; });
   // Has overdue follow-up and an active quote -> quote with no reply
@@ -5315,7 +5346,7 @@ function buildScriptModalBody(c, scenario, lang) {
     `<option value="${v}" ${v===lang?'selected':''}>${n}</option>`).join('');
 
   const templates = (SCRIPT_TEMPLATES[scenario] && SCRIPT_TEMPLATES[scenario][lang]) || SCRIPT_TEMPLATES[scenario].en || [];
-  const wa = (c.tel || '').replace(/\D/g, '');
+  const wa = waNumber(c.tel, c.country);   // v2.54: 补国码
 
   const cards = templates.map((tpl, i) => {
     const msg = fill(tpl.text);
@@ -5361,7 +5392,7 @@ function refreshScriptModal() {
 
 function openFollowupModal(customer) {
   const c = STATE.customers.find(x => x.company === customer);
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   const opts = c ? c.contracts.map(ct => `<option value="${escapeHtml(ct.contractNo)}">${escapeHtml(ct.contractNo)} — ${escapeHtml((ct.machine||'').substring(0,40))}</option>`).join('') : '';
   
   $('modal-title').textContent = `Add Follow-up — ${customer}`;
@@ -5410,7 +5441,7 @@ function openFollowupModal(customer) {
 
 // Quick one-tap follow-up logging for common outcomes (no answer / no reply / done)
 async function quickFollowup(customer, kind) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISO();
   let nextDays, type, desc, outcome;
   if (kind === 'no_answer') {
     nextDays = 1;  type = 'Call';
@@ -5433,7 +5464,7 @@ async function quickFollowup(customer, kind) {
     return;
   } else { return; }
 
-  const nextDate = new Date(Date.now() + nextDays*86400000).toISOString().split('T')[0];
+  const nextDate = localISO(new Date(Date.now() + nextDays*86400000));
   // Try to attach the customer's most recent contract number (optional)
   const c = STATE.customers.find(x => x.company === customer);
   const contractNo = (c && c.contracts && c.contracts[0]) ? c.contracts[0].contractNo : '';
@@ -5455,7 +5486,7 @@ async function saveFollowup(customer) {
   
   const fu = {
     customer,
-    date: $('fu-date').value || new Date().toISOString().split('T')[0],
+    date: $('fu-date').value || localISO(),
     type: $('fu-type').value,
     contractNo: $('fu-contract').value || '',
     description: desc,
@@ -5588,7 +5619,7 @@ async function loadInvoices() {
 
 function invIsOverdue(inv) {
   if (!inv.dueDate || inv.status === 'Paid') return false;
-  return String(inv.dueDate) < new Date().toISOString().slice(0, 10);
+  return String(inv.dueDate) < localISO();   // v2.54: 本地日期(原 UTC 早上错一天)
 }
 
 function setInvoiceFilter(f) {
@@ -5708,7 +5739,7 @@ async function recordInvoicePayment(invoiceNo) {
   const amount = parseFloat(amtStr);
   if (!(amount > 0)) { showToast('Invalid amount', 'error'); return; }
   try {
-    const r = await apiPost('crm_updateInvoice', { invoiceNo: invoiceNo, updates: { addPayment: { date: new Date().toISOString().slice(0, 10), amount: amount, method: '', ref: '' } } });
+    const r = await apiPost('crm_updateInvoice', { invoiceNo: invoiceNo, updates: { addPayment: { date: localISO(), amount: amount, method: '', ref: '' } } });
     if (r && r.ok) {
       showToast('Payment recorded, status: ' + r.status, 'success');
       await loadInvoices();

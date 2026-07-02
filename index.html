@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.0</title>
+<title>Sen Labels — Contract Generator v13.1</title>
+<!-- v13.1: SECURITY — removed hardcoded COST table + default margin from public source; autofillCost now a shell (calcPrice kept); cost/margin fields zeroed in newMachine and scrubbed in stripImagesForSave so they never persist to backend state. FIX — readMachineParams no longer wipes legacy spec fields (serialNo/power/weight/dim/mfgYear/refurbYear/coo/otherModel) whose inputs no longer exist; keeps state value when input is absent. -->
 <!-- v13.0: when Company is empty, fall back to the Attn (contact person) name (phone stripped) so the CRM row is never blank/unidentifiable. -->
 <!-- v11.5 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
@@ -488,7 +489,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.0</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.1</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -726,14 +727,14 @@ function mobileTab(tab) {
     <!-- Hidden fields kept for state compatibility -->
     <input type="hidden" id="f-cost-machine" value="0">
     <input type="hidden" id="f-cost-addons" value="0">
-    <input type="hidden" id="f-cost-std" value="60000">
+    <input type="hidden" id="f-cost-std" value="0">
     <input type="hidden" id="f-cost-tradein" value="0">
     <input type="hidden" id="f-rate-usd" value="0.1385">
     <input type="hidden" id="f-rate-myr" value="0.618">
     <input type="hidden" id="f-rate-sgd" value="1.35">
     <input type="hidden" id="f-rate-idr" value="16200">
     <input type="hidden" id="f-cust-type" value="direct">
-    <input type="hidden" id="f-margin" value="43">
+    <input type="hidden" id="f-margin" value="0">
     <div class="section-title">Selling Price</div>
     <div id="unit-price-row" class="field-row" style="margin-bottom:0">
       <div class="field-group">
@@ -1205,25 +1206,9 @@ const SIG_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANIAAACUCAYAAADmm
 
 // ============================================================
 // PRICING DATA
+// v13.1 (2026-07-03): COST 成本价目表已整表移除——本页部署在公开 GitHub Pages，
+// 成本机密绝不能进源码。定价参考走 Machine DB 的 refPrice/floorPrice（后端下发）。
 // ============================================================
-const COST = {
-  STD_ADDON: 60000,
-  IF350:   {'2C':385350,'3C':476700,'4C':580650,'5C':684600,'6C':769650,'7C':875700,'8C':960750,'9C':1066800,'10C':1151850},
-  JZIF350: {'2C':336000,'3C':420000,'4C':504000,'5C':588000,'6C':672000,'7C':756000,'8C':840000,'9C':924000,'10C':950000},
-  FX350E:  {'2C':288900,'3C':357100,'4C':430000,'5C':503000,'6C':576000,'7C':649000,'8C':720000,'9C':787500},
-  RIF350:  {'2C':467000,'3C':604000,'4C':753000,'5C':902000,'6C':1033000,'7C':1184000,'8C':1315000,'9C':1466000,'10C':1597000},
-  SMP280:  {'1C':223300,'2C':280500,'3C':334400,'4C':388300,'5C':443300,'6C':497200,'7C':590920,'8C':649330,'9C':706640},
-  SMP300:  {'1C':240000,'2C':290000,'3C':340000,'4C':390000,'5C':440000,'6C':490000,'7C':590000,'8C':640000,'9C':690000},
-  SMP320:  {'2C':329120,'3C':387530,'4C':445940,'5C':524150,'6C':599060,'7C':660770,'8C':741180,'9C':799590,'10C':891000},
-  SPM350:  {'2C':380376,'3C':449604,'4C':515592,'5C':604260,'6C':687528,'7C':763560,'8C':846396,'9C':915624,'10C':1019628},
-  LPM300:  {'2C':342120,'3C':410000,'4C':490000,'5C':568000,'6C':640000,'7C':720000,'8C':800000,'9C':880000,'10C':956000},
-  LPM350:  {'2C':394376,'3C':468000,'4C':555000,'5C':645000,'6C':730000,'7C':820000,'8C':910000,'9C':1000000,'10C':1089628},
-  SD350: 175000, SDH350: 285000, SRD360_132T: 250000, SRD360_300T: 320000,
-  SL360: 24000, SL360S: 36000, SEN350: 33000,
-  CTP_AURA400_EAGLE: 22230, CTP_AURA400_FLEXO: 24000,
-  CTP_AURA600_EAGLE: 31200, CTP_AURA600_FLEXO: 32900,
-  UV_PER_UNIT: {1:24000,2:22500,3:20500,4:17500,5:16500,6:16500,7:16500,8:16500,9:16500,10:16500}
-};
 
 // ============================================================
 // MACHINE FACTORY
@@ -1243,8 +1228,8 @@ function newMachine() {
     partItems:[],
     partGroups:[],
     discountPct:0, discountAmt:0, discountLabel:'',
-    costMachine:0, costAddons:0, costStd:60000, costTradein:0,
-    custType:'direct', margin:43, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
+    costMachine:0, costAddons:0, costStd:0, costTradein:0,   // v13.1: 成本字段全部归零(机密不进公开源码/state)
+    custType:'direct', margin:0, sellPrice:0, cwItems:[], optItems:[], machineRemarks:'',
     inPackage:false,
     refPrice:0,   // v11.0: 机型库参考售价(USD)，用来算「最低售价」底价显示，绝不显示成本
     floorPrice:0, // v11.1: 机型库「FloorPrice」列设定的底价(USD)，优先于 ref×0.9；后端部署该列后才有值
@@ -1743,10 +1728,10 @@ function savePriceFields() {
   const g = id => document.getElementById(id)?.value || '';
   M().costMachine = n('f-cost-machine');
   M().costAddons  = n('f-cost-addons');
-  M().costStd     = n('f-cost-std') || 60000;
+  M().costStd     = n('f-cost-std') || 0;   // v13.1: 不再默认 60000(成本机密)
   M().costTradein = n('f-cost-tradein');
   M().custType    = g('f-cust-type') || 'direct';
-  M().margin      = n('f-margin') || 43;
+  M().margin      = n('f-margin') || 0;     // v13.1: 不再默认 43(毛利机密)
   M().sellPrice   = n('f-sell-price');
   M().unitPrice   = n('f-unit-price') || 0;
   M().unitQty     = parseInt(g('f-unit-qty')) || 1;
@@ -1813,10 +1798,10 @@ function loadMachineIntoForm() {
   // Price fields
   document.getElementById('f-cost-machine').value = m.costMachine || '';
   document.getElementById('f-cost-addons').value  = m.costAddons  || '';
-  document.getElementById('f-cost-std').value     = m.costStd     || 60000;
+  document.getElementById('f-cost-std').value     = m.costStd     || 0;   // v13.1: 去掉 60000 默认(机密)
   document.getElementById('f-cost-tradein').value = m.costTradein || '';
   setVal('f-cust-type', m.custType || 'direct');
-  document.getElementById('f-margin').value       = m.margin    || 43;
+  document.getElementById('f-margin').value       = m.margin    || 0;     // v13.1: 去掉 43 默认(机密)
   if (m.machineType === 'parts') {
     // Parts: price comes from partItems, show read-only total in sell price
     const partsTotal = (m.partItems||[]).reduce((s,i)=>(s+(i.qty||0)*(i.unitPrice||0)),0);
@@ -2199,16 +2184,27 @@ function readMachineParams() {
   M().rip          = g('f-rip');
   M().plateSize    = g('f-plate-size');
   M().resolution   = g('f-resolution');
-  M().weight       = g('f-weight');
-  M().dimension    = g('f-dim');
-  M().power        = g('f-power');
-  M().serialNo     = g('f-serial');
-  M().mfgYear      = g('f-mfg-year');
-  M().refurbYear   = g('f-refurb-year');
-  M().coo          = g('f-coo');
-  M().customTitle     = g('f-custom-title') || (Array.isArray(M().partGroups) && M().partGroups[0]?.title) || '';
-  M().desc            = g('f-parts-desc') || g('f-desc');
-  M().otherModel      = g('f-other-model');
+  // v13.1 修「静默丢规格」洞：下面这些输入框在新 UI 已不存在，旧写法 g() 对不存在的元素
+  // 返回 '' → 每次 updatePreview 都把旧合同 state 里的 Serial/功率/重量等覆盖成空、再保存就永久丢。
+  // 改成：元素真的存在才回写；不存在就保留 state 原值。
+  const keep = (k, id) => { const el = document.getElementById(id); if (el) M()[k] = el.value; };
+  keep('weight', 'f-weight');
+  keep('dimension', 'f-dim');
+  keep('power', 'f-power');
+  keep('serialNo', 'f-serial');
+  keep('mfgYear', 'f-mfg-year');
+  keep('refurbYear', 'f-refurb-year');
+  keep('coo', 'f-coo');
+  // v13.1: customTitle/desc 同款幽灵字段防丢——f-custom-title/f-desc 只在 refurb/other 机型下才存在，
+  // 其它机型旧写法会把 state 里的 desc/customTitle 洗成空。元素存在才回写；parts 保留 partGroups 标题兜底。
+  {
+    const _t = document.getElementById('f-custom-title');
+    if (_t) M().customTitle = _t.value;
+    else if (Array.isArray(M().partGroups) && M().partGroups[0]?.title) M().customTitle = M().partGroups[0].title;
+    const _d = document.getElementById('f-parts-desc') || document.getElementById('f-desc');
+    if (_d) M().desc = _d.value;
+  }
+  keep('otherModel', 'f-other-model');
   M().machineRemarks  = g('f-machine-remarks');
   if (g('f-qty')) M().qty = g('f-qty');
   syncSpecRowsFromDOM();
@@ -2218,34 +2214,8 @@ function readMachineParams() {
 // AUTOFILL COST
 // ============================================================
 function autofillCost() {
-  const m = M();
-  const type = m.machineType || document.getElementById('f-machine-type')?.value;
-  const colours = document.getElementById('f-colours')?.value || m.colours;
-  const uv = document.getElementById('f-uv')?.value || m.uvSystem || 'none';
-  let mc = 0, uvCost = 0;
-  const CT = (key) => COST[key] && COST[key][colours] ? COST[key][colours] : 0;
-  if (type==='flexo-if350') mc=CT('IF350');
-  else if (type==='flexo-jzif350') mc=CT('JZIF350');
-  else if (type==='flexo-fx350e') mc=CT('FX350E');
-  else if (type==='flexo-rif350') mc=CT('RIF350');
-  else if (type==='letter-smp280') mc=CT('SMP280');
-  else if (type==='letter-smp300') mc=CT('SMP300');
-  else if (type==='letter-smp320') mc=CT('SMP320');
-  else if (type==='letter-spm350') mc=CT('SPM350');
-  else if (type==='letter-lpm300') mc=CT('LPM300');
-  else if (type==='letter-lpm350') mc=CT('LPM350');
-  else if (type==='die-sd350') mc=COST.SD350;
-  else if (type==='die-sdh350') mc=COST.SDH350;
-  else if (type==='die-srd360') mc=COST.SRD360_132T;
-  else if (type==='slit-sl360') mc=COST.SL360;
-  else if (type==='slit-sl360s') mc=COST.SL360S;
-  else if (type==='slit-sen350') mc=COST.SEN350;
-  if (colours && uv !== 'none') {
-    const n = parseInt(colours) || 0;
-    if (n > 0) uvCost = n * (COST.UV_PER_UNIT[Math.min(n,10)] || 16500);
-  }
-  if (mc > 0) { document.getElementById('f-cost-machine').value = mc; m.costMachine = mc; }
-  if (uvCost > 0) { document.getElementById('f-cost-addons').value = uvCost; m.costAddons = uvCost; }
+  // v13.1: 成本自动填充已移除(COST 表不能存在于公开源码)。保留函数壳(众多 onchange 内联调用它)，
+  // 只保留原来的 calcPrice() 尾调，价格计算行为不变。
   calcPrice();
 }
 
@@ -4664,6 +4634,9 @@ function normalizeState(s) {
 async function stripImagesForSave(stateObj) {
   const s = JSON.parse(JSON.stringify(stateObj));
   for (const m of (s.machines || [])) {
+    // v13.1: 成本/毛利机密绝不进后端 state(代理 Library 加载合同→Save JSON 会看到)。
+    // 旧合同里已存的，每次重新保存也顺手洗掉。
+    m.costMachine = 0; m.costAddons = 0; m.costStd = 0; m.costTradein = 0; m.margin = 0;
     const compressed = [];
     for (const img of (m.images || [])) {
       if (!img) continue;
