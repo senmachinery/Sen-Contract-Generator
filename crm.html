@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.54</title>
+<title>Sen Labels — CRM v2.55</title>
+<!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
 <meta name="theme-color" content="#ffffff">
@@ -550,7 +551,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.54</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.55</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -858,11 +859,14 @@ const $ = (id) => document.getElementById(id);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 // ─── Utilities ─────────────────────────────────────────────────
-function showToast(msg, type) {
+let _toastTimer = null;   // v2.55
+function showToast(msg, type, ms) {
   const t = $('toast');
   t.textContent = msg;
   t.className = 'toast show ' + (type || '');
-  setTimeout(() => t.className = 'toast', 3000);
+  // v2.55: 清掉上一个计时器，否则残留的 3s toast 会在 6s 警告展示途中把它掐掉
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.className = 'toast', ms || 3000);   // 可选时长(默认 3s)
 }
 
 function fmtMoney(amt, currency) {
@@ -1271,9 +1275,10 @@ async function refreshData() {
   
   try {
     // v2.51: fetch contracts + customerDB + tasks + followups IN PARALLEL (was sequential ~12s → now ~slowest single ~4s, 3x faster)
+    let _degraded = false;   // v2.55: 记录是否降级到 history(≤20)，加载完提示用户看到的是部分数据
     const [_cRes, _custRes, _tRes, _fuRes] = await Promise.all([
       apiGet('crm_getAllContracts').then(r => (r && r.ok) ? r : Promise.reject(0))
-        .catch(async () => { console.warn('crm_getAllContracts unavailable → history (max 20)'); const h = await apiGet('history').catch(() => ({ records: [] })); h.contracts = h.records; return h; }),
+        .catch(async () => { _degraded = true; console.warn('crm_getAllContracts unavailable → history (max 20)'); const h = await apiGet('history').catch(() => ({ records: [] })); h.contracts = h.records; return h; }),
       apiGet('customerDB').catch(e => { console.warn('CustomerDB fetch failed:', e); return { customers: [] }; }),
       (!TASKS_STATE.loaded ? apiGet('crm_getTasks').catch(e => { console.warn('Task preload failed:', e); return {}; }) : Promise.resolve(null)),
       apiGet('crm_getFollowups').catch(e => { console.warn('Could not load followups', e); return { followups: [] }; })
@@ -1344,7 +1349,11 @@ async function refreshData() {
     // Follow-ups (pre-fetched in parallel above)
     let allFollowups = (_fuRes && _fuRes.followups) || [];
     STATE.allFollowups = allFollowups;
-    
+    // v2.55: 每次刷新用最新数据**完全重建**每客户跟进缓存（原来 preloadAllFollowups 只补空缺 → 点 Refresh 后
+    // 已缓存客户仍显示旧跟进：别的设备已 snooze 的单还赖在催单列表）。
+    STATE.followups = {};
+    allFollowups.forEach(f => { const k = f.customer || ''; (STATE.followups[k] = STATE.followups[k] || []).push(f); });
+
     // Group by customer (unique companies)
     const custMap = {};
     const custKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');  // v2.50: ignore case AND punctuation/spaces ("LTD"="LTD.", "SDN BHD"="SDN. BHD.")
@@ -1468,7 +1477,11 @@ async function refreshData() {
       if (found) selectCustomer(found.company);
     }
     
-    showToast(`Loaded ${STATE.customers.length} customers, ${STATE.contracts.length} contracts`, 'success');
+    if (_degraded) {
+      showToast(`⚠️ Partial data only (showing ~20 recent contracts). Backend couldn't return the full list — check connection / retry.`, 'error', 6000);
+    } else {
+      showToast(`Loaded ${STATE.customers.length} customers, ${STATE.contracts.length} contracts`, 'success');
+    }
     try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(_e){}   // v2.53: render landing tab after data loads (was stuck spinning)
   } catch (e) {
     $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${e.message}</div>`;
@@ -1622,8 +1635,10 @@ async function selectCustomer(companyName) {
   } catch (e) {
     console.error('Failed to load followups', e);
   }
+  // v2.55: 防串台——手机快速连点客户 A→B，A 的慢响应回来别覆盖已切到的 B 的详情。
+  if (STATE.activeCustomer !== companyName) return;
   STATE.followups[companyName] = followups;
-  
+
   renderCustomerDetail(c, followups);
 }
 
