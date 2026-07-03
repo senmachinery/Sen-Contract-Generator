@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.55</title>
+<title>Sen Labels — CRM v2.56</title>
+<!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
 <!-- v2.44 PWA: 手机「添加到主屏幕」即装成全屏 App -->
@@ -551,7 +552,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.55</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.56</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1737,7 +1738,7 @@ function renderCustomerDetail(c, followups) {
         <strong>🚨 ${overdueFollowups.length} Overdue Follow-up${overdueFollowups.length > 1 ? 's' : ''}</strong>
         ${overdueFollowups.slice(0, 2).map(f => `
           <div style="margin-top:6px;font-size:12px">
-            • ${fmtDate(f.nextFollowupDate)} (${daysAgoText(f.nextFollowupDate)}) — ${escapeHtml(f.description).substring(0, 80)}${f.description.length > 80 ? '...' : ''}
+            • ${fmtDate(f.nextFollowupDate)} (${daysAgoText(f.nextFollowupDate)}) — ${escapeHtml(String(f.description||'').substring(0, 80))}${String(f.description||'').length > 80 ? '...' : ''}
           </div>
         `).join('')}
         ${overdueFollowups.length > 2 ? `<div style="font-size:11px;margin-top:4px">+ ${overdueFollowups.length - 2} more</div>` : ''}
@@ -5690,7 +5691,7 @@ function renderInvoices() {
   const num = n => (Number(n) || 0).toLocaleString();
   const badge = i => {
     const od = invIsOverdue(i);
-    const color = i.status === 'Paid' ? 'var(--success,#2e7d32)' : (i.status === 'Partial' ? 'var(--accent,#e67e00)' : '#c0392b');
+    const color = i.status === 'Paid' ? 'var(--success,#2e7d32)' : (i.status === 'Partial' ? '#e67e00' : '#c0392b');   // v2.56: Partial=琥珀(原 var(--accent) 是导航蓝、语义错；绿→琥珀→红三档)
     const label = od ? (i.status === 'Unpaid' ? 'Overdue' : 'Partial · Overdue') : i.status;
     return '<span style="background:' + color + ';color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">' + esc(label) + '</span>';
   };
