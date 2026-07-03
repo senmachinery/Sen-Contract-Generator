@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.2</title>
+<title>Sen Labels — Contract Generator v13.3</title>
+<!-- v13.3: P2 polish — installment dates clamp to month-end (1/31+1mo no longer skips to Mar) & use local date (not UTC); company autocomplete dropdown now HTML-escaped; de-duplicated two double-worded labels. -->
 <!-- v13.2: SECURITY — removed the ~730-line stale embedded backend copy (v10.54, no auth/no multi-tenant + 15 real agent WhatsApp numbers) from public source; the "Copy Apps Script Code" button/pre-box replaced with an info note; getAppsScriptCode() now returns a pointer stub; init guards the removed #apps-script-code element. -->
 <!-- v13.1: SECURITY — removed hardcoded COST table + default margin from public source; autofillCost now a shell (calcPrice kept); cost/margin fields zeroed in newMachine and scrubbed in stripImagesForSave so they never persist to backend state. FIX — readMachineParams no longer wipes legacy spec fields (serialNo/power/weight/dim/mfgYear/refurbYear/coo/otherModel) whose inputs no longer exist; keeps state value when input is absent. -->
 <!-- v13.0: when Company is empty, fall back to the Attn (contact person) name (phone stripped) so the CRM row is never blank/unidentifiable. -->
@@ -490,7 +491,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.2</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.3</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -769,7 +770,7 @@ function mobileTab(tab) {
     <div class="field-group" style="margin-top:8px;background:#f0f6ff;border:1px solid #c8d8ee;border-radius:6px;padding:8px 10px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;font-weight:600;margin:0">
         <input type="checkbox" id="f-in-package" style="width:auto;margin:0" onchange="M().inPackage=this.checked;savePriceFields();calcPrice();updatePreview()">
-        🧩 Part of a package / Part of a package (hide this item's individual price)
+        🧩 Part of a package (hide this item's individual price)
       </label>
       <div class="field-hint" style="margin-top:4px">Tick this on each machine you want bundled together. Their individual prices are hidden in the contract; enter ONE combined price in "Package Price" below. The package price shows after the last bundled item.</div>
     </div>
@@ -845,11 +846,11 @@ function mobileTab(tab) {
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;font-weight:600;margin:0">
           <input type="checkbox" id="f-inst-full" style="width:auto;margin:0" onchange="state.installmentFullAmount=this.checked;instOpt()">
-          Full-amount installment · No deposit <span style="font-weight:400;color:#888">(No deposit — installment full amount)</span>
+          Full-amount installment <span style="font-weight:400;color:#888">— no deposit; whole amount spread across terms</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:12px;margin:0">
           <input type="checkbox" id="f-inst-exact" style="width:auto;margin:0" onchange="state.installmentExactSplit=this.checked;instOpt()">
-          Exact split to cents<span style="color:#888">— rounds by default; last term adjusts</span>
+          Exact split to cents <span style="color:#888">— rounds by default; last term adjusts</span>
         </label>
       </div>
       <div class="field-group" style="margin-bottom:8px">
@@ -2259,9 +2260,17 @@ function generateInstallments() {
   for (let i = 0; i < count; i++) {
     let date = '';
     if (startDate) {
-      const d = new Date(startDate);
+      // v13.3: startDate 是 <input type=date> 的 "yyyy-mm-dd"；new Date(串) 按 UTC 午夜解析，
+      // 配本地 getter 会在负偏移时区早一天。改成 split 本地构造(和 L2291/L3790 同款)，任何时区都对。
+      const [_y, _m, _dd] = startDate.split('-').map(Number);
+      const d = new Date(_y, _m - 1, _dd);
+      // 防月末溢出——1/31 + 1 月 setMonth 会跳到 3/2/3；先归 1 号加月、再夹到当月最后一天。
+      const targetDay = d.getDate();
+      d.setDate(1);
       d.setMonth(d.getMonth() + i * freqMonths);
-      date = d.toISOString().slice(0,10);
+      const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(targetDay, lastDayOfMonth));
+      date = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
     const amt = (i === count - 1) ? last : per;
     state.installmentRows.push({
@@ -6929,7 +6938,7 @@ async function setupCompanyAutocomplete() {
     matches.forEach(m => {
       const item = document.createElement('div');
       item.style.cssText = 'padding:6px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0';
-      item.innerHTML = `<div style="font-weight:600">${m.company}</div><div style="color:#888;font-size:11px">${m.addr.slice(0,60)}</div>`;
+      item.innerHTML = `<div style="font-weight:600">${esc(m.company)}</div><div style="color:#888;font-size:11px">${esc((m.addr||'').slice(0,60))}</div>`;   // v13.3: 转义(与全站一致；含 &lt;&gt;&quot; 的公司名不再破坏结构)
       item.addEventListener('mouseenter', () => item.style.background = '#f5f9ff');
       item.addEventListener('mouseleave', () => item.style.background = '');
       // Use mousedown (fires before input blur) so selection always works
