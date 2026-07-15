@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.3</title>
+<title>Sen Labels — Contract Generator v13.4</title>
+<!-- v13.4: FIX phantom "Mfg. Year: <current year>" — Machine DB pick defaults m.mfgYear to current year but its editor input was removed (v13.1 note), so the value was invisible & uneditable yet rendered in preview/print/export; duplicated the real Mfg. Year kept in extraSpecs (e.g. refurb machines). New dispMfgYear(m) guard: built-in row yields to any extraSpecs label containing "mfg"+"year" (case-insensitive). Applied at all 3 render sites (buildSpecRows / XLS sp / print rows). No behavior change for machines without an extraSpecs Mfg. Year. -->
 <!-- v13.3: P2 polish — installment dates clamp to month-end (1/31+1mo no longer skips to Mar) & use local date (not UTC); company autocomplete dropdown now HTML-escaped; de-duplicated two double-worded labels. -->
 <!-- v13.2: SECURITY — removed the ~730-line stale embedded backend copy (v10.54, no auth/no multi-tenant + 15 real agent WhatsApp numbers) from public source; the "Copy Apps Script Code" button/pre-box replaced with an info note; getAppsScriptCode() now returns a pointer stub; init guards the removed #apps-script-code element. -->
 <!-- v13.1: SECURITY — removed hardcoded COST table + default margin from public source; autofillCost now a shell (calcPrice kept); cost/margin fields zeroed in newMachine and scrubbed in stripImagesForSave so they never persist to backend state. FIX — readMachineParams no longer wipes legacy spec fields (serialNo/power/weight/dim/mfgYear/refurbYear/coo/otherModel) whose inputs no longer exist; keeps state value when input is absent. -->
@@ -491,7 +492,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.3</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.4</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3954,6 +3955,16 @@ function buildMachineTitle(m) {
   return esc(title + fv + dc);
 }
 
+// v13.4: built-in Mfg. Year yields to a user-visible extraSpecs row with the same meaning.
+// Machine DB pick hard-defaults m.mfgYear to the current year, but its editor input was removed
+// long ago — the value is invisible/uneditable. If extraSpecs already carries an "Mfg. Year"-like
+// label (the one the user can actually see & edit), suppress the hidden built-in value.
+function dispMfgYear(m) {
+  const specs = m.extraSpecs || [];
+  const dup = specs.some(s => { const l = (s.label || '').toLowerCase(); return (l.includes('mfg') || l.includes('manufactur')) && l.includes('year'); });
+  return dup ? '' : m.mfgYear;
+}
+
 function buildSpecRows(m) {
   const t = m.machineType;
   if (!t) return '';
@@ -3968,7 +3979,7 @@ function buildSpecRows(m) {
   if (t !== 'other' && t !== 'refurb') rows.push(row('Model', modelName));
   // 'other' type: Model handled via extraSpecs for free ordering
   rows.push(row('Serial Number', m.serialNo));
-  rows.push(row('Mfg. Year', m.mfgYear));
+  rows.push(row('Mfg. Year', dispMfgYear(m)));   // v13.4: yields to extraSpecs Mfg. Year
   if (m.condition==='Refurbished'&&m.refurbYear) rows.push(row('Refurbished Year', m.refurbYear));
 
   if (t.startsWith('flexo')||t.startsWith('letter')) {
@@ -6150,7 +6161,7 @@ function exportToExcel() {
         : buildMachineTitle(m).replace(/^(New|Refurbished)\s+/,'');
       sp('Model', _modelName);
       sp('Serial Number', m.serialNo);
-      sp('Mfg. Year', m.mfgYear);
+      sp('Mfg. Year', dispMfgYear(m));   // v13.4: yields to extraSpecs Mfg. Year
       if (m.condition==='Refurbished' && m.refurbYear) sp('Refurbished Year', m.refurbYear);
       const t = m.machineType;
       if (t.startsWith('flexo')||t.startsWith('letter')) {
@@ -6301,7 +6312,7 @@ function buildSpecRowsWord(m) {
   if (t !== 'other' && t !== 'refurb') rows.push(row('Model', modelName));
   // 'other' type: Model handled via extraSpecs for free ordering
   rows.push(row('Serial Number', m.serialNo));
-  rows.push(row('Mfg. Year', m.mfgYear));
+  rows.push(row('Mfg. Year', dispMfgYear(m)));   // v13.4: yields to extraSpecs Mfg. Year
   if (m.condition==='Refurbished'&&m.refurbYear) rows.push(row('Refurbished Year', m.refurbYear));
   if (t.startsWith('flexo')||t.startsWith('letter')) {
     rows.push(row('Colour', m.colours ? m.colours+' Colours' : ''));
