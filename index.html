@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.5</title>
+<title>Sen Labels — Contract Generator v13.6</title>
+<!-- v13.6: FIX parts-item Description input shows blank after loading JSON — the desc is an auto-grow <textarea class=rich-input> (renderPartGroups) whose height is set from scrollHeight; when the row renders while its panel is hidden, scrollHeight=0 collapses it to height:0 and the text is clipped invisible (data intact: preview/total correct, other visible rows fine). Two-part fix: (1) CSS min-height:1.9em floors .rich-input/.spec-label-input at one line so text is never fully hidden; (2) requestAnimationFrame re-grow pass at end of renderPartGroups re-sizes multi-line descs once laid out. No behavior change to values/save. -->
 <!-- v13.5: ROOT FIX phantom Mfg. Year — v13.4 only suppressed the built-in row when extraSpecs carried its own Mfg. Year label; DB entries WITHOUT one (e.g. Labelmen refurb, which only has Refurbished Year) still showed the invisible auto current-year. Now newMachine() and loadMachineFromDB() no longer default mfgYear to the current year at all: the year prints only when it comes from a visible source (extraSpecs, or a legacy saved record whose stored mfgYear is preserved on load per the v13.1 readMachineParams rule). dispMfgYear dedupe guard kept for legacy records that carry both. -->
 <!-- v13.4: FIX phantom "Mfg. Year: <current year>" — Machine DB pick defaults m.mfgYear to current year but its editor input was removed (v13.1 note), so the value was invisible & uneditable yet rendered in preview/print/export; duplicated the real Mfg. Year kept in extraSpecs (e.g. refurb machines). New dispMfgYear(m) guard: built-in row yields to any extraSpecs label containing "mfg"+"year" (case-insensitive). Applied at all 3 render sites (buildSpecRows / XLS sp / print rows). No behavior change for machines without an extraSpecs Mfg. Year. -->
 <!-- v13.3: P2 polish — installment dates clamp to month-end (1/31+1mo no longer skips to Mar) & use local date (not UTC); company autocomplete dropdown now HTML-escaped; de-duplicated two double-worded labels. -->
@@ -92,6 +93,9 @@ button{cursor:pointer;font-family:inherit}
 .drag-handle{cursor:grab;color:#aab;font-size:18px;padding:0 3px;user-select:none;flex-shrink:0}
 .drag-handle:active{cursor:grabbing}
 .spec-label-input{width:100%;font-size:12px;padding:3px 6px;border:1px solid #ccd;border-radius:3px;min-width:0;box-sizing:border-box;resize:none;overflow:hidden;font-family:inherit;line-height:1.4;vertical-align:middle}
+/* v13.6: floor auto-grow textareas at their own natural one-line height — when rendered while hidden, scrollHeight=0 collapses them to height:0 and hides the text (data is fine, only the input looks empty). Each min-height = line-height(1.4em) + that element's vertical padding+border, so a visible single line is unchanged and only a collapsed box is floored back to one line. */
+.rich-input{min-height:calc(1.4em + 10px)}
+.spec-label-input{min-height:calc(1.4em + 8px)}
 .spec-value-input{width:100%;font-size:12px;padding:3px 6px;border:1px solid #ccd;border-radius:3px;min-width:0}
 .rich-bar{display:flex;gap:4px;margin-bottom:4px}
 .rich-bar button{font-size:11px;line-height:1;padding:2px 8px;border:1px solid #c0cde0;border-radius:3px;background:#f4f7fb;cursor:pointer}
@@ -493,7 +497,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.5</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.6</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2827,7 +2831,7 @@ function renderPartGroups() {
         return el;
       };
       const descIn = document.createElement('textarea');
-      descIn.rows = 1; descIn.placeholder = 'Description'; descIn.className = 'rich-input';
+      descIn.rows = 1; descIn.placeholder = 'Description'; descIn.className = 'rich-input pg-item-desc';
       descIn.value = item.desc||'';
       descIn.style.cssText = 'padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:12px;width:100%;box-sizing:border-box;resize:none;overflow:hidden;font-family:inherit;line-height:1.4';
       const _growD = () => { descIn.style.height='auto'; descIn.style.height=descIn.scrollHeight+'px'; };
@@ -2911,6 +2915,10 @@ function renderPartGroups() {
   });
 
   updatePartTotal();
+  // v13.6: re-grow item-desc textareas after layout (rendered-while-hidden gives scrollHeight=0 → collapsed/invisible text). Scoped to .pg-item-desc so the group sub-desc keeps its own behavior. Skip when still hidden (scrollHeight 0) so CSS min-height keeps one line visible.
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.pg-item-desc').forEach(t => { t.style.height = 'auto'; if (t.scrollHeight) t.style.height = t.scrollHeight + 'px'; });
+  });
 }
 
 // Track which group is active for image picker
