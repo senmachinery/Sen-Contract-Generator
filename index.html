@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.7</title>
+<title>Sen Labels — Contract Generator v13.8</title>
+<!-- v13.8: FIX just-saved image not appearing in the "Pick from Drive" picker — saveImagesToDrive uploaded to Drive fine but never invalidated the picker's 90s cache (_pickCache.img), so reopening the picker within 90s showed the stale list without the new image (looked like the save failed). Now clears _pickCache.img on successful upload (same pattern customer-save already uses). Image was always on Drive; only the picker view was stale. -->
 <!-- v13.7: ADD per-image Delete button in the "Pick Image from Drive" picker (dedupe helper). Each thumbnail gets a red × (top-right) → confirm → POST deleteImage{id,folder} → backend v10.95 moves the file to Drive Trash (recoverable ~30 days, NOT permanent) and refuses unless the file is inside SenLabels_MachineImages (never deletes arbitrary Drive files by id; agent tokens blocked, main token only). Token auto-injected by existing fetch wrapper. On success the image is dropped from the picker cache + re-rendered (no full reload). Requires backend redeploy to v10.95. -->
 <!-- v13.6: FIX parts-item Description input shows blank after loading JSON — the desc is an auto-grow <textarea class=rich-input> (renderPartGroups) whose height is set from scrollHeight; when the row renders while its panel is hidden, scrollHeight=0 collapses it to height:0 and the text is clipped invisible (data intact: preview/total correct, other visible rows fine). Two-part fix: (1) CSS min-height:1.9em floors .rich-input/.spec-label-input at one line so text is never fully hidden; (2) requestAnimationFrame re-grow pass at end of renderPartGroups re-sizes multi-line descs once laid out. No behavior change to values/save. -->
 <!-- v13.5: ROOT FIX phantom Mfg. Year — v13.4 only suppressed the built-in row when extraSpecs carried its own Mfg. Year label; DB entries WITHOUT one (e.g. Labelmen refurb, which only has Refurbished Year) still showed the invisible auto current-year. Now newMachine() and loadMachineFromDB() no longer default mfgYear to the current year at all: the year prints only when it comes from a visible source (extraSpecs, or a legacy saved record whose stored mfgYear is preserved on load per the v13.1 readMachineParams rule). dispMfgYear dedupe guard kept for legacy records that carry both. -->
@@ -498,7 +499,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.7</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.8</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5538,6 +5539,7 @@ async function saveImagesToDrive() {
   }
 
   if (success > 0) {
+    _pickCache.img = null;   // v13.8: invalidate picker cache so a just-saved image shows immediately (was cached 90s \u2192 looked "missing")
     statusEl.textContent = `\u23f3 ${success} image(s) sent... Fetching Drive URLs (5s)...`;
     statusEl.style.color = '#1a73e8';
     // Wait for Apps Script to finish processing
