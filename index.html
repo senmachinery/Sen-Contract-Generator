@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.8</title>
+<title>Sen Labels — Contract Generator v13.9</title>
+<!-- v13.9: ADD ▲/▼ reorder buttons to parts-group line items (renderPartGroups) — users can now move an item up/down within its group; previously only delete existed, no way to reorder (e.g. move item 1 to position 2). Buttons swap neighbouring items in m.partGroups[gi].items then re-render; ▲ disabled on the first row, ▼ on the last. Last grid column widened 22px→60px to fit ▲▼× (header + row grids kept in sync). Swaps whole item objects so qty/price/images/desc all move together. Display/edit only; totals unchanged. -->
 <!-- v13.8: FIX just-saved image not appearing in the "Pick from Drive" picker — saveImagesToDrive uploaded to Drive fine but never invalidated the picker's 90s cache (_pickCache.img), so reopening the picker within 90s showed the stale list without the new image (looked like the save failed). Now clears _pickCache.img on successful upload (same pattern customer-save already uses). Image was always on Drive; only the picker view was stale. -->
 <!-- v13.7: ADD per-image Delete button in the "Pick Image from Drive" picker (dedupe helper). Each thumbnail gets a red × (top-right) → confirm → POST deleteImage{id,folder} → backend v10.95 moves the file to Drive Trash (recoverable ~30 days, NOT permanent) and refuses unless the file is inside SenLabels_MachineImages (never deletes arbitrary Drive files by id; agent tokens blocked, main token only). Token auto-injected by existing fetch wrapper. On success the image is dropped from the picker cache + re-rendered (no full reload). Requires backend redeploy to v10.95. -->
 <!-- v13.6: FIX parts-item Description input shows blank after loading JSON — the desc is an auto-grow <textarea class=rich-input> (renderPartGroups) whose height is set from scrollHeight; when the row renders while its panel is hidden, scrollHeight=0 collapses it to height:0 and the text is clipped invisible (data intact: preview/total correct, other visible rows fine). Two-part fix: (1) CSS min-height:1.9em floors .rich-input/.spec-label-input at one line so text is never fully hidden; (2) requestAnimationFrame re-grow pass at end of renderPartGroups re-sizes multi-line descs once laid out. No behavior change to values/save. -->
@@ -499,7 +500,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.8</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.9</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2812,7 +2813,7 @@ function renderPartGroups() {
 
     // Items header
     const itemsHdr = document.createElement('div');
-    itemsHdr.style.cssText = 'display:grid;grid-template-columns:1fr 55px 50px 85px 70px 22px;gap:3px;padding:3px 2px;font-size:10px;font-weight:700;color:#555;text-transform:uppercase';
+    itemsHdr.style.cssText = 'display:grid;grid-template-columns:1fr 55px 50px 85px 70px 60px;gap:3px;padding:3px 2px;font-size:10px;font-weight:700;color:#555;text-transform:uppercase';
     itemsHdr.innerHTML = '<span>Description</span><span>Qty</span><span>Unit</span><span>Unit Price</span><span style="text-align:right">Total</span><span></span>';
     groupDiv.appendChild(itemsHdr);
 
@@ -2824,7 +2825,7 @@ function renderPartGroups() {
       const row = document.createElement('div');
       row.style.cssText = 'background:#fff;border:1px solid #dde;border-radius:3px;padding:5px;margin-bottom:4px';
       const fieldsRow = document.createElement('div');
-      fieldsRow.style.cssText = 'display:grid;grid-template-columns:1fr 55px 50px 85px 70px 22px;gap:3px;align-items:center';
+      fieldsRow.style.cssText = 'display:grid;grid-template-columns:1fr 55px 50px 85px 70px 60px;gap:3px;align-items:center';
       const mk = (type, val, ph) => {
         const el = document.createElement('input');
         el.type = type; el.placeholder = ph;
@@ -2845,7 +2846,17 @@ function renderPartGroups() {
       totalSp.style.cssText = 'font-size:11px;font-weight:700;color:#1a3a5c;white-space:nowrap;text-align:right';
       totalSp.textContent = '= ' + formatMoney((item.qty||0)*(item.unitPrice||0), state.currency);
       const delBtn = document.createElement('button');
-      delBtn.innerHTML = '&#215;'; delBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:3px;width:20px;height:20px;font-size:13px;cursor:pointer;padding:0';
+      delBtn.innerHTML = '&#215;'; delBtn.title = 'Remove'; delBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:3px;width:16px;height:20px;font-size:13px;cursor:pointer;padding:0;line-height:1';
+      // v13.9: ▲/▼ reorder this item within the group (swap with neighbour)
+      const _mvBtn = (html, title) => { const b=document.createElement('button'); b.innerHTML=html; b.title=title; b.style.cssText='background:#eef2ff;color:#3355cc;border:1px solid #ccd;border-radius:3px;width:16px;height:20px;font-size:9px;cursor:pointer;padding:0;line-height:1'; return b; };
+      const upBtn = _mvBtn('&#9650;','Move up'), downBtn = _mvBtn('&#9660;','Move down');
+      if (ii === 0) { upBtn.disabled=true; upBtn.style.opacity='.25'; upBtn.style.cursor='default'; }
+      if (ii === group.items.length-1) { downBtn.disabled=true; downBtn.style.opacity='.25'; downBtn.style.cursor='default'; }
+      upBtn.addEventListener('click', () => { const a=m.partGroups[gi].items; if(ii>0){ const t=a[ii-1]; a[ii-1]=a[ii]; a[ii]=t; renderPartGroups(); updatePartTotal(); updatePreview(); } });
+      downBtn.addEventListener('click', () => { const a=m.partGroups[gi].items; if(ii<a.length-1){ const t=a[ii+1]; a[ii+1]=a[ii]; a[ii]=t; renderPartGroups(); updatePartTotal(); updatePreview(); } });
+      const ctrl = document.createElement('div');
+      ctrl.style.cssText = 'display:flex;gap:2px;align-items:center;justify-content:flex-end';
+      ctrl.appendChild(upBtn); ctrl.appendChild(downBtn); ctrl.appendChild(delBtn);
       const refresh = () => { totalSp.textContent = '= ' + formatMoney((m.partGroups[gi].items[ii]?.qty||0)*(m.partGroups[gi].items[ii]?.unitPrice||0), state.currency); };
       descIn.addEventListener('input',  () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].desc = descIn.value; updatePartTotal(); updatePreview(); });
       qtyIn.addEventListener('input',   () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].qty = parseFloat(qtyIn.value)||0; refresh(); updatePartTotal(); updatePreview(); });
@@ -2853,7 +2864,7 @@ function renderPartGroups() {
       priceIn.addEventListener('input', () => { if(m.partGroups[gi].items[ii]) m.partGroups[gi].items[ii].unitPrice = parseFloat(priceIn.value)||0; refresh(); updatePartTotal(); updatePreview(); });
       delBtn.addEventListener('click',  () => { m.partGroups[gi].items.splice(ii,1); renderPartGroups(); updatePartTotal(); updatePreview(); });
       fieldsRow.appendChild(descIn); fieldsRow.appendChild(qtyIn); fieldsRow.appendChild(unitIn);
-      fieldsRow.appendChild(priceIn); fieldsRow.appendChild(totalSp); fieldsRow.appendChild(delBtn);
+      fieldsRow.appendChild(priceIn); fieldsRow.appendChild(totalSp); fieldsRow.appendChild(ctrl);
       row.appendChild(fieldsRow);
 
       // Per-item image section
