@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.9</title>
+<title>Sen Labels — Contract Generator v13.10</title>
+<!-- v13.10: FIX stale mobile number in the WORD export header — it still printed the retired +60-13-778-1288 while the PDF preview and Excel export already used the correct +60 13-288 2863. Every Word-exported quote/contract carried a wrong contact number for Max. Text-only change, one line. -->
 <!-- v13.9: ADD ▲/▼ reorder buttons to parts-group line items (renderPartGroups) — users can now move an item up/down within its group; previously only delete existed, no way to reorder (e.g. move item 1 to position 2). Buttons swap neighbouring items in m.partGroups[gi].items then re-render; ▲ disabled on the first row, ▼ on the last. Last grid column widened 22px→60px to fit ▲▼× (header + row grids kept in sync). Swaps whole item objects so qty/price/images/desc all move together. Display/edit only; totals unchanged. -->
 <!-- v13.8: FIX just-saved image not appearing in the "Pick from Drive" picker — saveImagesToDrive uploaded to Drive fine but never invalidated the picker's 90s cache (_pickCache.img), so reopening the picker within 90s showed the stale list without the new image (looked like the save failed). Now clears _pickCache.img on successful upload (same pattern customer-save already uses). Image was always on Drive; only the picker view was stale. -->
 <!-- v13.7: ADD per-image Delete button in the "Pick Image from Drive" picker (dedupe helper). Each thumbnail gets a red × (top-right) → confirm → POST deleteImage{id,folder} → backend v10.95 moves the file to Drive Trash (recoverable ~30 days, NOT permanent) and refuses unless the file is inside SenLabels_MachineImages (never deletes arbitrary Drive files by id; agent tokens blocked, main token only). Token auto-injected by existing fetch wrapper. On success the image is dropped from the picker cache + re-rendered (no full reload). Requires backend redeploy to v10.95. -->
@@ -500,7 +501,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.9</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.10</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -6448,7 +6449,7 @@ function exportToWord() {
     <td valign="middle">
       <p style="${B}font-size:14pt;font-weight:bold;color:${C1};margin:0 0 2pt 0">Sen Labels Machinery Sdn Bhd &nbsp;&nbsp;(809225H)</p>
       <p style="${S}margin:1pt 0">PTD 31073, HS(M) 2896, Off Jalan Haji Saat 14 3/4, Off Jalan Sungai Tiram, 81800 Ulu Tiram, Kota Tinggi, Johor, Malaysia</p>
-      <p style="${S}margin:1pt 0">Tel: 006 07 8710019 &nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp; H/P: +60-13-778-1288</p>
+      <p style="${S}margin:1pt 0">Tel: 006 07 8710019 &nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp; H/P: +60 13-288 2863</p>
       <p style="${S}margin:1pt 0">Email: anise.senlabels@gmail.com; gina.senlabels@gmail.com</p>
     </td>
   </tr>
