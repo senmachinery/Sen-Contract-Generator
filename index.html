@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.10</title>
+<title>Sen Labels — Contract Generator v13.11</title>
+<!-- v13.11: sales-rep input gets autocomplete="off" + throwaway name — stops Chrome from suggesting stale hand-typed values like "Max (You)" (the app datalist has been clean since v10.85 cleanRepName; the leftover was browser autofill history, which the app cannot delete). One-line input attr change. -->
 <!-- v13.10: FIX stale mobile number in the WORD export header — it still printed the retired +60-13-778-1288 while the PDF preview and Excel export already used the correct +60 13-288 2863. Every Word-exported quote/contract carried a wrong contact number for Max. Text-only change, one line. -->
 <!-- v13.9: ADD ▲/▼ reorder buttons to parts-group line items (renderPartGroups) — users can now move an item up/down within its group; previously only delete existed, no way to reorder (e.g. move item 1 to position 2). Buttons swap neighbouring items in m.partGroups[gi].items then re-render; ▲ disabled on the first row, ▼ on the last. Last grid column widened 22px→60px to fit ▲▼× (header + row grids kept in sync). Swaps whole item objects so qty/price/images/desc all move together. Display/edit only; totals unchanged. -->
 <!-- v13.8: FIX just-saved image not appearing in the "Pick from Drive" picker — saveImagesToDrive uploaded to Drive fine but never invalidated the picker's 90s cache (_pickCache.img), so reopening the picker within 90s showed the stale list without the new image (looked like the save failed). Now clears _pickCache.img on successful upload (same pattern customer-save already uses). Image was always on Drive; only the picker view was stale. -->
@@ -501,7 +502,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.10</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.11</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -587,7 +588,7 @@ function mobileTab(tab) {
     </div>
     <div class="field-group">
       <label><svg class="ic" style="color:#8696a8"><use href="#i-users"></use></svg> Sales Rep <span style="font-weight:400;font-size:11px;color:#888">(who handles this customer — pick from the list or type)</span></label>
-      <input list="sales-rep-list" id="f-sales-rep" placeholder="Select or type the Sales Rep" oninput="state.salesRep=this.value;updateSalesRepHint();updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
+      <input list="sales-rep-list" id="f-sales-rep" autocomplete="off" name="sen-sales-rep-nofill" placeholder="Select or type the Sales Rep" oninput="state.salesRep=this.value;updateSalesRepHint();updatePreview()" style="width:100%;padding:7px 10px;border:1px solid #c0cde0;border-radius:4px;font-size:13px">
       <datalist id="sales-rep-list"></datalist>
       <div class="field-hint" id="sales-rep-hint" style="font-size:11px;color:#888"></div>
     </div>
