@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sen Labels — Contract Generator v13.11</title>
+<!-- v13.12: ADD standard REMARK clause — any machine on a 3-Phase power supply must run with a matching AVR (voltage stabilizer); if the AVR is not bought from Sen, the Buyer must source & install a correctly-rated AVR locally before power-on, else warranty is void. Added to the default remarkItems (new-contract state + resetForm) so it auto-appears on new contracts, and to REMARK_PRESETS (key:'avr') as a toggle. Legacy empty-remark fallbacks (2-item) left untouched. Text-only additions; no logic change. -->
 <!-- v13.11: sales-rep input gets autocomplete="off" + throwaway name — stops Chrome from suggesting stale hand-typed values like "Max (You)" (the app datalist has been clean since v10.85 cleanRepName; the leftover was browser autofill history, which the app cannot delete). One-line input attr change. -->
 <!-- v13.10: FIX stale mobile number in the WORD export header — it still printed the retired +60-13-778-1288 while the PDF preview and Excel export already used the correct +60 13-288 2863. Every Word-exported quote/contract carried a wrong contact number for Max. Text-only change, one line. -->
 <!-- v13.9: ADD ▲/▼ reorder buttons to parts-group line items (renderPartGroups) — users can now move an item up/down within its group; previously only delete existed, no way to reorder (e.g. move item 1 to position 2). Buttons swap neighbouring items in m.partGroups[gi].items then re-render; ▲ disabled on the first row, ▼ on the last. Last grid column widened 22px→60px to fit ▲▼× (header + row grids kept in sync). Swaps whole item objects so qty/price/images/desc all move together. Display/edit only; totals unchanged. -->
@@ -1274,6 +1275,7 @@ let state = {
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
     'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.',
     'Warranty does not cover consumable parts including but not limited to UV/LED lamps or lamp sheets, Printing Rollers, Impression Rollers, and Nip Rollers. Warranty also does not cover any mechanical damage caused by misuse, negligence, or human error.',
+    'Any machine that operates on a 3-Phase power supply must be run with a compatible AVR (Automatic Voltage Regulator / voltage stabilizer). If the AVR is not purchased together with the machine from Sen Labels Machinery Sdn. Bhd., the Buyer must source and install a correctly-rated, matching AVR locally and have it in place before powering on the machine. Operating any 3-Phase machine without a proper AVR voids the warranty, and Sen Labels Machinery Sdn. Bhd. shall not be liable for any damage arising therefrom.',
     'This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer\'s Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded.'
   ],
   activeMachineIdx:0,
@@ -3095,6 +3097,11 @@ const REMARK_PRESETS = [
     key: 'warranty',
     label: '⚠️ Warranty Exclusions',
     text: 'Warranty does not cover consumable parts including but not limited to UV/LED lamps or lamp sheets, Printing Rollers, Impression Rollers, and Nip Rollers. Warranty also does not cover any mechanical damage caused by misuse, negligence, or human error.'
+  },
+  {
+    key: 'avr',
+    label: '⚡ 3-Phase AVR Required',
+    text: 'Any machine that operates on a 3-Phase power supply must be run with a compatible AVR (Automatic Voltage Regulator / voltage stabilizer). If the AVR is not purchased together with the machine from Sen Labels Machinery Sdn. Bhd., the Buyer must source and install a correctly-rated, matching AVR locally and have it in place before powering on the machine. Operating any 3-Phase machine without a proper AVR voids the warranty, and Sen Labels Machinery Sdn. Bhd. shall not be liable for any damage arising therefrom.'
   },
   {
     key: 'binding',
@@ -4926,6 +4933,7 @@ function newContract() {
     'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
     'Sen Labels Machinery Sdn. Bhd. reserves the right to modify, alter, or change the specifications, components, accessories, appearance, and/or design of the equipment at any time without prior notice.',
     'Warranty does not cover consumable parts including but not limited to UV/LED lamps or lamp sheets, Printing Rollers, Impression Rollers, and Nip Rollers. Warranty also does not cover any mechanical damage caused by misuse, negligence, or human error.',
+    'Any machine that operates on a 3-Phase power supply must be run with a compatible AVR (Automatic Voltage Regulator / voltage stabilizer). If the AVR is not purchased together with the machine from Sen Labels Machinery Sdn. Bhd., the Buyer must source and install a correctly-rated, matching AVR locally and have it in place before powering on the machine. Operating any 3-Phase machine without a proper AVR voids the warranty, and Sen Labels Machinery Sdn. Bhd. shall not be liable for any damage arising therefrom.',
     'This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer\'s Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded.'
   ];
   renderRemarkItems();
