@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.57</title>
+<title>Sen Labels — CRM v2.58</title>
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
@@ -552,7 +552,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.57</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.58</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -566,6 +566,7 @@
 
 <div class="tab-bar">
   <button class="tab active" data-tab="snapshot"><svg class="ic"><use href="#i-sun"/></svg> Today</button>
+  <button class="tab" data-tab="target"><span style="font-size:14px">🎯</span> Target <span class="count" id="target-count">—</span></button>
   <button class="tab" data-tab="crm"><svg class="ic"><use href="#i-users"/></svg> CRM <span class="count" id="crm-count">—</span></button>
   <button class="tab" data-tab="pipeline"><svg class="ic"><use href="#i-kanban"/></svg> Pipeline <span class="count" id="pipeline-count">—</span></button>
   <button class="tab" data-tab="inquiries"><svg class="ic"><use href="#i-phone-in"/></svg> Inquiries <span class="count" id="inquiries-count">—</span></button>
@@ -589,6 +590,10 @@
       <button class="btn btn-sm" onclick="renderSnapshot()" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)"><svg class="ic"><use href="#i-refresh"></use></svg> Refresh</button>
     </div>
     <div id="snapshot-content"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Building today's snapshot...</div></div></div>
+  </div>
+
+  <div class="tab-content" id="tab-target">
+    <div id="target-body" style="padding:16px 18px;max-width:1120px;margin:0 auto"></div>
   </div>
 
   <div class="tab-content" id="tab-crm">
@@ -1323,7 +1328,8 @@ async function refreshData() {
       amount: parseFloat(r.amount) || 0,
       status: r.status || 'Quotation Sent',
       salesRep: (function(s){ s = (s || '').trim(); return /^https?:|drive\.google/i.test(s) ? '' : s; })(r.salesRep),  // v2.29: drop garbage URL values
-      country: getCustomerCountry((r.company || '').trim())
+      country: getCustomerCountry((r.company || '').trim()),
+      signedDate: r.signedDate || ''   // v3.0: 12台/年目标——后端「已签单」标记(空=没标)
     })).filter(c => c.company);  // Filter out empty company names
     // v2.6: build contractNo → rep map (only contracts that actually have a rep set)
     CONTRACT_REP = {};
@@ -1487,6 +1493,7 @@ async function refreshData() {
       showToast(`Loaded ${STATE.customers.length} customers, ${STATE.contracts.length} contracts`, 'success');
     }
     try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(_e){}   // v2.53: render landing tab after data loads (was stuck spinning)
+    try { renderTarget(); } catch(_e){}   // v3.0: 12-machine target badge + prerender (hidden until tab clicked)
   } catch (e) {
     $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${e.message}</div>`;
     const _sc = $('snapshot-content'); if (_sc) _sc.innerHTML = `<div class="empty" style="padding:30px">❌ Couldn't load data: ${e.message}<br><br><button class="btn btn-sm" onclick="refreshData()">Retry</button></div>`;
@@ -2098,6 +2105,166 @@ const STAGE_GROUPS = [
 
 const STUCK_DAYS_THRESHOLD = 14;
 const WARM_DAYS_THRESHOLD = 7;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🎯 TARGET TAB — 12 new machines / year (时捷/Ben §11 quota)          v3.0
+// The count is driven by the manual "signed / deposit-received" marker
+// (reliable), NOT by contract number or the sheet date field (both unreliable).
+// ═══════════════════════════════════════════════════════════════════════
+const TARGET_PER_YEAR = 12;
+let TARGET_YEAR = new Date().getFullYear();
+
+// Whitelist — NEW big machines built by 时捷/Ben that count toward the quota.
+// \d? after family = catch "IF1-350" variants · (?!\d) after number = allow "350E/350T" suffix but block "3500".
+// RIF checked before IF (belt+suspenders; the \b already stops "RIF-350" matching the IF regex).
+const TARGET_MODELS = [
+  {re:/\bSMP\d?[\s._-]*280(?!\d)/i, m:'SMP-280'}, {re:/\bSMP\d?[\s._-]*300(?!\d)/i, m:'SMP-300'},
+  {re:/\bSMP\d?[\s._-]*320(?!\d)/i, m:'SMP-320'}, {re:/\bSPM\d?[\s._-]*350(?!\d)/i, m:'SPM-350'},
+  {re:/\bRIF\d?[\s._-]*350(?!\d)/i, m:'RIF-350'}, {re:/\bRIF\d?[\s._-]*450(?!\d)/i, m:'RIF-450'},
+  {re:/\bIF\d?[\s._-]*350(?!\d)/i,  m:'IF-350'},  {re:/\bIF\d?[\s._-]*450(?!\d)/i,  m:'IF-450'},
+  {re:/\bFX\d?[\s._-]*350(?!\d)/i,  m:'FX-350'},  {re:/\bFX\d?[\s._-]*450(?!\d)/i,  m:'FX-450'}
+];
+function _isUsedMachine(t){ return /\b(refurb|refurbished|used|second[\s-]?hand|2nd\s*hand|pre[\s-]?owned|recond?)\b/i.test(t); }
+// → {eligible:true, model} if it's a countable NEW target machine, else {eligible:false, reason}
+function classifyTargetMachine(c){
+  const t = (c.machine || '').trim();
+  if (!t) return {eligible:false, reason:'no machine title'};
+  if (_isUsedMachine(t)) return {eligible:false, reason:'used / refurb'};
+  if (/vorey|voret|auracut|VP[\s._-]*320/i.test(t)) return {eligible:false, reason:'Vorey digital (not 时捷)'};
+  for (const w of TARGET_MODELS){ if (w.re.test(t)) return {eligible:true, model:w.m}; }
+  return {eligible:false, reason:'not a target model'};
+}
+function _yearOf(dstr){ const m = String(dstr||'').match(/(\d{4})/); return m ? parseInt(m[1],10) : null; }
+function targetSetYear(delta){ TARGET_YEAR += delta; renderTarget(); }
+
+function renderTarget(){
+  const body = document.getElementById('target-body');
+  if (!body) return;
+  const contracts = STATE.contracts || [];
+
+  // 1) COUNTED = every eligible contract MARKED signed in TARGET_YEAR. Each mark = 1 unit (no auto-dedup — Max's marks are the truth).
+  const counted = [];
+  contracts.forEach(c => {
+    if (!c.signedDate || _yearOf(c.signedDate) !== TARGET_YEAR) return;
+    const cls = classifyTargetMachine(c);
+    if (!cls.eligible) return;
+    counted.push({ company:c.company, model:cls.model, contractNo:c.contractNo, signedDate:c.signedDate });
+  });
+  counted.sort((a,b)=> String(b.signedDate).localeCompare(String(a.signedDate)));
+  const X = counted.length;
+  // soft flag: same customer+model marked >1 this year → let Max confirm it's really 2 units vs an accidental double-mark
+  const cmCount = {}; counted.forEach(r => { const k=(r.company||'').toLowerCase()+'|'+r.model; cmCount[k]=(cmCount[k]||0)+1; });
+
+  // 2) CANDIDATES = every eligible, NOT-marked, still-live contract (each its own row; revisions show separately so Max marks the real/final one, and 2 real units can both be marked).
+  const DEAD = /lost|cancel|dead|drop|void|refund/i;
+  const candidates = [];
+  contracts.forEach(c => {
+    if (c.signedDate) return;
+    if (DEAD.test(String(c.status||''))) return;
+    const cls = classifyTargetMachine(c);
+    if (!cls.eligible) return;
+    candidates.push({ company:c.company, model:cls.model, contractNo:c.contractNo, status:c.status });
+  });
+  candidates.sort((a,b)=> (a.company||'').toLowerCase().localeCompare((b.company||'').toLowerCase()) || String(b.contractNo).localeCompare(String(a.contractNo)));
+
+  // 3) Pace
+  const now = new Date(), thisY = now.getFullYear();
+  const elapsed = Math.max(0, Math.min(1, (now - new Date(TARGET_YEAR,0,1)) / (new Date(TARGET_YEAR+1,0,1) - new Date(TARGET_YEAR,0,1))));
+  const expected = (TARGET_YEAR < thisY) ? TARGET_PER_YEAR : (TARGET_YEAR > thisY ? 0 : elapsed * TARGET_PER_YEAR);
+  const diff = X - expected;
+  const pct = Math.max(0, Math.min(100, Math.round(X / TARGET_PER_YEAR * 100)));
+  const ahead = diff >= -0.5;
+  const barColor = X >= TARGET_PER_YEAR ? '#2e7d32' : ahead ? '#2e7d32' : diff >= -1.5 ? '#f9a825' : '#c62828';
+
+  const badge = document.getElementById('target-count'); if (badge) badge.textContent = X + '/' + TARGET_PER_YEAR;
+
+  const paceLine = (TARGET_YEAR !== thisY)
+    ? (TARGET_YEAR < thisY ? `Full year — final: <b>${X}</b> machine${X===1?'':'s'} vs 12.` : 'Future year.')
+    : `Year ${Math.round(elapsed*100)}% elapsed → on pace you should be at <b>~${expected.toFixed(1)}</b>. You're at <b>${X}</b> → <b style="color:${ahead?'#2e7d32':'#c62828'}">${ahead?'ahead':'behind'} by ${Math.abs(diff).toFixed(1)}</b>.`;
+
+  const countedRows = counted.length ? counted.map(r => {
+    const dup = (cmCount[(r.company||'').toLowerCase()+'|'+r.model] || 0) > 1;
+    return `<tr>
+      <td style="font-weight:600">${escapeHtml(r.company)}${dup?' <span title="Same customer + model counted more than once this year — confirm these are genuinely 2 separate machines, not a double-mark of the same order" style="color:#f9a825;cursor:help">⚠</span>':''}</td>
+      <td><span class="mono" style="background:#e8f5e9;color:#2e7d32;padding:1px 7px;border-radius:4px;font-weight:600">${r.model}</span></td>
+      <td class="mono">${escapeHtml(r.signedDate)}</td>
+      <td class="mono" style="color:var(--text-muted);font-size:11px">${escapeHtml(r.contractNo)}</td>
+      <td style="text-align:right"><button onclick="targetUnmark('${r.contractNo.replace(/'/g,"\\'")}')" class="btn btn-sm btn-outline" style="font-size:10px;border-color:#c62828;color:#c62828" title="Remove the signed mark">✕ Unmark</button></td>
+    </tr>`; }).join('') : `<tr><td colspan="5" style="color:var(--text-muted);padding:14px;text-align:center">No machines marked signed for ${TARGET_YEAR} yet — use the candidates below.</td></tr>`;
+
+  const candRows = candidates.length ? candidates.map(g => `
+    <tr>
+      <td style="font-weight:600">${escapeHtml(g.company)}</td>
+      <td><span class="mono" style="background:#fff3e0;color:#e65100;padding:1px 7px;border-radius:4px;font-weight:600">${g.model}</span></td>
+      <td class="mono" style="color:var(--text-muted);font-size:11px">${escapeHtml(g.contractNo)} · <span style="color:var(--text-faint)">${escapeHtml(g.status||'')}</span></td>
+      <td style="text-align:right"><button onclick="targetMarkSigned('${g.contractNo.replace(/'/g,"\\'")}')" class="btn btn-sm" style="background:#2e7d32;color:#fff;font-size:10px;padding:2px 10px" title="Confirm this order was really signed / deposit received">✓ Mark signed</button></td>
+    </tr>`).join('') : `<tr><td colspan="4" style="color:var(--text-muted);padding:14px;text-align:center">No eligible unmarked deals. 🎉</td></tr>`;
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:20px;font-weight:700">🎯 ${TARGET_PER_YEAR} New Machines / Year</div>
+        <div style="font-size:12px;color:var(--text-muted)">时捷/Ben supply agreement §11 — quota of ${TARGET_PER_YEAR} new presses/year (used machines don't count).</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="targetSetYear(-1)" class="btn btn-sm btn-outline">◀</button>
+        <div class="mono" style="font-size:16px;font-weight:700;min-width:52px;text-align:center">${TARGET_YEAR}</div>
+        <button onclick="targetSetYear(1)" class="btn btn-sm btn-outline" ${TARGET_YEAR>=thisY+1?'disabled style=\"opacity:.4\"':''}>▶</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <div class="mono" style="font-size:44px;font-weight:800;line-height:1;color:${barColor}">${X}</div>
+        <div style="font-size:20px;color:var(--text-muted);font-weight:600">/ ${TARGET_PER_YEAR}</div>
+        <div style="margin-left:auto;font-size:12px;color:var(--text-muted)">${X>=TARGET_PER_YEAR?'<b style=\"color:#2e7d32\">✅ Target met</b>':`${TARGET_PER_YEAR-X} to go`}</div>
+      </div>
+      <div style="height:12px;background:var(--bg);border-radius:6px;overflow:hidden;margin:12px 0 8px">
+        <div style="height:100%;width:${pct}%;background:${barColor};border-radius:6px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary)">${paceLine}</div>
+    </div>
+
+    <div class="card" style="padding:0;margin-bottom:16px;overflow:hidden">
+      <div style="padding:12px 16px;font-weight:600;border-bottom:1px solid var(--border);background:#f8fafc">✅ Counted this year <span style="color:var(--text-muted);font-weight:400">(${X})</span></div>
+      <div style="overflow-x:auto"><table class="machine-table" style="width:100%"><thead><tr><th>Customer</th><th>Model</th><th>Signed</th><th>Contract</th><th></th></tr></thead><tbody>${countedRows}</tbody></table></div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 16px;font-weight:600;border-bottom:1px solid var(--border);background:#f8fafc">📝 Eligible deals — confirm which were really signed <span style="color:var(--text-muted);font-weight:400">(${candidates.length})</span></div>
+      <div style="padding:8px 16px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--bg)">These match a target model but aren't marked signed. Click <b>✓ Mark signed</b> only on the ones a customer really signed / paid deposit for — that's what counts toward ${TARGET_PER_YEAR}. Re-versions of one order show as separate rows (same customer + model) — mark just the real/final one; if a customer truly bought 2 units, mark both.</div>
+      <div style="overflow-x:auto"><table class="machine-table" style="width:100%"><thead><tr><th>Customer</th><th>Model</th><th>Latest contract · status</th><th></th></tr></thead><tbody>${candRows}</tbody></table></div>
+    </div>
+
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:12px">Counting models: SMP-280/300/320 · SPM-350 · IF-350/450 · FX-350/450 · RIF-350/450 (new only). Excludes used/refurb, Vorey/VP-320 digital, die-cut/slitting/CTP/inspection, parts. Year = the signed date you enter, not the contract number.</div>
+  `;
+}
+
+async function targetMarkSigned(contractNo){
+  const c = (STATE.contracts||[]).find(x=>x.contractNo===contractNo);
+  if (!c) { showToast('Contract not found', 'error'); return; }
+  const cls = classifyTargetMachine(c);
+  const d = prompt('Signed / deposit-received date for:\n' + contractNo + '  —  ' + (c.company||'') + '\n(' + (cls.model||'') + ')\n\nEnter date as YYYY-MM-DD:', new Date().toISOString().slice(0,10));
+  if (d === null) return;
+  const dd = (d||'').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dd)) { showToast('Date must be YYYY-MM-DD', 'error'); return; }
+  try {
+    await apiPost('crm_setSigned', { contractNo: contractNo, signedDate: dd, company: c.company, machineModel: (cls.model||'') });
+    c.signedDate = dd;
+    showToast('✓ Marked signed: ' + contractNo, 'success');
+    renderTarget();
+  } catch(e){ showToast('Failed to mark: ' + e.message, 'error'); }
+}
+async function targetUnmark(contractNo){
+  if (!confirm('Remove the "signed" mark for ' + contractNo + '?\n(It will drop out of the year count. You can re-mark it anytime.)')) return;
+  const c = (STATE.contracts||[]).find(x=>x.contractNo===contractNo);
+  try {
+    await apiPost('crm_setSigned', { contractNo: contractNo, signedDate: '' });
+    if (c) c.signedDate = '';
+    showToast('Unmarked: ' + contractNo, 'success');
+    renderTarget();
+  } catch(e){ showToast('Failed to unmark: ' + e.message, 'error'); }
+}
 
 function renderPipeline() {
   const board = $('kanban-board');
@@ -5597,6 +5764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     // v1.7: Phase 6 Today's Snapshot
     if (t.dataset.tab === 'snapshot') renderSnapshot();
+    if (t.dataset.tab === 'target') renderTarget();
   }));
   
   // v1.2: ESC closes modal
