@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.58</title>
+<title>Sen Labels — CRM v2.59</title>
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
@@ -552,7 +552,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.58</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.59</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1386,13 +1386,13 @@ async function refreshData() {
       cust.contracts.push(c);
       
       // v1.2: Total Spent — include all signed deals
-      const signedStatuses = ['Closed (Paid)', 'Delivered', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
+      const signedStatuses = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
       if (signedStatuses.includes(c.status)) cust.totalConfirmed += c.amount;
       // Strict "Total Spent" = actually paid
       if (c.status === 'Closed (Paid)' || c.status === 'Delivered') cust.totalSpent += c.amount;
       
       // Active = not closed and not lost
-      if (!['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract'].includes(c.status)) cust.activeContracts++;
+      if (!['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract'].includes(c.status)) cust.activeContracts++;
       // v2.32: 在谈(可催)金额(RM粗折算)，用于催单优先级排序+显示
       if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) cust.openValueRM += _toRM(c.amount, c.currency);
 
@@ -2099,7 +2099,7 @@ const STAGE_GROUPS = [
   { id: 'progress',   title: '👀 In Progress',   statuses: ['Following Up', 'Negotiating'],                          cssClass: 'col-progress' },
   { id: 'confirmed',  title: '💰 Confirmed',     statuses: ['Confirmed', 'Deposit Received'],                        cssClass: 'col-confirmed' },
   { id: 'fulfilling', title: '🏭 Fulfilling',    statuses: ['In Production', 'Ready to Ship', 'Awaiting Payment'],   cssClass: 'col-fulfilling' },
-  { id: 'closed',     title: '✅ Closed Won',    statuses: ['Delivered', 'Closed (Paid)'],                           cssClass: 'col-closed' },
+  { id: 'closed',     title: '✅ Closed Won',    statuses: ['Delivered', 'Closed (Paid)', 'Closed (Won)'],           cssClass: 'col-closed' },
   { id: 'lost',       title: '❌ Lost',          statuses: ['Lost', 'Cancelled', 'On Hold'],                         cssClass: 'col-lost' }
 ];
 
@@ -2839,7 +2839,7 @@ function renderDashboard() {
   // Top stats
   const totalContracts = filtered.length;
   const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
-  const wonStages = ['Delivered', 'Closed (Paid)'];
+  const wonStages = ['Delivered', 'Closed (Paid)', 'Closed (Won)'];
   const lostStages = ['Lost', 'Cancelled', 'On Hold'];  // v2.31 (H1): On Hold lives in the Lost column (STAGE_GROUPS) — count it so buckets reconcile
   
   const active = filtered.filter(c => activeStages.includes(c.status));
@@ -4439,7 +4439,7 @@ function renderSnapshot() {
     ((toIsoDate(a.followup.nextFollowupDate) || '').localeCompare(toIsoDate(b.followup.nextFollowupDate) || '')));
 
   // 4. Recently won deals (last 7 days)
-  const wonStages = ['Delivered', 'Closed (Paid)'];
+  const wonStages = ['Delivered', 'Closed (Paid)', 'Closed (Won)'];
   const recentlyWon = (STATE.contracts || []).filter(c => {
     if (!wonStages.includes(c.status)) return false;
     const d = toIsoDate(c.date);  // v2.30: contracts carry only `date`
@@ -4822,14 +4822,14 @@ function gatherPackData(onlyChecked) {
       // "Everyone active": include any customer with at least one ACTIVE (not closed/lost) contract,
       // even if they have no scheduled follow-up. This surfaces the customers you never set a reminder for.
       const hasActive = (customer.activeContracts || 0) > 0 ||
-        (customer.contracts || []).some(ct => !['Closed (Paid)','Delivered','Lost','Cancelled'].includes(ct.status));
+        (customer.contracts || []).some(ct => !['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled'].includes(ct.status));
       if (hasActive || overdue.length || upcoming.length || inquiries.length) {
         rows.push({ customer, overdue, upcoming, inquiries, noFollowup: !overdue.length && !upcoming.length });
       }
     } else {
       // v2.9: reminders only apply to customers with at least one ACTIVE deal — once every
       // contract is Closed/Delivered/Lost/Cancelled, the customer drops out of the follow-up loop.
-      const hasActiveDeal = (customer.contracts || []).some(ct => !['Closed (Paid)','Delivered','Lost','Cancelled'].includes(ct.status));
+      const hasActiveDeal = (customer.contracts || []).some(ct => !['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled'].includes(ct.status));
       const ov = hasActiveDeal ? overdue : [];
       const up = hasActiveDeal ? upcoming : [];
       if (ov.length || up.length || inquiries.length) {
@@ -5012,12 +5012,12 @@ function openContractStatusModal(company) {
 }
 
 function buildContractStatusBody(c) {
-  const terminal = ['Closed (Paid)','Delivered','Lost','Cancelled'];
+  const terminal = ['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled'];
   const contracts = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
   if (!contracts.length) return '<div class="empty">This customer has no contracts yet</div>';
   const coAttr = c.company.replace(/'/g, "\\'");
   const cards = contracts.map(ct => {
-    const won = ct.status === 'Closed (Paid)' || ct.status === 'Delivered';
+    const won = ct.status === 'Closed (Paid)' || ct.status === 'Closed (Won)' || ct.status === 'Delivered';
     const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
     const isTerminal = won || lost;
     const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
@@ -5069,7 +5069,7 @@ async function refreshAfterChange(company) {
   if (company) { try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; } catch (e) {} }
   const cust = company ? (STATE.customers || []).find(x => x.company === company) : null;
   if (cust) {
-    const terminal = ['Closed (Paid)', 'Delivered', 'Lost', 'Cancelled'];
+    const terminal = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled'];
     cust.activeContracts = (cust.contracts || []).filter(x => !terminal.includes(x.status)).length;
   }
   const modalOpen = document.getElementById('modal-overlay') && document.getElementById('modal-overlay').classList.contains('show');
@@ -5088,7 +5088,7 @@ async function refreshAfterChange(company) {
 function contractActionBar(ct, company) {
   const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
   const coAttr = (company || '').replace(/'/g, "\\'");
-  const won  = ct.status === 'Closed (Paid)' || ct.status === 'Delivered';
+  const won  = ct.status === 'Closed (Paid)' || ct.status === 'Closed (Won)' || ct.status === 'Delivered';
   const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
   const base = 'font-size:11px;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid';
   if (won || lost) {
@@ -5102,15 +5102,49 @@ function contractActionBar(ct, company) {
   }
   return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
     <button onclick="quickNextFollowup('${ctAttr}','${coAttr}')" style="${base} #90caf9;background:#e3f2fd;color:#1565c0" title="Set next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Follow-up</button>
-    <button onclick="markWon('${ctAttr}','${coAttr}')" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="Customer chose this → Won"><svg class="ic"><use href="#i-check"></use></svg> Won</button>
+    <button onclick="markSigned('${ctAttr}','${coAttr}')" style="${base} #ffcc80;background:#fff3e0;color:#b86b00" title="Contract signed / deposit received → counts to 12-machine target (Closed Won)"><svg class="ic"><use href="#i-check"></use></svg> Signed</button>
+    <button onclick="markWon('${ctAttr}','${coAttr}')" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="Full payment received → Won (Closed / Paid)"><svg class="ic"><use href="#i-check"></use></svg> Paid</button>
     <button onclick="markLost('${ctAttr}','${coAttr}')" style="${base} #f5c6cb;background:#fdecea;color:#c0392b" title="Drop this one → Lost"><svg class="ic"><use href="#i-x"></use></svg> Lost</button>
   </div>`;
 }
 
-async function markWon(contractNo, company) {
-  if (!confirm('Mark this contract as Won (Closed / Paid)?')) return;
-  await setContractStatus(contractNo, 'Closed (Paid)', company);
-  // v2.37: 成交后一键把同客户其他在谈报价标 Lost（客户选了这台，其余落单）
+// v2.59: 一键关单完整闭环 → 后端 crm_closeDeal（Contracts.Status + _ContractStates + CRM_SignedDeals + 关本单受保护 followup/task）。
+// stage='signed'→'Closed (Won)'(签单/收订金·记12台目标·仅新机) | stage='paid'→'Closed (Paid)'(收全款)。
+async function markClosed(contractNo, company, stage) {
+  const isPaid = (stage === 'paid');
+  const ct = (STATE.contracts || []).find(x => x.contractNo === contractNo)
+          || (((STATE.customers || []).find(x => x.company === company) || {}).contracts || []).find(x => x.contractNo === contractNo)
+          || {};
+  const cls = classifyTargetMachine(ct);   // 复用现有新机判定(含排除 二手/Vorey/非目标机)
+  const isNew = !!cls.eligible;
+  const label = isPaid ? '收全款成交 (Closed / Paid)' : '签单 / 收订金 (Signed / Won)';
+  let msg = `Mark「${label}」?\n${contractNo}\n\n` +
+            (isNew ? `新机 ${cls.model} → 计入 12 台目标` : `机型「${(ct.machine || '').slice(0, 40)}」= 二手/非目标机 → 不计 12 台目标`);
+  if (!confirm(msg)) return;
+  showToast('⏳ Closing…', '');
+  try {
+    const r = await apiPost('crm_closeDeal', {
+      contractNo, stage: (isPaid ? 'paid' : 'signed'),
+      opts: { isNewMachine: isNew, machineModel: cls.model || (ct.machine || '') }
+    });
+    if (!r.ok) throw new Error(r.error || 'Close failed');
+    const newStatus = isPaid ? 'Closed (Paid)' : 'Closed (Won)';
+    const _sd = new Date().toISOString().slice(0, 10);   // 本地补签单日→Target tab 台数当场生效(仅新机·已有则不覆盖，与后端 preserve 一致)
+    const g = (STATE.contracts || []).find(x => x.contractNo === contractNo);
+    if (g) { g.status = newStatus; if (isNew && !g.signedDate) g.signedDate = _sd; }
+    const cu = (STATE.customers || []).find(x => x.company === company);
+    if (cu) { const cc = (cu.contracts || []).find(x => x.contractNo === contractNo); if (cc) { cc.status = newStatus; if (isNew && !cc.signedDate) cc.signedDate = _sd; } }
+    showToast(`✅ ${isPaid ? '成交' : '签单'} · ${r.followupRemindersCleared || 0} 提醒/${r.tasksClosed || 0} 任务已清`, 'success');
+    await maybeMarkSiblingsLost_(contractNo, company);
+    await refreshAfterChange(company);
+    try { renderTarget(); } catch (_e) {}
+  } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+}
+async function markWon(contractNo, company)    { return markClosed(contractNo, company, 'paid'); }
+async function markSigned(contractNo, company) { return markClosed(contractNo, company, 'signed'); }
+
+// v2.37 逻辑抽出：成交/签单后把同客户其它在谈报价一键标 Lost（客户选了这台，其余落单）。
+async function maybeMarkSiblingsLost_(contractNo, company) {
   const cust = (STATE.customers || []).find(x => x.company === company);
   if (!cust) return;
   const OPEN = ['Quotation Sent', 'Quotation', 'Following Up', 'Negotiating'];
@@ -5125,7 +5159,6 @@ async function markWon(contractNo, company) {
       } catch (e) {}
     }
     showToast(`✅ Marked ${done}/${siblings.length} as Lost`, done === siblings.length ? 'success' : 'error');
-    await refreshAfterChange(company);
   }
 }
 function markLost(contractNo, company) { if (confirm('Mark this contract as Lost?')) setContractStatus(contractNo, 'Lost', company); }
