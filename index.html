@@ -3,8 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.11</title>
+<title>Sen Labels — Contract Generator v13.13</title>
+<!-- v13.13: ADD 5 optional REMARK presets (toggle buttons only, NOT default-on, Buyer picks per deal): (1) Freight/Import Duties Excluded — courier borne by Buyer, price excludes destination import duty/customs tax/local inland transport; (2) Installation Not Included — on-site install charged USD 250 per technician per day; (3) Installation Travel Costs Buyer-Borne — flights/hotel/local transport/meals; (4) Shipping/Freight Included; (5) Installation Included. Text-only additions to REMARK_PRESETS array; no logic change, default remarkItems untouched, no backend redeploy. -->
+
 <!-- v13.12: ADD standard REMARK clause — any machine on a 3-Phase power supply must run with a matching AVR (voltage stabilizer); if the AVR is not bought from Sen, the Buyer must source & install a correctly-rated AVR locally before power-on, else warranty is void. Added to the default remarkItems (new-contract state + resetForm) so it auto-appears on new contracts, and to REMARK_PRESETS (key:'avr') as a toggle. Legacy empty-remark fallbacks (2-item) left untouched. Text-only additions; no logic change. -->
+<!-- v13.12: Bank-charges clause — new toggle "Buyer bears all bank charges" (default ON for new contracts; OFF-backfilled in normalizeState for old contracts so they render byte-identical). When ON, buildBankDetails() appends a clause under BANK DETAILS so intermediary/correspondent bank deductions don't leave Sen short on received amount. Frontend-only, no backend redeploy. -->
 <!-- v13.11: sales-rep input gets autocomplete="off" + throwaway name — stops Chrome from suggesting stale hand-typed values like "Max (You)" (the app datalist has been clean since v10.85 cleanRepName; the leftover was browser autofill history, which the app cannot delete). One-line input attr change. -->
 <!-- v13.10: FIX stale mobile number in the WORD export header — it still printed the retired +60-13-778-1288 while the PDF preview and Excel export already used the correct +60 13-288 2863. Every Word-exported quote/contract carried a wrong contact number for Max. Text-only change, one line. -->
 <!-- v13.9: ADD ▲/▼ reorder buttons to parts-group line items (renderPartGroups) — users can now move an item up/down within its group; previously only delete existed, no way to reorder (e.g. move item 1 to position 2). Buttons swap neighbouring items in m.partGroups[gi].items then re-render; ▲ disabled on the first row, ▼ on the last. Last grid column widened 22px→60px to fit ▲▼× (header + row grids kept in sync). Swaps whole item objects so qty/price/images/desc all move together. Display/edit only; totals unchanged. -->
@@ -503,7 +506,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.11</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.13</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -961,6 +964,11 @@ function mobileTab(tab) {
         <input type="checkbox" id="f-bank-override" onchange="onBankOverrideChange()" style="width:16px;height:16px;cursor:pointer">
         <span style="font-size:11px;color:#888">(uncheck to use default by currency)</span>
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="f-buyer-bank-charges" checked onchange="state.buyerBankCharges=this.checked;updatePreview()" style="width:16px;height:16px;cursor:pointer">
+        <label style="font-size:12px;font-weight:600;color:#444;margin:0" for="f-buyer-bank-charges">Buyer bears all bank charges</label>
+        <span style="font-size:11px;color:#888">(prints a clause so Sen receives the full amount)</span>
+      </div>
       <div id="bank-fields-wrap">
         <div class="field-row" style="margin-bottom:6px">
           <div class="field-group" style="margin:0">
@@ -1269,6 +1277,7 @@ let state = {
   customPayRows:[],
   packagePrice:0, packageLabel:'',
   bankOverride: false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
+  buyerBankCharges:true,
   docType:'Sales Contract', status:'Quotation Sent', revised:'',
   remarks:'',
   remarkItems:[
@@ -1725,6 +1734,7 @@ function saveCurrentMachineToState() {
   state.payTermsText    = g('f-pay-terms-text');
   state.warrantyOverride = g('f-warranty-override');
   state.bankOverride     = document.getElementById('f-bank-override')?.checked || false;
+  { const _bbc = document.getElementById('f-buyer-bank-charges'); if (_bbc) state.buyerBankCharges = _bbc.checked; }
   state.bankAccount      = g('f-bank-account');
   state.bankBeneficiary  = g('f-bank-beneficiary');
   state.bankName         = g('f-bank-name');
@@ -3107,6 +3117,31 @@ const REMARK_PRESETS = [
     key: 'binding',
     label: '📋 Contract Binding & Non-Refundable Deposit',
     text: "This Sales Contract is not binding until Sen Labels Machinery receives a signed copy and/or the Buyer's Purchase Order (quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances. Delivery items shall strictly follow the Packing List stated in this Sales Contract. All machines, equipment, and spare parts are sold on a final-sale basis and cannot be returned or refunded."
+  },
+  {
+    key: 'freight-exclude',
+    label: '🚚 Freight / Import Duties Excluded',
+    text: 'Courier / freight charges shall be borne by the Buyer. The quoted price does not include any import duties, customs taxes, or local inland transport at the destination country; all such charges are the sole responsibility of the Buyer.'
+  },
+  {
+    key: 'install-exclude',
+    label: '🛠️ Installation Not Included (USD 250/day)',
+    text: 'Installation is not included in the quoted price. Should on-site installation be required, it will be charged separately at a labour rate of USD 250 per technician per day.'
+  },
+  {
+    key: 'install-travel',
+    label: '✈️ Installation Travel Costs (Buyer-Borne)',
+    text: 'If Sen Labels Machinery Sdn. Bhd. dispatches personnel for on-site installation, all travel-related costs — including air tickets, accommodation, local transport, and meals — shall be fully borne by the Buyer.'
+  },
+  {
+    key: 'freight-include',
+    label: '🚢 Shipping / Freight Included',
+    text: 'Shipping / freight charges to the destination stated in this Sales Contract are included in the quoted price.'
+  },
+  {
+    key: 'install-include',
+    label: '🧰 Installation Included',
+    text: 'Installation of the machine by Sen Labels Machinery Sdn. Bhd. is included in the quoted price.'
   }
 ];
 
@@ -3520,6 +3555,7 @@ function updatePreview() {
     state.payTermsText    = g('f-pay-terms-text') || '';
     state.warrantyOverride = g('f-warranty-override') || '';
     state.bankOverride     = document.getElementById('f-bank-override')?.checked || false;
+    { const _bbc = document.getElementById('f-buyer-bank-charges'); if (_bbc) state.buyerBankCharges = _bbc.checked; }
     state.bankAccount      = g('f-bank-account');
     state.bankBeneficiary  = g('f-bank-beneficiary');
     state.bankName         = g('f-bank-name');
@@ -4243,13 +4279,16 @@ function buildBankDetails() {
   const acctColon = acct.indexOf(':');
   const acctLabel = acctColon > 0 ? acct.substring(0,acctColon).trim() : 'Account';
   const acctValue = acctColon > 0 ? acct.substring(acctColon+1).trim() : acct;
+  const bankChargeNote = state.buyerBankCharges === true
+    ? `<div style="margin-top:1.6mm;padding-top:1.2mm;border-top:1px dashed #c9d3df;font-size:8.3pt;line-height:1.35;color:#333">All bank charges, including any intermediary / correspondent bank fees, shall be borne by the Buyer, so that Sen Labels Machinery Sdn Bhd receives the full invoiced amount net of any deductions.</div>`
+    : '';
   return `<div class="cp-bank"><div class="bank-title">BANK DETAILS</div><table>
     ${acctValue ? `<tr><td>${esc(acctLabel)}</td><td>: ${esc(acctValue)}</td></tr>` : ''}
     ${ben    ? `<tr><td>Beneficiary</td><td>: ${esc(ben)}</td></tr>` : ''}
     ${name   ? `<tr><td>Banker</td><td>: ${esc(name)}</td></tr>` : ''}
     ${swift  ? `<tr><td>Swift Code</td><td>: ${esc(swift)}</td></tr>` : ''}
     ${branch ? `<tr><td>Branch</td><td>: ${esc(branch)}</td></tr>` : ''}
-  </table></div>`;
+  </table>${bankChargeNote}</div>`;
 }
 
 function buildPayCondText() {
@@ -4593,6 +4632,8 @@ function normalizeState(s) {
   if (!Array.isArray(s.machines)) s.machines = [];
   if (typeof s.packagePrice !== 'number') s.packagePrice = 0;
   if (typeof s.packageLabel !== 'string') s.packageLabel = '';
+  // v13.12: old contracts (saved before the bank-charges clause) default to OFF so they render byte-identical.
+  if (s.buyerBankCharges === undefined) s.buyerBankCharges = false;
 
   s.machines.forEach(m => {
     if (!m) return;
@@ -4917,6 +4958,7 @@ function newContract() {
     // v10.99: 这些合同级字段以前没在 newContract 重置 → 会从上一单残留，现一并清回默认
     salesRep:'', balanceLabel:'', payTermsText:'', warrantyOverride:'',
     bankOverride:false, bankAccount:'', bankBeneficiary:'', bankName:'', bankSwift:'', bankBranch:'',
+    buyerBankCharges:true,
     packagePrice:0, packageLabel:'', customPayRows:[],
     validity:'One (1) Month only',
     delivery:'To be determined upon confirmation and/or full payment.',
@@ -4954,6 +4996,7 @@ function newContract() {
   { const pr=document.getElementById('package-price-row'); if(pr) pr.style.display='none'; }
   { const ip=document.getElementById('f-in-package'); if(ip) ip.checked=false; }
   { const bo=document.getElementById('f-bank-override'); if(bo) bo.checked=false; }
+  { const bbc=document.getElementById('f-buyer-bank-charges'); if(bbc) bbc.checked=true; }   // v13.12: keep DOM in sync with state.buyerBankCharges=true default
   ['f-bank-account','f-bank-beneficiary','f-bank-name','f-bank-swift','f-bank-branch'].forEach(id=>setVal(id,''));
   onBankOverrideChange();   // bankOverride=false → 用按币种的默认银行
   { const io=document.getElementById('f-installment-on'); if(io) io.checked=false; }
@@ -5081,6 +5124,8 @@ function loadStateJSON(input) {
       // Bank details
       const bankCb = document.getElementById('f-bank-override');
       if (bankCb) bankCb.checked = state.bankOverride||false;
+      const bbcCb = document.getElementById('f-buyer-bank-charges');
+      if (bbcCb) bbcCb.checked = (state.buyerBankCharges === true);
       if (Array.isArray(state.customPayRows)) renderCustomPayRows();
       const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
       svBank('f-bank-account',     state.bankAccount||'');
@@ -5361,6 +5406,8 @@ async function loadFromLibrary(contractNo, opts) {
       // Bank details
       const bankCb = document.getElementById('f-bank-override');
       if (bankCb) bankCb.checked = state.bankOverride||false;
+      const bbcCb = document.getElementById('f-buyer-bank-charges');
+      if (bbcCb) bbcCb.checked = (state.buyerBankCharges === true);
       if (Array.isArray(state.customPayRows)) renderCustomPayRows();
       const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
       svBank('f-bank-account',     state.bankAccount||'');
