@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.13</title>
+<title>Sen Labels — Contract Generator v13.14</title>
+<!-- v13.14: SPLIT the Drive image library by machine type so Parts/Accessories photos no longer clutter the machine-photo picker. Added a "Library" toggle (🖨️ Machines | 🔧 Parts) at the top of the "Pick from Drive" modal. openImagePicker() auto-selects Parts library when the current machine's type is 'parts', else Machines. listImages/deleteImage/Save-to-Drive now route to the active folder: machine photos → SenLabels_MachineImages (unchanged), part photos → SenLabels_PartsImages (backend getOrCreateDriveFolder auto-creates it; NO backend redeploy — listImages already reads e.parameter.folder). Picker cache (_pickCache.img) is now keyed by folder so switching libraries never shows a stale list. Frontend-only. -->
 <!-- v13.13: ADD 5 optional REMARK presets (toggle buttons only, NOT default-on, Buyer picks per deal): (1) Freight/Import Duties Excluded — courier borne by Buyer, price excludes destination import duty/customs tax/local inland transport; (2) Installation Not Included — on-site install charged USD 250 per technician per day; (3) Installation Travel Costs Buyer-Borne — flights/hotel/local transport/meals; (4) Shipping/Freight Included; (5) Installation Included. Text-only additions to REMARK_PRESETS array; no logic change, default remarkItems untouched, no backend redeploy. -->
 
 <!-- v13.12: ADD standard REMARK clause — any machine on a 3-Phase power supply must run with a matching AVR (voltage stabilizer); if the AVR is not bought from Sen, the Buyer must source & install a correctly-rated AVR locally before power-on, else warranty is void. Added to the default remarkItems (new-contract state + resetForm) so it auto-appears on new contracts, and to REMARK_PRESETS (key:'avr') as a toggle. Legacy empty-remark fallbacks (2-item) left untouched. Text-only additions; no logic change. -->
@@ -506,7 +507,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.13</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.14</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1086,6 +1087,11 @@ function mobileTab(tab) {
       <button class="btn btn-outline btn-sm" onclick="searchImagePicker()">&#128269; Search</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:5px">
+      <span style="font-size:11px;color:#888;min-width:34px">Library</span>
+      <button type="button" class="ip-pill active" id="ip-lib-machine" onclick="setPickerLibrary('machine')">&#128424;&#65039; Machines</button>
+      <button type="button" class="ip-pill" id="ip-lib-parts" onclick="setPickerLibrary('parts')">&#128295; Parts</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:5px">
       <span style="font-size:11px;color:#888;min-width:34px">Status</span>
       <button type="button" class="ip-pill active" data-k="status" data-v="All" onclick="setIpFilter('status','All')">All</button>
       <button type="button" class="ip-pill" data-k="status" data-v="New" onclick="setIpFilter('status','New')">🆕 New</button>
@@ -1105,7 +1111,7 @@ function mobileTab(tab) {
     <div id="imagepicker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:420px;overflow-y:auto;padding:4px">
       <div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Click Search to load images</div>
     </div>
-    <div style="margin-top:10px;font-size:11px;color:#888">&#128161; Upload images to Google Drive &rarr; <strong>SenLabels_MachineImages</strong> folder first</div>
+    <div id="ip-folder-hint" style="margin-top:10px;font-size:11px;color:#888">&#128161; Upload images to Google Drive &rarr; <strong>SenLabels_MachineImages</strong> folder first</div>
   </div>
 </div>
 
@@ -5564,6 +5570,7 @@ async function saveImagesToDrive() {
 
   const statusEl = document.getElementById('drive-upload-status');
   const machineRef = (m.customTitle || m.otherModel || '').trim();
+  const upFolder = (m.machineType === 'parts') ? 'SenLabels_PartsImages' : 'SenLabels_MachineImages';   // v13.14: keep part photos out of the machine library
 
   const localImages = images.filter(img => img.startsWith('data:'));
   const driveImages = images.filter(img => img.startsWith('http'));
@@ -5597,7 +5604,7 @@ async function saveImagesToDrive() {
         method: 'POST',
         mode: 'no-cors',
         headers: {'Content-Type': 'text/plain'},
-        body: JSON.stringify({ action: 'uploadImage', folder: 'SenLabels_MachineImages', folderName: 'SenLabels_MachineImages', name: filename, filename, base64, mimeType, machineRef })
+        body: JSON.stringify({ action: 'uploadImage', folder: upFolder, folderName: upFolder, name: filename, filename, base64, mimeType, machineRef })
       });
       success++;
     } catch(e) {
@@ -5647,11 +5654,31 @@ async function saveImagesToDrive() {
 // IMAGE PICKER FROM DRIVE
 // ============================================================
 let _imagePickerCache = [];
+// v13.14: picker reads from a folder chosen by machine type — Parts photos live in their own Drive folder
+const IP_FOLDER_MACHINE = 'SenLabels_MachineImages';
+const IP_FOLDER_PARTS   = 'SenLabels_PartsImages';
+let _pickerFolder = IP_FOLDER_MACHINE;
+
+function setPickerLibrary(lib, silent) {
+  _pickerFolder = (lib === 'parts') ? IP_FOLDER_PARTS : IP_FOLDER_MACHINE;
+  const mb = document.getElementById('ip-lib-machine'), pb = document.getElementById('ip-lib-parts');
+  if (mb) mb.classList.toggle('active', lib !== 'parts');
+  if (pb) pb.classList.toggle('active', lib === 'parts');
+  const hint = document.getElementById('ip-folder-hint');
+  if (hint) hint.innerHTML = '&#128161; Upload images to Google Drive &rarr; <strong>' + _pickerFolder + '</strong> folder first';
+  // reset Status/Type filters so switching libraries never shows a stale-filtered (looks-empty) grid
+  _ipStatus = 'All'; _ipType = 'All';
+  document.querySelectorAll('#imagepicker-modal .ip-pill[data-k]').forEach(b => b.classList.toggle('active', b.dataset.v === 'All'));
+  if (!silent) { document.getElementById('imagepicker-search').value = ''; searchImagePicker(); }
+}
 
 function openImagePicker() {
   if (!gsUrl) { alert('Please configure Google Sheets URL in Settings first.'); return; }
   document.getElementById('imagepicker-modal').classList.add('show');
   document.getElementById('imagepicker-search').value = '';
+  // v13.14: default the picker library to the current machine's type (Parts machine → Parts folder)
+  const isParts = !!(M() && M().machineType === 'parts');
+  setPickerLibrary(isParts ? 'parts' : 'machine', true);
   searchImagePicker();
 }
 function closeImagePicker() {
@@ -5666,8 +5693,8 @@ async function searchImagePicker() {
   gridEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#999">Loading...</div>';
   try {
     let data;
-    if (!q && _pickCache.img && Date.now() - _pickCache.img.ts < 90000) { data = _pickCache.img.data; }
-    else { const resp = await fetch(`${gsUrl}?action=listImages&q=${encodeURIComponent(q)}`); data = await resp.json(); if (!q) _pickCache.img = { ts: Date.now(), data }; }
+    if (!q && _pickCache.img && _pickCache.img.folder === _pickerFolder && Date.now() - _pickCache.img.ts < 90000) { data = _pickCache.img.data; }
+    else { const resp = await fetch(`${gsUrl}?action=listImages&folder=${encodeURIComponent(_pickerFolder)}&q=${encodeURIComponent(q)}`); data = await resp.json(); if (!q) _pickCache.img = { ts: Date.now(), data, folder: _pickerFolder }; }
     if (!data.ok) throw new Error(data.error || 'Failed to load images');
     let images = data.images || [];
     const qLower = q.toLowerCase();
@@ -5766,7 +5793,7 @@ async function deleteImageFromPicker(id, name) {
     // token is auto-injected by the global fetch wrapper (see apiToken/window.fetch) — do NOT add it here
     const resp = await fetch(gsUrl, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'deleteImage', id, folder: 'SenLabels_MachineImages' })
+      body: JSON.stringify({ action: 'deleteImage', id, folder: _pickerFolder })
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || 'Delete failed');
