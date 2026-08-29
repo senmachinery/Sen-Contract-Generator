@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.14</title>
+<title>Sen Labels — Contract Generator v13.15</title>
+<!-- v13.15: FIX company-autocomplete dropdown that occasionally got stuck on screen (survived page switches, only a refresh cleared it). Root cause: the 'input' handler is async (awaits fetchCompanies) — two fast keystrokes both passed __closeCompanyDropdown() before either appended, then both appended a dropdown to <body>; __companyDropdown only referenced the 2nd, so the 1st was orphaned and unreachable by close(). Fix: (a) race token __companyRun — a superseded async handler no longer appends; (b) every dropdown gets class 'company-ac-dropdown' and __closeCompanyDropdown() now sweeps ALL of them (kills any orphan) instead of only the current ref. Frontend-only, no backend redeploy. -->
+
 <!-- v13.14: SPLIT the Drive image library by machine type so Parts/Accessories photos no longer clutter the machine-photo picker. Added a "Library" toggle (🖨️ Machines | 🔧 Parts) at the top of the "Pick from Drive" modal. openImagePicker() auto-selects Parts library when the current machine's type is 'parts', else Machines. listImages/deleteImage/Save-to-Drive now route to the active folder: machine photos → SenLabels_MachineImages (unchanged), part photos → SenLabels_PartsImages (backend getOrCreateDriveFolder auto-creates it; NO backend redeploy — listImages already reads e.parameter.folder). Picker cache (_pickCache.img) is now keyed by folder so switching libraries never shows a stale list. Frontend-only. -->
 <!-- v13.13: ADD 5 optional REMARK presets (toggle buttons only, NOT default-on, Buyer picks per deal): (1) Freight/Import Duties Excluded — courier borne by Buyer, price excludes destination import duty/customs tax/local inland transport; (2) Installation Not Included — on-site install charged USD 250 per technician per day; (3) Installation Travel Costs Buyer-Borne — flights/hotel/local transport/meals; (4) Shipping/Freight Included; (5) Installation Included. Text-only additions to REMARK_PRESETS array; no logic change, default remarkItems untouched, no backend redeploy. -->
 
@@ -507,7 +509,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.14</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.15</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -7054,8 +7056,11 @@ function updateSalesRepHint() {
 // ───── AUTOCOMPLETE for company name ─────────────────────────
 let __companyCache = null;
 let __companyDropdown = null;
+let __companyRun = 0;   // v13.15: race token — invalidates stale async input handlers
 function __closeCompanyDropdown() {
-  if (__companyDropdown) { __companyDropdown.remove(); __companyDropdown = null; }
+  __companyDropdown = null;
+  // v13.15: sweep EVERY dropdown incl. orphans left by an async race, so none can get stuck in the DOM (was: only removed the current ref → orphan survived until page refresh).
+  document.querySelectorAll('.company-ac-dropdown').forEach(el => el.remove());
 }
 async function setupCompanyAutocomplete() {
   const input = document.getElementById('f-company');
@@ -7076,14 +7081,17 @@ async function setupCompanyAutocomplete() {
 
   input.addEventListener('input', async () => {
     const q = input.value.toLowerCase().trim();
+    const myRun = ++__companyRun;                      // v13.15: race token
     __closeCompanyDropdown();
     if (q.length < 2) return;
     const list = await fetchCompanies();
+    if (myRun !== __companyRun) return;                // v13.15: a newer keystroke superseded us — don't append an orphan dropdown
     const matches = list.filter(c => c.company.toLowerCase().includes(q)).slice(0, 6);
     if (!matches.length) return;  // new customer: no dropdown, nothing blocks the form
     // Re-check: user may have cleared/changed input while awaiting fetch
     if (input.value.toLowerCase().trim() !== q) return;
     __companyDropdown = document.createElement('div');
+    __companyDropdown.className = 'company-ac-dropdown';   // v13.15: marker so __closeCompanyDropdown() can sweep orphans
     __companyDropdown.style.cssText = 'position:absolute;background:#fff;border:1px solid #c0cde0;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.15);max-height:240px;overflow:auto;z-index:9999;font-size:12px;min-width:300px';
     const rect = input.getBoundingClientRect();
     __companyDropdown.style.left = (rect.left + window.scrollX) + 'px';
