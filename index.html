@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.19</title>
+<title>Sen Labels — Contract Generator v13.20</title>
+<!-- v13.20: FIX (Codex inspection round 2) — autosave-draft restore now restores Doc Type (was mapped to a non-existent state.doctype, so every restored draft lost its type); saveToSheets snapshots the APL flag before any await; print flushes a pending APL preview update; Library bulk import normalises APL data (photos) and records APL as amount 0 / status Price List. Other doc types render unchanged. -->
 <!-- v13.19: FIX (Codex inspection) — Agent Price List: switching doc type away resets status Price List -> Quotation Sent; an empty APL cannot be saved; Excel/Word blocked whenever the doc type is selected; imported photos normalised (Drive links -> thumbnail, data: rejected); numeric 0 preserved in APL cells. Other doc types unchanged. -->
 <!-- v13.18: ADD status "Price List" (Other group in Status). Agent Price List docs are saved with status Price List so the CRM keeps them out of the quote pipeline (CRM v2.60). Starting an Agent Price List sets the status; other docs untouched. Frontend-only, no backend redeploy. -->
 <!-- v13.17: ADD "Agent Price List" doc type — catalog-style multi-model agent price list (one page per model: photo + key specs + standard equipment + price-by-colours table; last page Optional Items + AVR + terms + signature). Separate renderer buildAgentPriceListHTML(), editor panel #apl-panel, all gated by aplActive(); other doc types byte-identical. Uses the Q (Quotation) number series. Frontend-only, no backend redeploy. -->
@@ -521,7 +522,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.19</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.20</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -4441,6 +4442,7 @@ function buildExportFilename(ext) {
 }
 
 function doPrint() {
+  if (typeof _aplTimer !== 'undefined' && _aplTimer) { clearTimeout(_aplTimer); _aplTimer = null; updatePreview(); }   // v13.20: print the latest APL edit
   saveToSheets(true);
   const fname = buildExportFilename('pdf').replace(/\.pdf$/,'');
   
@@ -4803,9 +4805,10 @@ async function saveToSheets(silent=false) {
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
   try {
-    const totalAmt = aplActive() ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
-    const machineTitle = aplActive() ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
-    if (aplActive()) { state.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
+    const _isApl = aplActive();   // v13.20: snapshot before any await
+    const totalAmt = _isApl ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
+    const machineTitle = _isApl ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
+    if (_isApl) { state.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
     if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
       contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
@@ -4838,7 +4841,7 @@ async function saveToSheets(silent=false) {
     fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
-    if (finalNo && state.company && !aplActive()) {   // v13.17: no auto follow-up for an agent price list
+    if (finalNo && state.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
       const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
       fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'crm_autoFollowupFromQuote', followup: {
@@ -5568,6 +5571,8 @@ async function importJSONFiles(input) {
         machineTitle, currency: s.currency, amount: totalAmt,
         status: s.status||'Confirmed', admin: s.admin||'NR', port: s.port||'', notes: s.notes||''
       };
+      if (s.apl && typeof aplNormalize === 'function') aplNormalize(s.apl);   // v13.20: same APL rules (photos) as Load JSON
+      if (s.docType === 'Agent Price List') { summary.amount = 0; summary.status = 'Price List'; summary.machineTitle = 'Agent Price List' + (s.apl && s.apl.title ? ' — ' + s.apl.title : ''); }
 
       // Use no-cors + text/plain to bypass CORS preflight (works from file://)
       await fetch(gsUrl, {
@@ -6929,6 +6934,7 @@ function restoreAutosaveDraft() {
   ['admin','doctype','status','contract-no','date','revised','company','addr','tel','fax','email','attn','port','currency','deposit-pct','pay-cond','validity','delivery','remarks','notes','tradein-desc','tradein-value']
     .forEach(k => sv('f-'+k, state[k.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] || state[k] || ''));
   sv('f-contract-no', state.contractNo); sv('f-date', state.date);
+  sv('f-doctype', state.docType);   // v13.20: the loop above looks up state['doctype'] (wrong case) — restore the real Doc Type
   sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); sv('f-pay-cond', state.payCond);
   sv('f-tradein-desc', state.tradeinDesc); sv('f-tradein-value', state.tradeinValue);
   renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();

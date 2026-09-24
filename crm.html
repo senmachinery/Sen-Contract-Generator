@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.61</title>
+<title>Sen Labels — CRM v2.62</title>
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
@@ -552,7 +552,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.61</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.62</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -4831,7 +4831,7 @@ function gatherPackData(onlyChecked) {
     } else {
       // v2.9: reminders only apply to customers with at least one ACTIVE deal — once every
       // contract is Closed/Delivered/Lost/Cancelled, the customer drops out of the follow-up loop.
-      const hasActiveDeal = (customer.contracts || []).some(ct => !['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled'].includes(ct.status));
+      const hasActiveDeal = (customer.contracts || []).some(ct => !['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled','Price List'].includes(ct.status));   // v2.62
       const ov = hasActiveDeal ? overdue : [];
       const up = hasActiveDeal ? upcoming : [];
       if (ov.length || up.length || inquiries.length) {
@@ -5023,6 +5023,7 @@ function buildContractStatusBody(c) {
     const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
     const isTerminal = won || lost;
     const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
+    if (ct.status === 'Price List') return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;opacity:.65;background:#fafafa"><div style="font-weight:600;font-size:13px">${escapeHtml(ct.contractNo)}</div><div style="font-size:12px;color:var(--text-muted)">Agent price list — not a deal</div></div>`;   // v2.62
     return `
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px${isTerminal ? ';opacity:.65;background:#fafafa' : ''}">
         <div style="font-weight:600;font-size:13px">${escapeHtml(ct.contractNo)}</div>
