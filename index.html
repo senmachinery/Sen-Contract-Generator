@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.16</title>
+<title>Sen Labels — Contract Generator v13.17</title>
+<!-- v13.17: ADD "Agent Price List" doc type — catalog-style multi-model agent price list (one page per model: photo + key specs + standard equipment + price-by-colours table; last page Optional Items + AVR + terms + signature). Separate renderer buildAgentPriceListHTML(), editor panel #apl-panel, all gated by aplActive(); other doc types byte-identical. Uses the Q (Quotation) number series. Frontend-only, no backend redeploy. -->
 <!-- v13.16: ADD a "Refresh" button in the top bar (onclick=location.reload). Lets Max reload the page with one tap on iPad (home-screen web app has no address bar / reload button). Pure additive, single button, no logic touched, no backend redeploy. -->
 <!-- v13.15: FIX company-autocomplete dropdown that occasionally got stuck on screen (survived page switches, only a refresh cleared it). Root cause: the 'input' handler is async (awaits fetchCompanies) — two fast keystrokes both passed __closeCompanyDropdown() before either appended, then both appended a dropdown to <body>; __companyDropdown only referenced the 2nd, so the 1st was orphaned and unreachable by close(). Fix: (a) race token __companyRun — a superseded async handler no longer appends; (b) every dropdown gets class 'company-ac-dropdown' and __closeCompanyDropdown() now sweeps ALL of them (kills any orphan) instead of only the current ref. Frontend-only, no backend redeploy. -->
 
@@ -428,6 +429,14 @@ body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
   input,select,textarea{ font-size:16px !important; }
   body{ overflow-x:hidden; }
 }
+.apl-ed-model{border:1px solid #d6dfeb;border-radius:6px;padding:8px;margin:8px 0;background:#fafcff}
+.apl-ed-model label,#apl-editor>label{display:block;font-size:11px;color:#556;margin:6px 0 2px}
+.apl-ed-model input,.apl-ed-model textarea,#apl-editor>input,#apl-editor>textarea{width:100%;box-sizing:border-box}
+.apl-ed-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.apl-ed-hint{font-weight:400;color:#99a}
+.apl-ed-grid{border-collapse:collapse;font-size:11px;margin:4px 0}
+.apl-ed-grid th,.apl-ed-grid td{border:1px solid #c9d3e0;padding:3px 5px;min-width:34px}
+.apl-ed-grid th{background:#eef3f9}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
@@ -510,7 +519,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.16</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.17</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -588,8 +597,13 @@ function mobileTab(tab) {
           <option value="Sales Contract">Sales Contract</option>
           <option value="Quotation">Quotation</option>
           <option value="Invoice">Invoice</option>
+          <option value="Agent Price List">Agent Price List</option>
         </select>
       </div>
+    </div>
+    <div class="field-group" id="apl-panel" style="display:none">
+      <label>Agent Price List content <span style="font-weight:400;font-size:11px;color:#888">(machine tabs are ignored for this doc type)</span></label>
+      <div id="apl-editor"></div>
     </div>
     <div class="field-group">
       <label>Notes <span style="font-weight:400;font-size:11px;color:#888">(printed next to date on contract)</span></label>
@@ -1909,11 +1923,11 @@ function switchTabDirect(name) {
 // Quotation-like docs (Quotation, Invoice) hide the buyer signature block.
 function isQuoteLike(dt) {
   dt = dt || state.docType;
-  return dt === 'Quotation' || dt === 'Invoice';
+  return dt === 'Quotation' || dt === 'Invoice' || dt === 'Agent Price List';
 }
 function docPrefix() {
   const dt = document.getElementById('f-doctype')?.value || state.docType || 'Sales Contract';
-  return dt === 'Quotation' ? 'Q' : 'SC';
+  return (dt === 'Quotation' || dt === 'Agent Price List') ? 'Q' : 'SC';
 }
 
 function genContractNo() {
@@ -1936,7 +1950,7 @@ function onDoctypeChange() {
   const wasAuto = !!(_autoNoValue && no === _autoNoValue);
   if (dt === 'Invoice') {
     // Invoice numbers come from the CRM / typed manually — don't rewrite the number.
-  } else if (dt === 'Quotation') {
+  } else if (dt === 'Quotation' || dt === 'Agent Price List') {
     no = no.replace(/\/SC\//g, '/Q/');
   } else {
     no = no.replace(/\/Q\//g, '/SC/');
@@ -3583,10 +3597,12 @@ function updatePreview() {
     if (paper) paper.innerHTML = '<div style="color:red;padding:20px;font-family:sans-serif"><b>Preview error:</b><br>' + e.message + '</div>';
     console.error('updatePreview error:', e);
   }
+  try { aplSyncPanel(); } catch (e) {}   // v13.17: show/hide Agent Price List editor
   try { syncPriceAdvanced(); } catch (e) {}   // v10.97: 有高级数据则自动展开（隔离 try，绝不影响预览渲染）
 }
 
 function buildContractHTML() {
+  if (state.docType === 'Agent Price List') return aplActive() ? buildAgentPriceListHTML() : aplEmptyHTML();   // v13.17: Agent Price List has its own renderer
   const curr = state.currency;
   const fmt  = n => formatMoney(n, curr);
   const dateStr    = state.date ? formatDate(state.date) : '';
@@ -4391,7 +4407,7 @@ function buildExportFilename(ext) {
     .replace(/\s+/g,' ')
     .trim();
   // Shorten each machine title — remove fluff prefixes
-  const machineTitle = state.machines.map(m => {
+  const machineTitle = aplActive() ? 'Agent Price List' : state.machines.map(m => {
     if (m.machineType === 'parts') return partsTitle(m);
     let t = m.customTitle || m.otherModel || shortTitle(m) || 'Machine';
     // Remove common verbose prefixes for shorter filenames
@@ -4644,6 +4660,8 @@ function normalizeState(s) {
   if (typeof s.packageLabel !== 'string') s.packageLabel = '';
   // v13.12: old contracts (saved before the bank-charges clause) default to OFF so they render byte-identical.
   if (s.buyerBankCharges === undefined) s.buyerBankCharges = false;
+  // v13.17: Agent Price List defaults (only when present; other docs untouched)
+  if (s.apl && typeof aplNormalize === 'function') aplNormalize(s.apl);
 
   s.machines.forEach(m => {
     if (!m) return;
@@ -4775,8 +4793,8 @@ async function saveToSheets(silent=false) {
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
   try {
-    const totalAmt = pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0);
-    const machineTitle = state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
+    const totalAmt = aplActive() ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
+    const machineTitle = aplActive() ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
     if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
       contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
@@ -4809,7 +4827,7 @@ async function saveToSheets(silent=false) {
     fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
-    if (finalNo && state.company) {
+    if (finalNo && state.company && !aplActive()) {   // v13.17: no auto follow-up for an agent price list
       const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
       fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'crm_autoFollowupFromQuote', followup: {
@@ -6232,6 +6250,7 @@ function loadMachineFromDB(idx) {
 // EXCEL EXPORT
 // ============================================================
 function exportToExcel() {
+  if (aplActive()) { alert('Excel export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17
   saveCurrentMachineToState();
   if (typeof XLSX === 'undefined') { alert('xlsx-js-style not loaded. Check internet connection.'); return; }
 
@@ -6510,6 +6529,7 @@ function buildSpecRowsWord(m) {
 }
 
 function exportToWord() {
+  if (aplActive()) { alert('Word export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17
   saveCurrentMachineToState();
   const curr  = state.currency;
   const fmt   = n => formatMoney(n, curr);
@@ -7642,6 +7662,298 @@ function parsePDFText(text) {
   
   return out;
 }
+
+</script>
+<script>
+// ============================================================
+// v13.17: AGENT PRICE LIST doc type (catalog-style multi-model agent price list)
+// Everything here is gated by aplActive(): state.docType === 'Agent Price List' && state.apl.
+// When not active, no existing output changes.
+// state.apl = { title, intro, models:[{ name, sub, photo, keyNums:[[v,unit,label]], specs:[[label,value]],
+//   std:[...], note, cols:[...], rows:[[...]] }], optional:[[desc,price]], avr:[[capacity,price]],
+//   avrNote, terms:[...], signName, signTitle, signTel }
+// ============================================================
+const APL_DOCTYPE = 'Agent Price List';
+const APL_NAVY = '#0e2546';
+const APL_COLS = ['Colours', 'Anilox (pcs)', 'Net Weight (kg)', 'Dimension L × W × H (mm)', 'KVA', 'KW', 'A', 'Price (USD)'];
+
+function aplActive() {
+  return state.docType === APL_DOCTYPE && !!state.apl && Array.isArray(state.apl.models);
+}
+function aplBlankModel() {
+  return { name: 'Sen Model', sub: '', photo: '', keyNums: [], specs: [], std: [], note: 'Price excludes UV dryer — see Optional Items.',
+    cols: APL_COLS.slice(), rows: [['4', '8', '', '', '', '', '', '']] };
+}
+function aplBlank() {
+  return { title: 'AGENT PRICE', intro: '', models: [aplBlankModel()], optional: [], avr: [], avrNote: '',
+    terms: ['Trade Term: EXW Johor, Malaysia', '*Price Validity : One (1) Month Only'],
+    signName: '', signTitle: '', signTel: '' };
+}
+function aplTitleForRecord() {
+  const a = state.apl || {};
+  const names = (a.models || []).map(m => m.name).filter(Boolean);
+  return 'Agent Price List' + (a.title ? ' — ' + a.title : '') + (names.length ? ' (' + names.join(', ') + ')' : '');
+}
+
+// ---------- RENDER ----------
+function aplHeaderMini(a) {
+  return `<div class="apl-mini"><span><strong>Sen Labels Machinery Sdn Bhd</strong> &nbsp;·&nbsp; ${esc(a.title || 'AGENT PRICE')}</span>` +
+    `<span>${esc(state.docType)} No.: ${esc(state.contractNo) || '&nbsp;'} &nbsp;·&nbsp; ${state.date ? formatDate(state.date) : ''}</span></div>`;
+}
+function aplModelPage(m, a, idx) {
+  const cols = (m.cols && m.cols.length) ? m.cols : APL_COLS;
+  const photo = m.photo
+    ? `<div class="apl-photo"><img src="${esc(m.photo)}" alt="${esc(m.name)}"></div>`
+    : `<div class="apl-photo apl-photo-empty">Photo to be added</div>`;
+  const nums = (m.keyNums || []).filter(k => k && (k[0] || k[2])).map(k =>
+    `<div class="apl-num"><div class="apl-num-v">${esc(k[0])}<span>${esc(k[1] || '')}</span></div><div class="apl-num-l">${esc(k[2] || '')}</div></div>`).join('');
+  const specs = (m.specs || []).filter(s => s && (s[0] || s[1])).map(s =>
+    `<tr><td>${esc(s[0])}</td><td>${esc(s[1] || '')}</td></tr>`).join('');
+  const std = (m.std || []).filter(Boolean).map(t => `<li>${esc(t)}</li>`).join('');
+  const head = cols.map(c => `<th>${esc(c)}</th>`).join('');
+  const body = (m.rows || []).map(r => '<tr>' + cols.map((c, i) => `<td>${esc(r[i] == null ? '' : r[i])}</td>`).join('') + '</tr>').join('');
+  return `
+  <div class="apl-page">
+    ${aplHeaderMini(a)}
+    <div class="apl-model-head">
+      <div class="apl-model-name">${esc(m.name)}</div>
+      ${m.sub ? `<div class="apl-model-sub">${esc(m.sub)}</div>` : ''}
+    </div>
+    ${photo}
+    ${nums ? `<div class="apl-nums">${nums}</div>` : ''}
+    <div class="apl-cols2">
+      <div>${std ? `<div class="apl-h">Standard equipment</div><ul class="apl-std">${std}</ul>` : ''}</div>
+      <div>${specs ? `<div class="apl-h">Specifications</div><table class="apl-spec">${specs}</table>` : ''}</div>
+    </div>
+    ${m.note ? `<div class="apl-note">${esc(m.note)}</div>` : ''}
+    <table class="apl-price"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
+  </div>`;
+}
+function buildAgentPriceListHTML() {
+  const a = state.apl;
+  const dateStr = state.date ? formatDate(state.date) : '';
+  const toc = a.models.map((m, i) => {
+    const pc = ((m.cols && m.cols.length) ? m.cols : APL_COLS).length - 1;
+    const prices = (m.rows || []).map(r => parseFloat(String(r[pc] || '').replace(/[^0-9.]/g, ''))).filter(n => n > 0);
+    const from = prices.length ? 'from USD ' + Math.min(...prices).toLocaleString('en-US') : '';
+    return `<tr><td>${i + 1}</td><td><strong>${esc(m.name)}</strong>${m.sub ? `<div class="apl-toc-sub">${esc(m.sub)}</div>` : ''}</td><td style="text-align:right">${esc(from)}</td></tr>`;
+  }).join('');
+  const opt = (a.optional || []).filter(r => r && (r[0] || r[1])).map((r, i) =>
+    `<tr><td>${i + 1})</td><td>${esc(r[0])}</td><td style="text-align:right;white-space:nowrap">${esc(r[1] || '')}</td></tr>`).join('');
+  const avr = (a.avr || []).filter(r => r && (r[0] || r[1])).map(r =>
+    `<tr><td>${esc(r[0])}</td><td style="text-align:right">${esc(r[1] || '')}</td></tr>`).join('');
+  const terms = (a.terms || []).filter(Boolean).map(t => `<div>${esc(t)}</div>`).join('');
+  return `
+  <style>
+    .apl-page,.apl-title,.apl-intro,.apl-toc{font-family:'IBM Plex Sans',Arial,sans-serif}
+    .apl-page{page-break-before:always;break-before:page;padding-top:1mm}
+    .apl-mini{display:flex;justify-content:space-between;font-size:7.5pt;color:#6b7686;border-bottom:1px solid #d9dee6;padding-bottom:1.5mm;margin-bottom:3mm}
+    .apl-title{font-size:22pt;font-weight:800;color:${APL_NAVY};letter-spacing:.5px;margin:5mm 0 1mm}
+    .apl-intro{font-size:9.5pt;color:#444;white-space:pre-wrap;margin:0 0 4mm}
+    .apl-toc{width:100%;border-collapse:collapse;font-size:10pt;margin-top:3mm}
+    .apl-toc td{padding:2.2mm 2mm;border-bottom:1px solid #e3e7ee;vertical-align:top}
+    .apl-toc td:first-child{width:8mm;color:${APL_NAVY};font-weight:700}
+    .apl-toc-sub{font-size:8.5pt;color:#6b7686}
+    .apl-model-name{font-size:24pt;font-weight:800;color:${APL_NAVY};line-height:1.05}
+    .apl-model-sub{font-size:10pt;color:#6b7686;margin-top:1mm}
+    .apl-photo{text-align:center;margin:3mm 0 2mm}
+    .apl-photo img{max-width:100%;max-height:52mm;object-fit:contain}
+    .apl-photo-empty{height:40mm;border:1.5px dashed #b9c2cf;color:#8a95a5;display:flex;align-items:center;justify-content:center;font-size:10pt}
+    .apl-nums{display:flex;border-top:1px solid #d9dee6;border-bottom:1px solid #d9dee6;margin:2mm 0 3mm}
+    .apl-num{flex:1;padding:2mm 2mm;border-left:1px solid #e3e7ee}
+    .apl-num:first-child{border-left:none}
+    .apl-num-v{font-size:17pt;font-weight:300;color:${APL_NAVY};line-height:1.1}
+    .apl-num-v span{font-size:9pt;margin-left:1mm;color:#6b7686}
+    .apl-num-l{font-size:6.8pt;letter-spacing:.6px;text-transform:uppercase;color:#6b7686;margin-top:.5mm}
+    .apl-cols2{display:grid;grid-template-columns:1.25fr 1fr;gap:6mm}
+    .apl-h{font-size:9.5pt;font-weight:700;color:${APL_NAVY};margin-bottom:1mm}
+    .apl-std{margin:0;padding-left:4mm;font-size:7.8pt;line-height:1.35;columns:2;column-gap:5mm;color:#222}
+    .apl-spec{width:100%;border-collapse:collapse;font-size:8pt}
+    .apl-spec td{padding:.9mm 1mm;border-bottom:1px solid #eef1f5;vertical-align:top}
+    .apl-spec td:first-child{color:#6b7686;width:42%}
+    .apl-note{font-size:8.5pt;font-weight:700;color:#b3261e;margin:3mm 0 1mm}
+    .apl-price{width:100%;border-collapse:collapse;font-size:8.3pt;page-break-inside:avoid}
+    .apl-price th{background:${APL_NAVY};color:#fff;font-weight:600;padding:1.6mm 1.2mm;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .apl-price td{padding:1.4mm 1.2mm;text-align:center;border-bottom:1px solid #e3e7ee}
+    .apl-price td:last-child{font-weight:700;color:${APL_NAVY};text-align:right;white-space:nowrap}
+    .apl-price tbody tr:nth-child(even) td{background:#f5f7fa;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .apl-opt{width:100%;border-collapse:collapse;font-size:9pt}
+    .apl-opt td{padding:1.6mm 1.5mm;border-bottom:1px solid #e3e7ee;vertical-align:top}
+    .apl-opt td:first-child{width:7mm;color:#6b7686}
+    .apl-avr{border-collapse:collapse;font-size:9pt;min-width:70mm}
+    .apl-avr td{padding:1.2mm 3mm;border-bottom:1px solid #e3e7ee}
+    .apl-terms{font-size:9.5pt;margin-top:5mm;line-height:1.6}
+    .apl-sig{margin-top:10mm;font-size:9.5pt;page-break-inside:avoid}
+    .apl-sig-line{width:60mm;border-bottom:1px solid #333;height:14mm;margin-bottom:1.5mm}
+  </style>
+  <div class="cp-header-wrap">
+    <img class="cp-logo" src="${LOGO_B64}" alt="Sen Labels">
+    <div style="flex:1">
+      <div class="cp-company">Sen Labels Machinery Sdn Bhd <span style="font-size:9.5pt;font-weight:400;color:#888">(809225H)</span></div>
+      <div class="cp-addr">PTD 31073, HS(M) 2896, Off Jalan Haji Saat 14 3/4, Off Jalan Sungai Tiram, 81800 Ulu Tiram, Kota Tinggi, Johor, Malaysia</div>
+      <div class="cp-addr">Tel: 006 07 8710019 &nbsp;&#124;&nbsp; Fax: 006 07 8635019, 006 07 8611793 &nbsp;&#124;&nbsp; H/P: +60 13-288 2863</div>
+      <div class="cp-addr">Email: senlabelsinternational@gmail.com &nbsp;&#124;&nbsp; anise.senlabels@gmail.com</div>
+    </div>
+  </div>
+  <hr class="cp-divider">
+  <div class="cp-header-grid">
+    <div class="cp-to-block">
+      <div><span class="cp-label">To:</span> <strong>${esc(state.company) || '&nbsp;'}</strong></div>
+      <div><span class="cp-label">Add:</span> ${esc(state.addr) || '&nbsp;'}</div>
+      <div><span class="cp-label">Tel:</span> ${esc(state.tel) || '&nbsp;'}</div>
+      <div><span class="cp-label">Email:</span> ${esc(state.email) || '&nbsp;'}</div>
+      <div><span class="cp-label">Attn.:</span> ${esc(state.attn) || '&nbsp;'}</div>
+    </div>
+    <div class="cp-sc-block">
+      <div class="cp-sc-no">${esc(state.docType)} No.: ${esc(state.contractNo) || '&nbsp;'}</div>
+      <div>Date: ${dateStr}</div>
+      ${state.notes ? `<div style="margin-top:2mm;font-size:9pt;color:#555;font-style:italic;max-width:65mm;text-align:right;white-space:pre-wrap">${esc(state.notes)}</div>` : ''}
+    </div>
+  </div>
+  <div class="apl-title">${esc(a.title || 'AGENT PRICE')}</div>
+  ${a.intro ? `<div class="apl-intro">${esc(a.intro)}</div>` : ''}
+  <table class="apl-toc"><tbody>${toc}${opt || avr ? `<tr><td>${a.models.length + 1}</td><td><strong>Optional Items</strong><div class="apl-toc-sub">UV dryers, extra stations, AVR voltage stabilisers</div></td><td></td></tr>` : ''}</tbody></table>
+  ${a.models.map((m, i) => aplModelPage(m, a, i)).join('')}
+  <div class="apl-page">
+    ${aplHeaderMini(a)}
+    <div class="apl-model-name" style="font-size:20pt">Optional Items</div>
+    <div class="apl-model-sub" style="margin-bottom:3mm">Prices in USD, per unit. UV dryers are priced per printing station.</div>
+    ${opt ? `<table class="apl-opt"><tbody>${opt}</tbody></table>` : ''}
+    ${avr ? `<div class="apl-h" style="margin-top:6mm">Automatic Voltage Regulator (AVR)</div>${a.avrNote ? `<div class="apl-model-sub" style="margin:0 0 2mm">${esc(a.avrNote)}</div>` : ''}<table class="apl-avr"><tbody>${avr}</tbody></table>` : ''}
+    ${terms ? `<div class="apl-terms">${terms}</div>` : ''}
+    <div class="apl-sig">
+      <div style="font-weight:700;margin-bottom:2mm">SELLER</div>
+      <div class="apl-sig-line"></div>
+      <div>Sen Labels Machinery Sdn. Bhd.</div>
+      <div><strong>${esc(a.signName || '')}</strong></div>
+      <div>${esc(a.signTitle || '')}${a.signTel ? ` (${esc(a.signTel)})` : ''}</div>
+    </div>
+  </div>`;
+}
+
+// ---------- EDITOR (form panel, English UI) ----------
+let _aplEditorFor = undefined;
+function aplEmptyHTML() {
+  return '<div style="padding:30mm 10mm;text-align:center;font-family:Arial,sans-serif;color:#6b7686">Agent Price List: click <b>+ Start Agent Price List</b> in the form to begin.</div>';
+}
+function aplNormalize(a) {
+  if (!Array.isArray(a.models)) a.models = [];
+  a.models = a.models.filter(m => m && typeof m === 'object');
+  a.models.forEach(m => {
+    if (!Array.isArray(m.cols) || !m.cols.length) m.cols = APL_COLS.slice();
+    if (!Array.isArray(m.rows)) m.rows = [];
+    m.rows = m.rows.map(r => Array.isArray(r) ? r : []);
+    ['keyNums', 'specs', 'std'].forEach(k => { if (!Array.isArray(m[k])) m[k] = []; });
+  });
+  ['optional', 'avr', 'terms'].forEach(k => { if (!Array.isArray(a[k])) a[k] = []; });
+}
+function aplCleanPhoto(v) {
+  v = String(v || '').trim();
+  if (/^data:/i.test(v)) { alert('Please use a Google Drive image URL, not a pasted image (too large to save).'); return ''; }
+  const m = v.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || v.match(/drive\.google\.com\/open\?id=([\w-]+)/);
+  return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1600' : v;
+}
+let _aplTimer = null;
+function aplCell(path, val, tag) {
+  tag = tag || 'td';
+  return `<${tag} contenteditable="true" data-apl="${path}">${esc(val == null ? '' : val)}</${tag}>`;
+}
+function aplLines(arr, joiner) {
+  return (arr || []).map(x => Array.isArray(x) ? x.join(joiner || ' | ') : x).join('\n');
+}
+function aplRenderEditor() {
+  const box = document.getElementById('apl-editor');
+  if (!box) return;
+  const a = state.apl;
+  _aplEditorFor = a || null;
+  if (!a) {
+    box.innerHTML = `<button class="btn btn-outline btn-sm" onclick="aplStart()">+ Start Agent Price List</button>`;
+    return;
+  }
+  const models = a.models.map((m, mi) => {
+    const cols = m.cols || APL_COLS;
+    const head = '<tr>' + cols.map((c, ci) => aplCell(`models.${mi}.cols.${ci}`, c, 'th')).join('') + '</tr>';
+    const rows = (m.rows || []).map((r, ri) => '<tr>' + cols.map((c, ci) => aplCell(`models.${mi}.rows.${ri}.${ci}`, r[ci])).join('') + '</tr>').join('');
+    return `<div class="apl-ed-model">
+      <div class="apl-ed-bar"><strong>Model ${mi + 1}</strong>
+        <span><button class="btn btn-outline btn-sm" onclick="aplMoveModel(${mi},-1)">&uarr;</button>
+        <button class="btn btn-outline btn-sm" onclick="aplMoveModel(${mi},1)">&darr;</button>
+        <button class="btn btn-outline btn-sm" onclick="aplRemoveModel(${mi})">Remove</button></span></div>
+      <label>Name</label><input type="text" data-apl="models.${mi}.name" value="${esc(m.name)}">
+      <label>Subtitle</label><input type="text" data-apl="models.${mi}.sub" value="${esc(m.sub)}">
+      <label>Photo URL <span class="apl-ed-hint">(Drive image URL — leave empty for a placeholder)</span></label><input type="text" data-apl="models.${mi}.photo" value="${esc(m.photo)}">
+      <label>Key numbers <span class="apl-ed-hint">(one per line: value | unit | label)</span></label><textarea rows="3" data-apl-lines="models.${mi}.keyNums">${esc(aplLines(m.keyNums))}</textarea>
+      <label>Specifications <span class="apl-ed-hint">(one per line: label | value)</span></label><textarea rows="5" data-apl-lines="models.${mi}.specs">${esc(aplLines(m.specs))}</textarea>
+      <label>Standard equipment <span class="apl-ed-hint">(one item per line)</span></label><textarea rows="5" data-apl-list="models.${mi}.std">${esc(aplLines(m.std))}</textarea>
+      <label>Note above price table</label><input type="text" data-apl="models.${mi}.note" value="${esc(m.note)}">
+      <label>Price table <span class="apl-ed-hint">(click a cell to edit)</span></label>
+      <div style="overflow-x:auto"><table class="apl-ed-grid">${head}${rows}</table></div>
+      <button class="btn btn-outline btn-sm" onclick="aplAddRow(${mi})">+ Row</button>
+      <button class="btn btn-outline btn-sm" onclick="aplDelRow(${mi})">&minus; Last row</button>
+    </div>`;
+  }).join('');
+  const grid2 = (key, labels) => '<table class="apl-ed-grid"><tr><th>' + labels[0] + '</th><th>' + labels[1] + '</th></tr>' +
+    (a[key] || []).map((r, ri) => '<tr>' + aplCell(`${key}.${ri}.0`, r[0]) + aplCell(`${key}.${ri}.1`, r[1]) + '</tr>').join('') + '</table>' +
+    `<button class="btn btn-outline btn-sm" onclick="aplAddPair('${key}')">+ Row</button> <button class="btn btn-outline btn-sm" onclick="aplDelPair('${key}')">&minus; Last row</button>`;
+  box.innerHTML = `
+    <label>Document title</label><input type="text" data-apl="title" value="${esc(a.title)}">
+    <label>Intro text (optional)</label><textarea rows="2" data-apl="intro">${esc(a.intro)}</textarea>
+    ${models}
+    <button class="btn btn-outline btn-sm" onclick="aplAddModel()">+ Add model</button>
+    <div class="apl-ed-model"><div class="apl-ed-bar"><strong>Optional items</strong></div>${grid2('optional', ['Item', 'Price'])}</div>
+    <div class="apl-ed-model"><div class="apl-ed-bar"><strong>AVR table</strong></div>
+      <label>AVR note</label><input type="text" data-apl="avrNote" value="${esc(a.avrNote)}">${grid2('avr', ['Capacity', 'Price'])}</div>
+    <label>Terms <span class="apl-ed-hint">(one per line)</span></label><textarea rows="3" data-apl-list="terms">${esc(aplLines(a.terms))}</textarea>
+    <label>Signature name / title / tel</label>
+    <input type="text" data-apl="signName" value="${esc(a.signName)}">
+    <input type="text" data-apl="signTitle" value="${esc(a.signTitle)}">
+    <input type="text" data-apl="signTel" value="${esc(a.signTel)}">
+    <div style="margin-top:8px"><button class="btn btn-outline btn-sm" onclick="aplClear()">Remove Agent Price List content</button></div>`;
+}
+function aplSetPath(path, val) {
+  const keys = path.split('.');
+  let o = state.apl;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i];
+    if (o[k] == null) o[k] = /^\d+$/.test(keys[i + 1]) ? [] : {};
+    o = o[k];
+  }
+  o[keys[keys.length - 1]] = val;
+}
+function aplOnInput(e) {
+  const el = e.target;
+  if (!state.apl || !el || !el.closest || !el.closest('#apl-editor')) return;
+  if (el.dataset.apl) aplSetPath(el.dataset.apl, el.isContentEditable ? el.innerText.trim() : (/\.photo$/.test(el.dataset.apl) ? aplCleanPhoto(el.value) : el.value));
+  else if (el.dataset.aplLines) aplSetPath(el.dataset.aplLines, el.value.split('\n').filter(l => l.trim()).map(l => l.split('|').map(s => s.trim())));
+  else if (el.dataset.aplList) aplSetPath(el.dataset.aplList, el.value.split('\n').map(l => l.trim()).filter(Boolean));
+  else return;
+  clearTimeout(_aplTimer);
+  _aplTimer = setTimeout(() => updatePreview(), 250);
+}
+function aplRefresh() { aplRenderEditor(); updatePreview(); }
+function aplStart() { if (!state.apl) state.apl = aplBlank(); aplRefresh(); }
+function aplClear() { if (confirm('Remove all Agent Price List content from this document?')) { state.apl = null; aplRefresh(); } }
+function aplAddModel() { state.apl.models.push(aplBlankModel()); aplRefresh(); }
+function aplRemoveModel(i) { if (confirm('Remove model ' + (i + 1) + '?')) { state.apl.models.splice(i, 1); aplRefresh(); } }
+function aplMoveModel(i, d) {
+  const ms = state.apl.models, j = i + d;
+  if (j < 0 || j >= ms.length) return;
+  [ms[i], ms[j]] = [ms[j], ms[i]]; aplRefresh();
+}
+function aplAddRow(mi) { const m = state.apl.models[mi]; m.rows = m.rows || []; m.rows.push((m.cols || APL_COLS).map(() => '')); aplRefresh(); }
+function aplDelRow(mi) { const m = state.apl.models[mi]; if (m.rows && m.rows.length) { m.rows.pop(); aplRefresh(); } }
+function aplAddPair(key) { state.apl[key] = state.apl[key] || []; state.apl[key].push(['', '']); aplRefresh(); }
+function aplDelPair(key) { if (state.apl[key] && state.apl[key].length) { state.apl[key].pop(); aplRefresh(); } }
+// Called from updatePreview(): show the panel only for the Agent Price List doc type,
+// and re-render the editor only when the underlying state.apl object changed (load / new / start).
+function aplSyncPanel() {
+  const panel = document.getElementById('apl-panel');
+  if (!panel) return;
+  const on = state.docType === APL_DOCTYPE;
+  panel.style.display = on ? '' : 'none';
+  if (on && _aplEditorFor !== (state.apl || null)) aplRenderEditor();
+}
+if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('input', aplOnInput);
 
 </script>
 </body>
