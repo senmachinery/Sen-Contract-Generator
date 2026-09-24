@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.17</title>
+<title>Sen Labels — Contract Generator v13.18</title>
+<!-- v13.18: ADD status "Price List" (Other group in Status). Agent Price List docs are saved with status Price List so the CRM keeps them out of the quote pipeline (CRM v2.60). Starting an Agent Price List sets the status; other docs untouched. Frontend-only, no backend redeploy. -->
 <!-- v13.17: ADD "Agent Price List" doc type — catalog-style multi-model agent price list (one page per model: photo + key specs + standard equipment + price-by-colours table; last page Optional Items + AVR + terms + signature). Separate renderer buildAgentPriceListHTML(), editor panel #apl-panel, all gated by aplActive(); other doc types byte-identical. Uses the Q (Quotation) number series. Frontend-only, no backend redeploy. -->
 <!-- v13.16: ADD a "Refresh" button in the top bar (onclick=location.reload). Lets Max reload the page with one tap on iPad (home-screen web app has no address bar / reload button). Pure additive, single button, no logic touched, no backend redeploy. -->
 <!-- v13.15: FIX company-autocomplete dropdown that occasionally got stuck on screen (survived page switches, only a refresh cleared it). Root cause: the 'input' handler is async (awaits fetchCompanies) — two fast keystrokes both passed __closeCompanyDropdown() before either appended, then both appended a dropdown to <body>; __companyDropdown only referenced the 2nd, so the 1st was orphaned and unreachable by close(). Fix: (a) race token __companyRun — a superseded async handler no longer appends; (b) every dropdown gets class 'company-ac-dropdown' and __closeCompanyDropdown() now sweeps ALL of them (kills any orphan) instead of only the current ref. Frontend-only, no backend redeploy. -->
@@ -519,7 +520,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.17</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.18</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -638,6 +639,9 @@ function mobileTab(tab) {
           <option value="On Hold">On Hold</option>
           <option value="Lost">Lost</option>
           <option value="Cancelled">Cancelled</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="Price List">Price List (agent price list)</option>
         </optgroup>
       </select>
     </div>
@@ -4795,6 +4799,7 @@ async function saveToSheets(silent=false) {
   try {
     const totalAmt = aplActive() ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
     const machineTitle = aplActive() ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
+    if (aplActive()) { state.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
     if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
       contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
@@ -7931,7 +7936,11 @@ function aplOnInput(e) {
   _aplTimer = setTimeout(() => updatePreview(), 250);
 }
 function aplRefresh() { aplRenderEditor(); updatePreview(); }
-function aplStart() { if (!state.apl) state.apl = aplBlank(); aplRefresh(); }
+function aplStart() {
+  if (!state.apl) state.apl = aplBlank();
+  state.status = 'Price List'; const fs = document.getElementById('f-status'); if (fs) fs.value = 'Price List';   // v13.18
+  aplRefresh();
+}
 function aplClear() { if (confirm('Remove all Agent Price List content from this document?')) { state.apl = null; aplRefresh(); } }
 function aplAddModel() { state.apl.models.push(aplBlankModel()); aplRefresh(); }
 function aplRemoveModel(i) { if (confirm('Remove model ' + (i + 1) + '?')) { state.apl.models.splice(i, 1); aplRefresh(); } }
