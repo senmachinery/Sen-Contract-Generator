@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.18</title>
+<title>Sen Labels — Contract Generator v13.19</title>
+<!-- v13.19: FIX (Codex inspection) — Agent Price List: switching doc type away resets status Price List -> Quotation Sent; an empty APL cannot be saved; Excel/Word blocked whenever the doc type is selected; imported photos normalised (Drive links -> thumbnail, data: rejected); numeric 0 preserved in APL cells. Other doc types unchanged. -->
 <!-- v13.18: ADD status "Price List" (Other group in Status). Agent Price List docs are saved with status Price List so the CRM keeps them out of the quote pipeline (CRM v2.60). Starting an Agent Price List sets the status; other docs untouched. Frontend-only, no backend redeploy. -->
 <!-- v13.17: ADD "Agent Price List" doc type — catalog-style multi-model agent price list (one page per model: photo + key specs + standard equipment + price-by-colours table; last page Optional Items + AVR + terms + signature). Separate renderer buildAgentPriceListHTML(), editor panel #apl-panel, all gated by aplActive(); other doc types byte-identical. Uses the Q (Quotation) number series. Frontend-only, no backend redeploy. -->
 <!-- v13.16: ADD a "Refresh" button in the top bar (onclick=location.reload). Lets Max reload the page with one tap on iPad (home-screen web app has no address bar / reload button). Pure additive, single button, no logic touched, no backend redeploy. -->
@@ -520,7 +521,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.18</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.19</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1961,6 +1962,10 @@ function onDoctypeChange() {
   }
   noField.value = no;
   state.contractNo = no;
+  // v13.19: the Price List status belongs to Agent Price List only — never let it stick to a real quote/contract
+  { const _fs = document.getElementById('f-status');
+    if (dt !== 'Agent Price List' && state.status === 'Price List') { state.status = 'Quotation Sent'; if (_fs) _fs.value = 'Quotation Sent'; }
+    else if (dt === 'Agent Price List' && state.apl) { state.status = 'Price List'; if (_fs) _fs.value = 'Price List'; } }
   updatePreview();
   if (wasAuto && gsUrl && dt !== 'Invoice') fetchNextNo();   // 用正确序列覆盖（fetchNextNo 用 docPrefix() = 新类型）
 }
@@ -4793,6 +4798,7 @@ async function stripImagesForSave(stateObj) {
 
 async function saveToSheets(silent=false) {
   saveCurrentMachineToState();
+  if (state.docType === 'Agent Price List' && !aplActive()) { if (!silent) alert('This Agent Price List is empty — click "+ Start Agent Price List" in the form first.'); return; }   // v13.19
   if (!gsUrl) { if (!silent) alert('No Google Sheets URL configured. Go to Settings.'); return; }
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
@@ -6255,7 +6261,7 @@ function loadMachineFromDB(idx) {
 // EXCEL EXPORT
 // ============================================================
 function exportToExcel() {
-  if (aplActive()) { alert('Excel export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17
+  if (state.docType === 'Agent Price List') { alert('Excel export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17/v13.19
   saveCurrentMachineToState();
   if (typeof XLSX === 'undefined') { alert('xlsx-js-style not loaded. Check internet connection.'); return; }
 
@@ -6534,7 +6540,7 @@ function buildSpecRowsWord(m) {
 }
 
 function exportToWord() {
-  if (aplActive()) { alert('Word export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17
+  if (state.docType === 'Agent Price List') { alert('Word export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17/v13.19
   saveCurrentMachineToState();
   const curr  = state.currency;
   const fmt   = n => formatMoney(n, curr);
@@ -7679,6 +7685,7 @@ function parsePDFText(text) {
 //   avrNote, terms:[...], signName, signTitle, signTel }
 // ============================================================
 const APL_DOCTYPE = 'Agent Price List';
+const aplS = v => (v === null || v === undefined) ? '' : esc(String(v));   // v13.19: APL-only escaper that keeps numeric 0
 const APL_NAVY = '#0e2546';
 const APL_COLS = ['Colours', 'Anilox (pcs)', 'Net Weight (kg)', 'Dimension L × W × H (mm)', 'KVA', 'KW', 'A', 'Price (USD)'];
 
@@ -7710,13 +7717,13 @@ function aplModelPage(m, a, idx) {
   const photo = m.photo
     ? `<div class="apl-photo"><img src="${esc(m.photo)}" alt="${esc(m.name)}"></div>`
     : `<div class="apl-photo apl-photo-empty">Photo to be added</div>`;
-  const nums = (m.keyNums || []).filter(k => k && (k[0] || k[2])).map(k =>
-    `<div class="apl-num"><div class="apl-num-v">${esc(k[0])}<span>${esc(k[1] || '')}</span></div><div class="apl-num-l">${esc(k[2] || '')}</div></div>`).join('');
-  const specs = (m.specs || []).filter(s => s && (s[0] || s[1])).map(s =>
-    `<tr><td>${esc(s[0])}</td><td>${esc(s[1] || '')}</td></tr>`).join('');
+  const nums = (m.keyNums || []).filter(k => k && (k[0] || k[0] === 0 || k[2])).map(k =>
+    `<div class="apl-num"><div class="apl-num-v">${aplS(k[0])}<span>${aplS(k[1])}</span></div><div class="apl-num-l">${aplS(k[2])}</div></div>`).join('');
+  const specs = (m.specs || []).filter(s => s && (s[0] || s[1] || s[1] === 0)).map(s =>
+    `<tr><td>${aplS(s[0])}</td><td>${aplS(s[1])}</td></tr>`).join('');
   const std = (m.std || []).filter(Boolean).map(t => `<li>${esc(t)}</li>`).join('');
   const head = cols.map(c => `<th>${esc(c)}</th>`).join('');
-  const body = (m.rows || []).map(r => '<tr>' + cols.map((c, i) => `<td>${esc(r[i] == null ? '' : r[i])}</td>`).join('') + '</tr>').join('');
+  const body = (m.rows || []).map(r => '<tr>' + cols.map((c, i) => `<td>${aplS(r[i])}</td>`).join('') + '</tr>').join('');
   return `
   <div class="apl-page">
     ${aplHeaderMini(a)}
@@ -7743,10 +7750,10 @@ function buildAgentPriceListHTML() {
     const from = prices.length ? 'from USD ' + Math.min(...prices).toLocaleString('en-US') : '';
     return `<tr><td>${i + 1}</td><td><strong>${esc(m.name)}</strong>${m.sub ? `<div class="apl-toc-sub">${esc(m.sub)}</div>` : ''}</td><td style="text-align:right">${esc(from)}</td></tr>`;
   }).join('');
-  const opt = (a.optional || []).filter(r => r && (r[0] || r[1])).map((r, i) =>
-    `<tr><td>${i + 1})</td><td>${esc(r[0])}</td><td style="text-align:right;white-space:nowrap">${esc(r[1] || '')}</td></tr>`).join('');
-  const avr = (a.avr || []).filter(r => r && (r[0] || r[1])).map(r =>
-    `<tr><td>${esc(r[0])}</td><td style="text-align:right">${esc(r[1] || '')}</td></tr>`).join('');
+  const opt = (a.optional || []).filter(r => r && (r[0] || r[1] || r[1] === 0)).map((r, i) =>
+    `<tr><td>${i + 1})</td><td>${aplS(r[0])}</td><td style="text-align:right;white-space:nowrap">${aplS(r[1])}</td></tr>`).join('');
+  const avr = (a.avr || []).filter(r => r && (r[0] || r[1] || r[1] === 0)).map(r =>
+    `<tr><td>${aplS(r[0])}</td><td style="text-align:right">${aplS(r[1])}</td></tr>`).join('');
   const terms = (a.terms || []).filter(Boolean).map(t => `<div>${esc(t)}</div>`).join('');
   return `
   <style>
@@ -7849,19 +7856,26 @@ function aplNormalize(a) {
     if (!Array.isArray(m.rows)) m.rows = [];
     m.rows = m.rows.map(r => Array.isArray(r) ? r : []);
     ['keyNums', 'specs', 'std'].forEach(k => { if (!Array.isArray(m[k])) m[k] = []; });
+    const _p = aplPhotoNorm(m.photo); m.photo = _p.url;   // v13.19: same photo rules for imported/loaded data
+    if (_p.rejected) { m.photoRejected = true; console.warn('Agent Price List: removed a pasted (base64) photo from model', m.name); }
   });
   ['optional', 'avr', 'terms'].forEach(k => { if (!Array.isArray(a[k])) a[k] = []; });
 }
-function aplCleanPhoto(v) {
-  v = String(v || '').trim();
-  if (/^data:/i.test(v)) { alert('Please use a Google Drive image URL, not a pasted image (too large to save).'); return ''; }
+function aplPhotoNorm(v) {
+  v = String(v == null ? '' : v).trim();
+  if (/^data:/i.test(v)) return { url: '', rejected: true };
   const m = v.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || v.match(/drive\.google\.com\/open\?id=([\w-]+)/);
-  return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1600' : v;
+  return { url: m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1600' : v, rejected: false };
+}
+function aplCleanPhoto(v) {
+  const r = aplPhotoNorm(v);
+  if (r.rejected) alert('Please use a Google Drive image URL, not a pasted image (too large to save).');
+  return r.url;
 }
 let _aplTimer = null;
 function aplCell(path, val, tag) {
   tag = tag || 'td';
-  return `<${tag} contenteditable="true" data-apl="${path}">${esc(val == null ? '' : val)}</${tag}>`;
+  return `<${tag} contenteditable="true" data-apl="${path}">${aplS(val)}</${tag}>`;
 }
 function aplLines(arr, joiner) {
   return (arr || []).map(x => Array.isArray(x) ? x.join(joiner || ' | ') : x).join('\n');
@@ -7886,7 +7900,7 @@ function aplRenderEditor() {
         <button class="btn btn-outline btn-sm" onclick="aplRemoveModel(${mi})">Remove</button></span></div>
       <label>Name</label><input type="text" data-apl="models.${mi}.name" value="${esc(m.name)}">
       <label>Subtitle</label><input type="text" data-apl="models.${mi}.sub" value="${esc(m.sub)}">
-      <label>Photo URL <span class="apl-ed-hint">(Drive image URL — leave empty for a placeholder)</span></label><input type="text" data-apl="models.${mi}.photo" value="${esc(m.photo)}">
+      <label>Photo URL <span class="apl-ed-hint">(Drive image URL — leave empty for a placeholder)</span>${m.photoRejected ? ' <span style="color:#c0392b">— a pasted image was removed; please add a Drive URL</span>' : ''}</label><input type="text" data-apl="models.${mi}.photo" value="${esc(m.photo)}">
       <label>Key numbers <span class="apl-ed-hint">(one per line: value | unit | label)</span></label><textarea rows="3" data-apl-lines="models.${mi}.keyNums">${esc(aplLines(m.keyNums))}</textarea>
       <label>Specifications <span class="apl-ed-hint">(one per line: label | value)</span></label><textarea rows="5" data-apl-lines="models.${mi}.specs">${esc(aplLines(m.specs))}</textarea>
       <label>Standard equipment <span class="apl-ed-hint">(one item per line)</span></label><textarea rows="5" data-apl-list="models.${mi}.std">${esc(aplLines(m.std))}</textarea>

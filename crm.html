@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.60</title>
+<title>Sen Labels — CRM v2.61</title>
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
@@ -552,7 +552,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.60</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.61</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1392,7 +1392,7 @@ async function refreshData() {
       if (c.status === 'Closed (Paid)' || c.status === 'Delivered') cust.totalSpent += c.amount;
       
       // Active = not closed and not lost
-      if (!['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract'].includes(c.status)) cust.activeContracts++;
+      if (!['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract', 'Price List'].includes(c.status)) cust.activeContracts++;   // v2.61: Price List is not a deal
       // v2.32: 在谈(可催)金额(RM粗折算)，用于催单优先级排序+显示
       if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) cust.openValueRM += _toRM(c.amount, c.currency);
 
@@ -2161,6 +2161,7 @@ function renderTarget(){
   contracts.forEach(c => {
     if (c.signedDate) return;
     if (DEAD.test(String(c.status||''))) return;
+    if (c.status === 'Price List') return;   // v2.61: an agent price list is never a signing candidate
     const cls = classifyTargetMachine(c);
     if (!cls.eligible) return;
     candidates.push({ company:c.company, model:cls.model, contractNo:c.contractNo, status:c.status });
@@ -4823,7 +4824,7 @@ function gatherPackData(onlyChecked) {
       // "Everyone active": include any customer with at least one ACTIVE (not closed/lost) contract,
       // even if they have no scheduled follow-up. This surfaces the customers you never set a reminder for.
       const hasActive = (customer.activeContracts || 0) > 0 ||
-        (customer.contracts || []).some(ct => !['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled'].includes(ct.status));
+        (customer.contracts || []).some(ct => !['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled','Price List'].includes(ct.status));   // v2.61
       if (hasActive || overdue.length || upcoming.length || inquiries.length) {
         rows.push({ customer, overdue, upcoming, inquiries, noFollowup: !overdue.length && !upcoming.length });
       }
@@ -5070,7 +5071,7 @@ async function refreshAfterChange(company) {
   if (company) { try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; } catch (e) {} }
   const cust = company ? (STATE.customers || []).find(x => x.company === company) : null;
   if (cust) {
-    const terminal = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled'];
+    const terminal = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Price List'];   // v2.61
     cust.activeContracts = (cust.contracts || []).filter(x => !terminal.includes(x.status)).length;
   }
   const modalOpen = document.getElementById('modal-overlay') && document.getElementById('modal-overlay').classList.contains('show');
@@ -5092,6 +5093,7 @@ function contractActionBar(ct, company) {
   const won  = ct.status === 'Closed (Paid)' || ct.status === 'Closed (Won)' || ct.status === 'Delivered';
   const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
   const base = 'font-size:11px;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid';
+  if (ct.status === 'Price List') return `<div style="margin-top:7px;font-size:11px;color:#6b7686">Agent price list — not a deal</div>`;   // v2.61
   if (won || lost) {
     return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px">
       <span style="font-size:11px;font-weight:600;color:${won ? '#2e7d32' : '#c0392b'}">${won ? 'Won' : 'Closed ('+escapeHtml(ct.status)+')'}</span>
