@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.21</title>
+<title>Sen Labels — Contract Generator v13.22</title>
+<!-- v13.22: ADD — Agent Price List: every fixed heading/label on the price list is now editable in a "Headings & labels" block (a.labels.*; unset = the old fixed text, so existing lists render unchanged). Company letterhead stays fixed. Other doc types unchanged. -->
 <!-- v13.21: CHANGE — Agent Price List editor moved from the Basic tab to the Machine tab (it replaces the machine form for this doc type; Basic shows a pointer). The note under "Optional Items" and the contents-line subtitle are now editable (a.optNote / a.optTocSub; unset = the old fixed text, so existing price lists render unchanged). Other doc types unchanged. -->
 <!-- v13.20: FIX (Codex inspection round 2) — autosave-draft restore now restores Doc Type (was mapped to a non-existent state.doctype, so every restored draft lost its type); saveToSheets snapshots the APL flag before any await; print flushes a pending APL preview update; Library bulk import normalises APL data (photos) and records APL as amount 0 / status Price List. Other doc types render unchanged. -->
 <!-- v13.19: FIX (Codex inspection) — Agent Price List: switching doc type away resets status Price List -> Quotation Sent; an empty APL cannot be saved; Excel/Word blocked whenever the doc type is selected; imported photos normalised (Drive links -> thumbnail, data: rejected); numeric 0 preserved in APL cells. Other doc types unchanged. -->
@@ -525,7 +526,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.21</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.22</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -7698,6 +7699,9 @@ function parsePDFText(text) {
 //   avrNote, terms:[...], signName, signTitle, signTel }
 // ============================================================
 const APL_DOCTYPE = 'Agent Price List';
+const APL_LABELS = { stdH: 'Standard equipment', specH: 'Specifications', optTitle: 'Optional Items', avrH: 'Automatic Voltage Regulator (AVR)',
+  sellerH: 'SELLER', sellerCo: 'Sen Labels Machinery Sdn. Bhd.', photoEmpty: 'Photo to be added', fromPrefix: 'from USD ' };   // v13.22: editable per list (a.labels.*)
+const aplL = (a, k) => (a && a.labels && a.labels[k] != null) ? a.labels[k] : APL_LABELS[k];
 const APL_OPT_NOTE = 'Prices in USD, per unit. UV dryers are priced per printing station.';   // v13.21: default text, editable per list (a.optNote)
 const APL_OPT_TOC_SUB = 'UV dryers, extra stations, AVR voltage stabilisers';   // v13.21 (a.optTocSub)
 const aplS = v => (v === null || v === undefined) ? '' : esc(String(v));   // v13.19: APL-only escaper that keeps numeric 0
@@ -7731,7 +7735,7 @@ function aplModelPage(m, a, idx) {
   const cols = (m.cols && m.cols.length) ? m.cols : APL_COLS;
   const photo = m.photo
     ? `<div class="apl-photo"><img src="${esc(m.photo)}" alt="${esc(m.name)}"></div>`
-    : `<div class="apl-photo apl-photo-empty">Photo to be added</div>`;
+    : `<div class="apl-photo apl-photo-empty">${esc(aplL(a, 'photoEmpty'))}</div>`;
   const nums = (m.keyNums || []).filter(k => k && (k[0] || k[0] === 0 || k[2])).map(k =>
     `<div class="apl-num"><div class="apl-num-v">${aplS(k[0])}<span>${aplS(k[1])}</span></div><div class="apl-num-l">${aplS(k[2])}</div></div>`).join('');
   const specs = (m.specs || []).filter(s => s && (s[0] || s[1] || s[1] === 0)).map(s =>
@@ -7749,8 +7753,8 @@ function aplModelPage(m, a, idx) {
     ${photo}
     ${nums ? `<div class="apl-nums">${nums}</div>` : ''}
     <div class="apl-cols2">
-      <div>${std ? `<div class="apl-h">Standard equipment</div><ul class="apl-std">${std}</ul>` : ''}</div>
-      <div>${specs ? `<div class="apl-h">Specifications</div><table class="apl-spec">${specs}</table>` : ''}</div>
+      <div>${std ? `<div class="apl-h">${esc(aplL(a, 'stdH'))}</div><ul class="apl-std">${std}</ul>` : ''}</div>
+      <div>${specs ? `<div class="apl-h">${esc(aplL(a, 'specH'))}</div><table class="apl-spec">${specs}</table>` : ''}</div>
     </div>
     ${m.note ? `<div class="apl-note">${esc(m.note)}</div>` : ''}
     <table class="apl-price"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
@@ -7762,7 +7766,7 @@ function buildAgentPriceListHTML() {
   const toc = a.models.map((m, i) => {
     const pc = ((m.cols && m.cols.length) ? m.cols : APL_COLS).length - 1;
     const prices = (m.rows || []).map(r => parseFloat(String(r[pc] || '').replace(/[^0-9.]/g, ''))).filter(n => n > 0);
-    const from = prices.length ? 'from USD ' + Math.min(...prices).toLocaleString('en-US') : '';
+    const from = prices.length ? aplL(a, 'fromPrefix') + Math.min(...prices).toLocaleString('en-US') : '';
     return `<tr><td>${i + 1}</td><td><strong>${esc(m.name)}</strong>${m.sub ? `<div class="apl-toc-sub">${esc(m.sub)}</div>` : ''}</td><td style="text-align:right">${esc(from)}</td></tr>`;
   }).join('');
   const opt = (a.optional || []).filter(r => r && (r[0] || r[1] || r[1] === 0)).map((r, i) =>
@@ -7839,19 +7843,19 @@ function buildAgentPriceListHTML() {
   </div>
   <div class="apl-title">${esc(a.title || 'AGENT PRICE')}</div>
   ${a.intro ? `<div class="apl-intro">${esc(a.intro)}</div>` : ''}
-  <table class="apl-toc"><tbody>${toc}${opt || avr ? `<tr><td>${a.models.length + 1}</td><td><strong>Optional Items</strong><div class="apl-toc-sub">${esc(a.optTocSub != null ? a.optTocSub : APL_OPT_TOC_SUB)}</div></td><td></td></tr>` : ''}</tbody></table>
+  <table class="apl-toc"><tbody>${toc}${opt || avr ? `<tr><td>${a.models.length + 1}</td><td><strong>${esc(aplL(a, 'optTitle'))}</strong><div class="apl-toc-sub">${esc(a.optTocSub != null ? a.optTocSub : APL_OPT_TOC_SUB)}</div></td><td></td></tr>` : ''}</tbody></table>
   ${a.models.map((m, i) => aplModelPage(m, a, i)).join('')}
   <div class="apl-page">
     ${aplHeaderMini(a)}
-    <div class="apl-model-name" style="font-size:20pt">Optional Items</div>
+    <div class="apl-model-name" style="font-size:20pt">${esc(aplL(a, 'optTitle'))}</div>
     ${(a.optNote != null ? a.optNote : APL_OPT_NOTE) ? `<div class="apl-model-sub" style="margin-bottom:3mm;white-space:pre-wrap">${esc(a.optNote != null ? a.optNote : APL_OPT_NOTE)}</div>` : ''}
     ${opt ? `<table class="apl-opt"><tbody>${opt}</tbody></table>` : ''}
-    ${avr ? `<div class="apl-h" style="margin-top:6mm">Automatic Voltage Regulator (AVR)</div>${a.avrNote ? `<div class="apl-model-sub" style="margin:0 0 2mm">${esc(a.avrNote)}</div>` : ''}<table class="apl-avr"><tbody>${avr}</tbody></table>` : ''}
+    ${avr ? `<div class="apl-h" style="margin-top:6mm">${esc(aplL(a, 'avrH'))}</div>${a.avrNote ? `<div class="apl-model-sub" style="margin:0 0 2mm">${esc(a.avrNote)}</div>` : ''}<table class="apl-avr"><tbody>${avr}</tbody></table>` : ''}
     ${terms ? `<div class="apl-terms">${terms}</div>` : ''}
     <div class="apl-sig">
-      <div style="font-weight:700;margin-bottom:2mm">SELLER</div>
+      <div style="font-weight:700;margin-bottom:2mm">${esc(aplL(a, 'sellerH'))}</div>
       <div class="apl-sig-line"></div>
-      <div>Sen Labels Machinery Sdn. Bhd.</div>
+      <div>${esc(aplL(a, 'sellerCo'))}</div>
       <div><strong>${esc(a.signName || '')}</strong></div>
       <div>${esc(a.signTitle || '')}${a.signTel ? ` (${esc(a.signTel)})` : ''}</div>
     </div>
@@ -7875,6 +7879,7 @@ function aplNormalize(a) {
     if (_p.rejected) { m.photoRejected = true; console.warn('Agent Price List: removed a pasted (base64) photo from model', m.name); }
   });
   ['optional', 'avr', 'terms'].forEach(k => { if (!Array.isArray(a[k])) a[k] = []; });
+  if (a.labels != null && (typeof a.labels !== 'object' || Array.isArray(a.labels))) delete a.labels;   // v13.22
 }
 function aplPhotoNorm(v) {
   v = String(v == null ? '' : v).trim();
@@ -7941,6 +7946,9 @@ function aplRenderEditor() {
     <div class="apl-ed-model"><div class="apl-ed-bar"><strong>AVR table</strong></div>
       <label>AVR note</label><input type="text" data-apl="avrNote" value="${esc(a.avrNote)}">${grid2('avr', ['Capacity', 'Price'])}</div>
     <label>Terms <span class="apl-ed-hint">(one per line)</span></label><textarea rows="3" data-apl-list="terms">${esc(aplLines(a.terms))}</textarea>
+    <div class="apl-ed-model"><div class="apl-ed-bar"><strong>Headings &amp; labels</strong> <span class="apl-ed-hint">(fixed words on the price list — change if needed)</span></div>
+      ${[['stdH', 'Standard equipment heading'], ['specH', 'Specifications heading'], ['optTitle', 'Optional Items title'], ['avrH', 'AVR heading'], ['sellerH', 'Signature heading'], ['sellerCo', 'Company name under signature'], ['photoEmpty', 'Text when a model has no photo'], ['fromPrefix', 'Contents page price prefix']]
+        .map(([k, t]) => `<label>${t}</label><input type="text" data-apl="labels.${k}" value="${esc(aplL(a, k))}">`).join('')}</div>
     <label>Signature name / title / tel</label>
     <input type="text" data-apl="signName" value="${esc(a.signName)}">
     <input type="text" data-apl="signTitle" value="${esc(a.signTitle)}">
