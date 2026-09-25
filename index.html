@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.20</title>
+<title>Sen Labels — Contract Generator v13.21</title>
+<!-- v13.21: CHANGE — Agent Price List editor moved from the Basic tab to the Machine tab (it replaces the machine form for this doc type; Basic shows a pointer). The note under "Optional Items" and the contents-line subtitle are now editable (a.optNote / a.optTocSub; unset = the old fixed text, so existing price lists render unchanged). Other doc types unchanged. -->
 <!-- v13.20: FIX (Codex inspection round 2) — autosave-draft restore now restores Doc Type (was mapped to a non-existent state.doctype, so every restored draft lost its type); saveToSheets snapshots the APL flag before any await; print flushes a pending APL preview update; Library bulk import normalises APL data (photos) and records APL as amount 0 / status Price List. Other doc types render unchanged. -->
 <!-- v13.19: FIX (Codex inspection) — Agent Price List: switching doc type away resets status Price List -> Quotation Sent; an empty APL cannot be saved; Excel/Word blocked whenever the doc type is selected; imported photos normalised (Drive links -> thumbnail, data: rejected); numeric 0 preserved in APL cells. Other doc types unchanged. -->
 <!-- v13.18: ADD status "Price List" (Other group in Status). Agent Price List docs are saved with status Price List so the CRM keeps them out of the quote pipeline (CRM v2.60). Starting an Agent Price List sets the status; other docs untouched. Frontend-only, no backend redeploy. -->
@@ -437,6 +438,8 @@ body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
 .apl-ed-model input,.apl-ed-model textarea,#apl-editor>input,#apl-editor>textarea{width:100%;box-sizing:border-box}
 .apl-ed-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .apl-ed-hint{font-weight:400;color:#99a}
+#tab-machine.apl-on > :not(#apl-panel){display:none !important}   /* v13.21 */
+#tab-machine > #apl-panel{padding:14px}
 .apl-ed-grid{border-collapse:collapse;font-size:11px;margin:4px 0}
 .apl-ed-grid th,.apl-ed-grid td{border:1px solid #c9d3e0;padding:3px 5px;min-width:34px}
 .apl-ed-grid th{background:#eef3f9}
@@ -522,7 +525,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.20</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.21</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -604,9 +607,9 @@ function mobileTab(tab) {
         </select>
       </div>
     </div>
-    <div class="field-group" id="apl-panel" style="display:none">
-      <label>Agent Price List content <span style="font-weight:400;font-size:11px;color:#888">(machine tabs are ignored for this doc type)</span></label>
-      <div id="apl-editor"></div>
+    <div class="field-group" id="apl-basic-hint" style="display:none">
+      <label>Agent Price List content</label>
+      <div style="font-size:12px;color:#555">Edit the models, prices, optional items and terms in the <a href="#" onclick="switchTabDirect('machine');return false"><b>Machine</b></a> tab.</div>
     </div>
     <div class="field-group">
       <label>Notes <span style="font-weight:400;font-size:11px;color:#888">(printed next to date on contract)</span></label>
@@ -714,6 +717,10 @@ function mobileTab(tab) {
 
   <!-- TAB: MACHINE -->
   <div id="tab-machine" class="tab-content">
+    <div class="field-group" id="apl-panel" style="display:none">
+      <label>Agent Price List content <span style="font-weight:400;font-size:11px;color:#888">(replaces the machine form for this doc type)</span></label>
+      <div id="apl-editor"></div>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <div class="m-selector-bar" id="machine-selector-bar" style="flex:1"></div>
       <button onclick="applyBulkDiscount()" title="Apply same % discount to all machines" style="background:#fbe9e7;color:#bf360c;border:1px solid #ffab91;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap">% Bulk Discount</button>
@@ -7691,6 +7698,8 @@ function parsePDFText(text) {
 //   avrNote, terms:[...], signName, signTitle, signTel }
 // ============================================================
 const APL_DOCTYPE = 'Agent Price List';
+const APL_OPT_NOTE = 'Prices in USD, per unit. UV dryers are priced per printing station.';   // v13.21: default text, editable per list (a.optNote)
+const APL_OPT_TOC_SUB = 'UV dryers, extra stations, AVR voltage stabilisers';   // v13.21 (a.optTocSub)
 const aplS = v => (v === null || v === undefined) ? '' : esc(String(v));   // v13.19: APL-only escaper that keeps numeric 0
 const APL_NAVY = '#0e2546';
 const APL_COLS = ['Colours', 'Anilox (pcs)', 'Net Weight (kg)', 'Dimension L × W × H (mm)', 'KVA', 'KW', 'A', 'Price (USD)'];
@@ -7830,12 +7839,12 @@ function buildAgentPriceListHTML() {
   </div>
   <div class="apl-title">${esc(a.title || 'AGENT PRICE')}</div>
   ${a.intro ? `<div class="apl-intro">${esc(a.intro)}</div>` : ''}
-  <table class="apl-toc"><tbody>${toc}${opt || avr ? `<tr><td>${a.models.length + 1}</td><td><strong>Optional Items</strong><div class="apl-toc-sub">UV dryers, extra stations, AVR voltage stabilisers</div></td><td></td></tr>` : ''}</tbody></table>
+  <table class="apl-toc"><tbody>${toc}${opt || avr ? `<tr><td>${a.models.length + 1}</td><td><strong>Optional Items</strong><div class="apl-toc-sub">${esc(a.optTocSub != null ? a.optTocSub : APL_OPT_TOC_SUB)}</div></td><td></td></tr>` : ''}</tbody></table>
   ${a.models.map((m, i) => aplModelPage(m, a, i)).join('')}
   <div class="apl-page">
     ${aplHeaderMini(a)}
     <div class="apl-model-name" style="font-size:20pt">Optional Items</div>
-    <div class="apl-model-sub" style="margin-bottom:3mm">Prices in USD, per unit. UV dryers are priced per printing station.</div>
+    ${(a.optNote != null ? a.optNote : APL_OPT_NOTE) ? `<div class="apl-model-sub" style="margin-bottom:3mm;white-space:pre-wrap">${esc(a.optNote != null ? a.optNote : APL_OPT_NOTE)}</div>` : ''}
     ${opt ? `<table class="apl-opt"><tbody>${opt}</tbody></table>` : ''}
     ${avr ? `<div class="apl-h" style="margin-top:6mm">Automatic Voltage Regulator (AVR)</div>${a.avrNote ? `<div class="apl-model-sub" style="margin:0 0 2mm">${esc(a.avrNote)}</div>` : ''}<table class="apl-avr"><tbody>${avr}</tbody></table>` : ''}
     ${terms ? `<div class="apl-terms">${terms}</div>` : ''}
@@ -7852,7 +7861,7 @@ function buildAgentPriceListHTML() {
 // ---------- EDITOR (form panel, English UI) ----------
 let _aplEditorFor = undefined;
 function aplEmptyHTML() {
-  return '<div style="padding:30mm 10mm;text-align:center;font-family:Arial,sans-serif;color:#6b7686">Agent Price List: click <b>+ Start Agent Price List</b> in the form to begin.</div>';
+  return '<div style="padding:30mm 10mm;text-align:center;font-family:Arial,sans-serif;color:#6b7686">Agent Price List: click <b>+ Start Agent Price List</b> in the Machine tab to begin.</div>';
 }
 function aplNormalize(a) {
   if (!Array.isArray(a.models)) a.models = [];
@@ -7925,7 +7934,10 @@ function aplRenderEditor() {
     <label>Intro text (optional)</label><textarea rows="2" data-apl="intro">${esc(a.intro)}</textarea>
     ${models}
     <button class="btn btn-outline btn-sm" onclick="aplAddModel()">+ Add model</button>
-    <div class="apl-ed-model"><div class="apl-ed-bar"><strong>Optional items</strong></div>${grid2('optional', ['Item', 'Price'])}</div>
+    <div class="apl-ed-model"><div class="apl-ed-bar"><strong>Optional items</strong></div>
+      <label>Note under "Optional Items" <span class="apl-ed-hint">(e.g. which models these prices are for)</span></label><textarea rows="2" data-apl="optNote">${esc(a.optNote != null ? a.optNote : APL_OPT_NOTE)}</textarea>
+      <label>Contents page line</label><input type="text" data-apl="optTocSub" value="${esc(a.optTocSub != null ? a.optTocSub : APL_OPT_TOC_SUB)}">
+      ${grid2('optional', ['Item', 'Price'])}</div>
     <div class="apl-ed-model"><div class="apl-ed-bar"><strong>AVR table</strong></div>
       <label>AVR note</label><input type="text" data-apl="avrNote" value="${esc(a.avrNote)}">${grid2('avr', ['Capacity', 'Price'])}</div>
     <label>Terms <span class="apl-ed-hint">(one per line)</span></label><textarea rows="3" data-apl-list="terms">${esc(aplLines(a.terms))}</textarea>
@@ -7980,6 +7992,8 @@ function aplSyncPanel() {
   if (!panel) return;
   const on = state.docType === APL_DOCTYPE;
   panel.style.display = on ? '' : 'none';
+  if (panel.parentElement) panel.parentElement.classList.toggle('apl-on', on);   // v13.21: editor lives in the Machine tab
+  const hint = document.getElementById('apl-basic-hint'); if (hint) hint.style.display = on ? '' : 'none';
   if (on && _aplEditorFor !== (state.apl || null)) aplRenderEditor();
 }
 if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('input', aplOnInput);
