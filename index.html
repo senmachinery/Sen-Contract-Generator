@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.23</title>
+<title>Sen Labels — Contract Generator v13.24</title>
+<!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
 <!-- v13.23: FIX — Agent Price List signature now shows the same signature image as contracts/quotations (was an empty line). Editor checkbox "Show signature image" (a.hideSig) turns it off. Other doc types unchanged. -->
 <!-- v13.22: ADD — Agent Price List: every fixed heading/label on the price list is now editable in a "Headings & labels" block (a.labels.*; unset = the old fixed text, so existing lists render unchanged). Company letterhead stays fixed. Other doc types unchanged. -->
 <!-- v13.21: CHANGE — Agent Price List editor moved from the Basic tab to the Machine tab (it replaces the machine form for this doc type; Basic shows a pointer). The note under "Optional Items" and the contents-line subtitle are now editable (a.optNote / a.optTocSub; unset = the old fixed text, so existing price lists render unchanged). Other doc types unchanged. -->
@@ -527,7 +528,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.23</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.24</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -7701,7 +7702,7 @@ function parsePDFText(text) {
 // ============================================================
 const APL_DOCTYPE = 'Agent Price List';
 const APL_LABELS = { stdH: 'Standard equipment', specH: 'Specifications', optTitle: 'Optional Items', avrH: 'Automatic Voltage Regulator (AVR)',
-  sellerH: 'SELLER', sellerCo: 'Sen Labels Machinery Sdn. Bhd.', photoEmpty: 'Photo to be added', fromPrefix: 'from USD ' };   // v13.22: editable per list (a.labels.*)
+  sellerH: 'SELLER', sellerCo: 'Sen Labels Machinery Sdn. Bhd.', photoEmpty: 'Photo to be added', fromPrefix: 'from USD ', photoCaption: '' };   // v13.22: editable per list (a.labels.*)
 const aplL = (a, k) => (a && a.labels && a.labels[k] != null) ? a.labels[k] : APL_LABELS[k];
 const APL_OPT_NOTE = 'Prices in USD, per unit. UV dryers are priced per printing station.';   // v13.21: default text, editable per list (a.optNote)
 const APL_OPT_TOC_SUB = 'UV dryers, extra stations, AVR voltage stabilisers';   // v13.21 (a.optTocSub)
@@ -7735,7 +7736,7 @@ function aplHeaderMini(a) {
 function aplModelPage(m, a, idx) {
   const cols = (m.cols && m.cols.length) ? m.cols : APL_COLS;
   const photo = m.photo
-    ? `<div class="apl-photo"><img src="${esc(m.photo)}" alt="${esc(m.name)}"></div>`
+    ? `<div class="apl-photo"><img src="${esc(m.photo)}" alt="${esc(m.name)}"></div>` + (aplL(a, 'photoCaption') ? `<div class="apl-photo-cap">${esc(aplL(a, 'photoCaption'))}</div>` : '')
     : `<div class="apl-photo apl-photo-empty">${esc(aplL(a, 'photoEmpty'))}</div>`;
   const nums = (m.keyNums || []).filter(k => k && (k[0] || k[0] === 0 || k[2])).map(k =>
     `<div class="apl-num"><div class="apl-num-v">${aplS(k[0])}<span>${aplS(k[1])}</span></div><div class="apl-num-l">${aplS(k[2])}</div></div>`).join('');
@@ -7790,6 +7791,7 @@ function buildAgentPriceListHTML() {
     .apl-model-sub{font-size:10pt;color:#6b7686;margin-top:1mm}
     .apl-photo{text-align:center;margin:3mm 0 2mm}
     .apl-photo img{max-width:100%;max-height:52mm;object-fit:contain}
+    .apl-photo-cap{font-size:7pt;color:#8a95a5;font-style:italic;text-align:center;margin:-1mm 0 2mm}
     .apl-photo-empty{height:40mm;border:1.5px dashed #b9c2cf;color:#8a95a5;display:flex;align-items:center;justify-content:center;font-size:10pt}
     .apl-nums{display:flex;border-top:1px solid #d9dee6;border-bottom:1px solid #d9dee6;margin:2mm 0 3mm}
     .apl-num{flex:1;padding:2mm 2mm;border-left:1px solid #e3e7ee}
@@ -7948,7 +7950,7 @@ function aplRenderEditor() {
       <label>AVR note</label><input type="text" data-apl="avrNote" value="${esc(a.avrNote)}">${grid2('avr', ['Capacity', 'Price'])}</div>
     <label>Terms <span class="apl-ed-hint">(one per line)</span></label><textarea rows="3" data-apl-list="terms">${esc(aplLines(a.terms))}</textarea>
     <div class="apl-ed-model"><div class="apl-ed-bar"><strong>Headings &amp; labels</strong> <span class="apl-ed-hint">(fixed words on the price list — change if needed)</span></div>
-      ${[['stdH', 'Standard equipment heading'], ['specH', 'Specifications heading'], ['optTitle', 'Optional Items title'], ['avrH', 'AVR heading'], ['sellerH', 'Signature heading'], ['sellerCo', 'Company name under signature'], ['photoEmpty', 'Text when a model has no photo'], ['fromPrefix', 'Contents page price prefix']]
+      ${[['stdH', 'Standard equipment heading'], ['specH', 'Specifications heading'], ['optTitle', 'Optional Items title'], ['avrH', 'AVR heading'], ['sellerH', 'Signature heading'], ['sellerCo', 'Company name under signature'], ['photoEmpty', 'Text when a model has no photo'], ['fromPrefix', 'Contents page price prefix'], ['photoCaption', 'Caption under every photo (optional)']]
         .map(([k, t]) => `<label>${t}</label><input type="text" data-apl="labels.${k}" value="${esc(aplL(a, k))}">`).join('')}</div>
     <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" data-apl-hide="hideSig" ${a.hideSig ? '' : 'checked'} style="width:auto"> Show signature image</label>
     <label>Signature name / title / tel</label>
