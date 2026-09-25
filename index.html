@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.22</title>
+<title>Sen Labels — Contract Generator v13.23</title>
+<!-- v13.23: FIX — Agent Price List signature now shows the same signature image as contracts/quotations (was an empty line). Editor checkbox "Show signature image" (a.hideSig) turns it off. Other doc types unchanged. -->
 <!-- v13.22: ADD — Agent Price List: every fixed heading/label on the price list is now editable in a "Headings & labels" block (a.labels.*; unset = the old fixed text, so existing lists render unchanged). Company letterhead stays fixed. Other doc types unchanged. -->
 <!-- v13.21: CHANGE — Agent Price List editor moved from the Basic tab to the Machine tab (it replaces the machine form for this doc type; Basic shows a pointer). The note under "Optional Items" and the contents-line subtitle are now editable (a.optNote / a.optTocSub; unset = the old fixed text, so existing price lists render unchanged). Other doc types unchanged. -->
 <!-- v13.20: FIX (Codex inspection round 2) — autosave-draft restore now restores Doc Type (was mapped to a non-existent state.doctype, so every restored draft lost its type); saveToSheets snapshots the APL flag before any await; print flushes a pending APL preview update; Library bulk import normalises APL data (photos) and records APL as amount 0 / status Price List. Other doc types render unchanged. -->
@@ -526,7 +527,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.22</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.23</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -7854,7 +7855,7 @@ function buildAgentPriceListHTML() {
     ${terms ? `<div class="apl-terms">${terms}</div>` : ''}
     <div class="apl-sig">
       <div style="font-weight:700;margin-bottom:2mm">${esc(aplL(a, 'sellerH'))}</div>
-      <div class="apl-sig-line"></div>
+      ${a.hideSig ? '<div class="apl-sig-line"></div>' : `<img src="${SIG_B64}" style="height:22mm;width:auto;display:block;margin-bottom:1mm"><div style="width:60mm;border-top:1px solid #333;margin-bottom:1.5mm"></div>`}
       <div>${esc(aplL(a, 'sellerCo'))}</div>
       <div><strong>${esc(a.signName || '')}</strong></div>
       <div>${esc(a.signTitle || '')}${a.signTel ? ` (${esc(a.signTel)})` : ''}</div>
@@ -7949,6 +7950,7 @@ function aplRenderEditor() {
     <div class="apl-ed-model"><div class="apl-ed-bar"><strong>Headings &amp; labels</strong> <span class="apl-ed-hint">(fixed words on the price list — change if needed)</span></div>
       ${[['stdH', 'Standard equipment heading'], ['specH', 'Specifications heading'], ['optTitle', 'Optional Items title'], ['avrH', 'AVR heading'], ['sellerH', 'Signature heading'], ['sellerCo', 'Company name under signature'], ['photoEmpty', 'Text when a model has no photo'], ['fromPrefix', 'Contents page price prefix']]
         .map(([k, t]) => `<label>${t}</label><input type="text" data-apl="labels.${k}" value="${esc(aplL(a, k))}">`).join('')}</div>
+    <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" data-apl-hide="hideSig" ${a.hideSig ? '' : 'checked'} style="width:auto"> Show signature image</label>
     <label>Signature name / title / tel</label>
     <input type="text" data-apl="signName" value="${esc(a.signName)}">
     <input type="text" data-apl="signTitle" value="${esc(a.signTitle)}">
@@ -7971,6 +7973,7 @@ function aplOnInput(e) {
   if (el.dataset.apl) aplSetPath(el.dataset.apl, el.isContentEditable ? el.innerText.trim() : (/\.photo$/.test(el.dataset.apl) ? aplCleanPhoto(el.value) : el.value));
   else if (el.dataset.aplLines) aplSetPath(el.dataset.aplLines, el.value.split('\n').filter(l => l.trim()).map(l => l.split('|').map(s => s.trim())));
   else if (el.dataset.aplList) aplSetPath(el.dataset.aplList, el.value.split('\n').map(l => l.trim()).filter(Boolean));
+  else if (el.dataset.aplHide) aplSetPath(el.dataset.aplHide, !el.checked);   // v13.23: checkbox shown = !hidden
   else return;
   clearTimeout(_aplTimer);
   _aplTimer = setTimeout(() => updatePreview(), 250);
@@ -8005,6 +8008,7 @@ function aplSyncPanel() {
   if (on && _aplEditorFor !== (state.apl || null)) aplRenderEditor();
 }
 if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('input', aplOnInput);
+if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('change', e => { if (e.target && e.target.dataset && e.target.dataset.aplHide) aplOnInput(e); });   // v13.23: older Safari/iPad checkboxes may not fire 'input'
 
 </script>
 </body>
