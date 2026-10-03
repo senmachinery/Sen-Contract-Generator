@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.62</title>
+<title>Sen Labels — CRM v2.63</title>
+<!-- v2.63: SECURITY — stored-XSS fix. Sheet data (company / contract no / currency / country / ids / follow-up fields / image URLs …) is now escaped wherever it is put into HTML; inline on*="…" handler arguments go through jsArg() (JSON.stringify + escapeHtml) instead of the old single-quote-only escape; inquiry image links only open http(s) URLs (safeUrl). No business logic / layout change. -->
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
 <!-- v2.54: FIX — customer objects now carry tel/attn/email from CustomerDB (WhatsApp/Call buttons + follow-up scripts finally work; they never rendered because cust.tel was always undefined). FIX — all "today" calculations use localISO() (local timezone) instead of toISOString() UTC, which made due/overdue lists lag one day between 00:00-08:00 MYT. FIX — waNumber(): wa.me links now get a proper country code (local "012-..." numbers previously produced invalid wa.me links); applied at all 7 WhatsApp link sites. -->
@@ -552,7 +553,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.62</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.63</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1218,7 +1219,7 @@ async function testConnection() {
   try {
     const r = await apiGet('crm_ping');
     if (r.ok) {
-      $('conn-status').innerHTML = '✅ Connected v' + r.version;
+      $('conn-status').innerHTML = '✅ Connected v' + escapeHtml(r.version);
       $('conn-status').style.background = 'rgba(76,175,80,.3)';
       $('setup-banner').style.display = 'none';
       return true;
@@ -1238,7 +1239,7 @@ function openSettings() {
   $('modal-body').innerHTML = `
     <div class="form-row">
       <label>Apps Script Web App URL</label>
-      <input type="text" id="settings-url" value="${STATE.appsScriptUrl}" placeholder="https://script.google.com/macros/s/.../exec">
+      <input type="text" id="settings-url" value="${escapeHtml(STATE.appsScriptUrl)}" placeholder="https://script.google.com/macros/s/.../exec">
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
         💡 This is the same URL you set in Generator. Copy from Generator Settings.
       </div>
@@ -1457,7 +1458,7 @@ async function refreshData() {
     const cur = select.value;
     const sortedCountries = Array.from(STATE.countries).sort((a,b) => countryCounts[b] - countryCounts[a] || a.localeCompare(b));
     select.innerHTML = `<option value="">All Countries (${STATE.customers.length})</option>` +
-      sortedCountries.map(c => `<option value="${c}">${flagFor(c)} ${c} (${countryCounts[c]})</option>`).join('');
+      sortedCountries.map(c => `<option value="${escapeHtml(c)}">${flagFor(c)} ${escapeHtml(c)} (${countryCounts[c]})</option>`).join('');
     select.value = cur;
     
     // Update tab count
@@ -1495,8 +1496,8 @@ async function refreshData() {
     try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(_e){}   // v2.53: render landing tab after data loads (was stuck spinning)
     try { renderTarget(); } catch(_e){}   // v3.0: 12-machine target badge + prerender (hidden until tab clicked)
   } catch (e) {
-    $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${e.message}</div>`;
-    const _sc = $('snapshot-content'); if (_sc) _sc.innerHTML = `<div class="empty" style="padding:30px">❌ Couldn't load data: ${e.message}<br><br><button class="btn btn-sm" onclick="refreshData()">Retry</button></div>`;
+    $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${escapeHtml(e.message)}</div>`;
+    const _sc = $('snapshot-content'); if (_sc) _sc.innerHTML = `<div class="empty" style="padding:30px">❌ Couldn't load data: ${escapeHtml(e.message)}<br><br><button class="btn btn-sm" onclick="refreshData()">Retry</button></div>`;
     showToast('Failed to load data: ' + e.message, 'error');
   } finally {
     $('refresh-btn').disabled = false;
@@ -1594,7 +1595,7 @@ function renderCustomerList() {
     const coldStatus = getCustomerColdStatus(c);  // v1.7
     
     return `
-      <div class="customer-item ${isActive ? 'active' : ''}" onclick="selectCustomer('${c.company.replace(/'/g, "\\'")}')">
+      <div class="customer-item ${isActive ? 'active' : ''}" onclick="selectCustomer(${jsArg(c.company)})">
         <div class="customer-item-name">
           <span style="overflow:hidden;text-overflow:ellipsis">
             ${c.flag} ${showAddressWarning ? '<span title="Looks like an address — click to set proper name" style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}
@@ -1603,7 +1604,7 @@ function renderCustomerList() {
           </span>
           <span style="display:flex;gap:4px;flex-shrink:0">
             ${c.overdueFollowups > 0 ? `<span class="customer-overdue-badge" title="${c.overdueFollowups} overdue follow-up(s)">🚨 ${c.overdueFollowups}</span>` : ''}
-            ${c.nextDueDate && c.overdueFollowups === 0 ? `<span class="customer-due-badge" title="Next follow-up: ${c.nextDueDate}">📅 ${daysAgoText(c.nextDueDate).replace(' ago','')}</span>` : ''}
+            ${c.nextDueDate && c.overdueFollowups === 0 ? `<span class="customer-due-badge" title="Next follow-up: ${escapeHtml(c.nextDueDate)}">📅 ${daysAgoText(c.nextDueDate).replace(' ago','')}</span>` : ''}
             ${c.activeContracts > 0 ? `<span class="pill pill-info" style="margin:0">${c.activeContracts}</span>` : ''}
           </span>
         </div>
@@ -1613,8 +1614,8 @@ function renderCustomerList() {
           ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}${c.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(c.openValueRM).toLocaleString()}</b>` : ''}
         </div>
         ${c.defaultRep
-          ? `<div class="cust-rep" onclick="event.stopPropagation();openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" title="Account agent — click to change" style="font-size:11px;margin-top:3px;color:var(--info);cursor:pointer">👤 ${escapeHtml(c.defaultRep)}</div>`
-          : `<div class="cust-rep cust-rep-unassigned" onclick="event.stopPropagation();openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" title="No agent assigned — click to assign" style="font-size:11px;margin-top:3px;color:var(--warning);cursor:pointer;font-weight:600">⚠ Unassigned — tap to assign</div>`}
+          ? `<div class="cust-rep" onclick="event.stopPropagation();openCustomerRepEditor(${jsArg(c.company)})" title="Account agent — click to change" style="font-size:11px;margin-top:3px;color:var(--info);cursor:pointer">👤 ${escapeHtml(c.defaultRep)}</div>`
+          : `<div class="cust-rep cust-rep-unassigned" onclick="event.stopPropagation();openCustomerRepEditor(${jsArg(c.company)})" title="No agent assigned — click to assign" style="font-size:11px;margin-top:3px;color:var(--warning);cursor:pointer;font-weight:600">⚠ Unassigned — tap to assign</div>`}
       </div>
     `;
   }).join('');
@@ -1694,7 +1695,7 @@ function renderCustomerDetail(c, followups) {
         <div style="font-weight:700;color:#9a3412">💰 Outstanding ≈ RM${Math.round(_totRM).toLocaleString()} (${_items.length} invoices)</div>
         ${_items.slice(0, 5).map(o => `<div style="font-size:12px;margin-top:5px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
           <span>${escapeHtml(o.i.invoiceNo)} · owes ${escapeHtml(o.i.currency || '')} ${(o.out).toLocaleString()}${o.i.dueDate ? (' · due ' + escapeHtml(o.i.dueDate) + (o.i.dueDate < today ? ' ⚠️ overdue' : '')) : ''}</span>
-          <button class="btn btn-sm" onclick="recordInvoicePayment('${String(o.i.invoiceNo).replace(/'/g, "\\'")}')" style="background:var(--primary);color:#fff;font-size:11px;padding:2px 8px">+ Payment</button>
+          <button class="btn btn-sm" onclick="recordInvoicePayment(${jsArg(o.i.invoiceNo)})" style="background:var(--primary);color:#fff;font-size:11px;padding:2px 8px">+ Payment</button>
         </div>`).join('')}
         ${_items.length > 5 ? `<div style="font-size:11px;margin-top:4px">+ ${_items.length - 5} more (see Invoices tab)</div>` : ''}
       </div>`;
@@ -1712,20 +1713,20 @@ function renderCustomerDetail(c, followups) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div>
         <h2>
-          <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer" title="Click to change country">${c.flag}</span>
+          <span onclick="openCountryEditor(${jsArg(c.company)})" style="cursor:pointer" title="Click to change country">${c.flag}</span>
           ${escapeHtml(displayName)}
-          <span onclick="openRenameModal('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:13px;margin-left:6px" title="Rename customer (override only — does not change Google Sheet)">✏️</span>
+          <span onclick="openRenameModal(${jsArg(c.company)})" style="cursor:pointer;color:var(--info);font-size:13px;margin-left:6px" title="Rename customer (override only — does not change Google Sheet)">✏️</span>
         </h2>
         <div class="meta-row">
           ${escapeHtml(c.country)} · ${c.contracts.length} total contract(s)
-          <span onclick="openCountryEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change country</span>
+          <span onclick="openCountryEditor(${jsArg(c.company)})" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Change country">✏️ change country</span>
           ${isRenamed ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Original name (in Google Sheet): ${escapeHtml(c.company)}</div>` : ''}
         </div>
         <div class="meta-row" style="margin-top:4px">
           <svg class="ic" style="color:var(--text-muted)"><use href="#i-users"></use></svg> Account agent: <strong>${c.defaultRep ? escapeHtml(c.defaultRep) : '<span style="color:var(--text-muted);font-weight:400">Not set</span>'}</strong>
-          <span onclick="openCustomerRepEditor('${c.company.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Set / change account agent"><svg class="ic"><use href="#i-edit"></use></svg> Set agent</span>
-          <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;margin-left:10px;font-size:11px;padding:3px 10px" title="Generate WhatsApp follow-up script"><svg class="ic"><use href="#i-edit"></use></svg> Generate script</button>
-          ${telRaw ? `<a href="https://wa.me/${waNum}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#25d366;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="WhatsApp ${escapeHtml(telRaw)} (auto-fills follow-up script)"><svg class="ic"><use href="#i-wa"></use></svg> WhatsApp</a><a href="tel:${telNum}" class="btn btn-sm" style="background:#0b6bcb;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="Call ${escapeHtml(telRaw)}"><svg class="ic"><use href="#i-phone"></use></svg> Call</a>` : ''}
+          <span onclick="openCustomerRepEditor(${jsArg(c.company)})" style="cursor:pointer;color:var(--info);margin-left:6px;font-size:11px" title="Set / change account agent"><svg class="ic"><use href="#i-edit"></use></svg> Set agent</span>
+          <button class="btn btn-sm" onclick="openScriptModal(${jsArg(c.company)})" style="background:#7c3aed;color:#fff;margin-left:10px;font-size:11px;padding:3px 10px" title="Generate WhatsApp follow-up script"><svg class="ic"><use href="#i-edit"></use></svg> Generate script</button>
+          ${telRaw ? `<a href="https://wa.me/${waNum}" target="_blank" onclick="event.preventDefault();waWithScript(${jsArg(c.company)})" class="btn btn-sm" style="background:#25d366;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="WhatsApp ${escapeHtml(telRaw)} (auto-fills follow-up script)"><svg class="ic"><use href="#i-wa"></use></svg> WhatsApp</a><a href="tel:${telNum}" class="btn btn-sm" style="background:#0b6bcb;color:#fff;margin-left:6px;font-size:11px;padding:3px 10px;text-decoration:none" title="Call ${escapeHtml(telRaw)}"><svg class="ic"><use href="#i-phone"></use></svg> Call</a>` : ''}
         </div>
       </div>
       <div style="text-align:right">
@@ -1739,7 +1740,7 @@ function renderCustomerDetail(c, followups) {
     ${showAddressWarning ? `
       <div style="background:#fef3c7;border:1px solid #fbbf24;color:#78350f;padding:10px 12px;border-radius:var(--radius);margin:12px 0;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <span><strong>⚠ Looks like an address, not a company name.</strong><br><span style="font-size:11px">"${escapeHtml(c.company)}" looks like an address. Click Rename to set the proper company name.</span></span>
-        <button class="btn btn-sm" onclick="openRenameModal('${c.company.replace(/'/g, "\\'")}')">✏️ Rename</button>
+        <button class="btn btn-sm" onclick="openRenameModal(${jsArg(c.company)})">✏️ Rename</button>
       </div>
     ` : ''}
     
@@ -1748,7 +1749,7 @@ function renderCustomerDetail(c, followups) {
         <strong>🚨 ${overdueFollowups.length} Overdue Follow-up${overdueFollowups.length > 1 ? 's' : ''}</strong>
         ${overdueFollowups.slice(0, 2).map(f => `
           <div style="margin-top:6px;font-size:12px">
-            • ${fmtDate(f.nextFollowupDate)} (${daysAgoText(f.nextFollowupDate)}) — ${escapeHtml(String(f.description||'').substring(0, 80))}${String(f.description||'').length > 80 ? '...' : ''}
+            • ${escapeHtml(fmtDate(f.nextFollowupDate))} (${daysAgoText(f.nextFollowupDate)}) — ${escapeHtml(String(f.description||'').substring(0, 80))}${String(f.description||'').length > 80 ? '...' : ''}
           </div>
         `).join('')}
         ${overdueFollowups.length > 2 ? `<div style="font-size:11px;margin-top:4px">+ ${overdueFollowups.length - 2} more</div>` : ''}
@@ -1757,7 +1758,7 @@ function renderCustomerDetail(c, followups) {
     
     ${upcomingFollowups.length > 0 && overdueFollowups.length === 0 ? `
       <div style="background:#fef3c7;border:1px solid #fbbf24;color:#78350f;padding:10px 12px;border-radius:var(--radius);margin:12px 0;font-size:13px">
-        <strong>📅 Next follow-up:</strong> ${fmtDate(upcomingFollowups[0].nextFollowupDate)} (in ${Math.abs(daysAgo(upcomingFollowups[0].nextFollowupDate))} days)
+        <strong>📅 Next follow-up:</strong> ${escapeHtml(fmtDate(upcomingFollowups[0].nextFollowupDate))} (in ${Math.abs(daysAgo(upcomingFollowups[0].nextFollowupDate))} days)
       </div>
     ` : ''}
     
@@ -1779,35 +1780,35 @@ function renderCustomerDetail(c, followups) {
         const _cf = followups.filter(f => f.contractNo === ct.contractNo && f.nextFollowupDate);
         const _nextF = _cf.map(f => f.nextFollowupDate).filter(d => d >= today).sort()[0] || '';
         return `
-        <div class="contract-row" onclick="openContractInGenerator('${ct.contractNo}')">
+        <div class="contract-row" onclick="openContractInGenerator(${jsArg(ct.contractNo)})">
           <div class="contract-info">
             <div class="contract-no">${escapeHtml(ct.contractNo)}</div>
             <div class="contract-machine">${escapeHtml(ct.machine)}</div>
             <div style="margin-top:4px">
               <span class="pill ${statusColor(ct.status)}">${escapeHtml(ct.status)}</span>
-              <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${fmtDate(ct.date)}</span>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${escapeHtml(fmtDate(ct.date))}</span>
               <span style="font-size:11px;margin-left:6px"><svg class="ic"><use href="#i-users"></use></svg> ${ct.salesRep ? escapeHtml(repCanon(ct.salesRep)) : (c.defaultRep ? '<span style="color:var(--text-muted)">'+escapeHtml(repCanon(c.defaultRep))+' (default)</span>' : '<span style="color:var(--text-muted)">Not set</span>')}</span>
-              <span onclick="event.stopPropagation();openContractRepEditor('${ct.contractNo.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="Set agent for this contract"><svg class="ic"><use href="#i-edit"></use></svg></span>
-              <button onclick="event.stopPropagation();openContractPDF('${ct.contractNo.replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="Preview this contract's PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>
-              ${_nextF ? `<span style="font-size:11px;margin-left:8px;color:#2e7d32;font-weight:600" title="Next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Next ${fmtDate(_nextF)}</span>` : ''}
+              <span onclick="event.stopPropagation();openContractRepEditor(${jsArg(ct.contractNo)})" style="cursor:pointer;color:var(--info);font-size:11px;margin-left:4px" title="Set agent for this contract"><svg class="ic"><use href="#i-edit"></use></svg></span>
+              <button onclick="event.stopPropagation();openContractPDF(${jsArg(ct.contractNo)})" class="btn btn-sm" style="background:#0b6bcb;color:#fff;font-size:10px;padding:1px 8px;margin-left:8px" title="Preview this contract's PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>
+              ${_nextF ? `<span style="font-size:11px;margin-left:8px;color:#2e7d32;font-weight:600" title="Next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Next ${escapeHtml(fmtDate(_nextF))}</span>` : ''}
             </div>
             ${contractActionBar(ct, c.company)}
           </div>
-          <div class="contract-amount">${fmtMoney(ct.amount, ct.currency)}</div>
+          <div class="contract-amount">${escapeHtml(fmtMoney(ct.amount, ct.currency))}</div>
         </div>
       `}).join('')
     }
     
     <div class="section-title">
       <span><svg class="ic"><use href="#i-phone-in"></use></svg> Follow-ups (${followups.length})</span>
-      <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')">+ Add Follow-up</button>
+      <button class="btn btn-sm btn-outline" onclick="openFollowupModal(${jsArg(c.company)})">+ Add Follow-up</button>
     </div>
     <div class="quick-fu-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 4px">
-      <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" title="No answer → follow up tomorrow"><svg class="ic"><use href="#i-phone"></use></svg> No answer → tomorrow</button>
-      <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" title="No reply → follow up in 3 days"><svg class="ic"><use href="#i-wa"></use></svg> No reply → +3 days</button>
-      <button class="btn btn-sm" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','comparing')" title="Still comparing → follow up next week">💬 Comparing → +1wk</button>
-      <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','callback')" title="Asked to call back later → +2 days">📞 Call back → +2d</button>
-      <button class="btn btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe082" onclick="quickFollowup('${c.company.replace(/'/g, "\\'")}','price')" title="Negotiating price → +2 days">💰 Negotiate → +2d</button>
+      <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="quickFollowup(${jsArg(c.company)},'no_answer')" title="No answer → follow up tomorrow"><svg class="ic"><use href="#i-phone"></use></svg> No answer → tomorrow</button>
+      <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="quickFollowup(${jsArg(c.company)},'no_reply')" title="No reply → follow up in 3 days"><svg class="ic"><use href="#i-wa"></use></svg> No reply → +3 days</button>
+      <button class="btn btn-sm" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8" onclick="quickFollowup(${jsArg(c.company)},'comparing')" title="Still comparing → follow up next week">💬 Comparing → +1wk</button>
+      <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="quickFollowup(${jsArg(c.company)},'callback')" title="Asked to call back later → +2 days">📞 Call back → +2d</button>
+      <button class="btn btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe082" onclick="quickFollowup(${jsArg(c.company)},'price')" title="Negotiating price → +2 days">💰 Negotiate → +2d</button>
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin:0 0 10px">Tip: the Follow-up / Won / Lost buttons for each contract are in the contract list above ↑</div>
     ${followups.length === 0 ? '<div class="empty">No follow-ups yet — click "Add Follow-up" to log one</div>' :
@@ -1817,17 +1818,17 @@ function renderCustomerDetail(c, followups) {
         <div class="followup-row" ${isOverdue ? 'style="background:#fff5f5;border-left:3px solid var(--danger)"' : ''}>
           <div class="followup-info">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="followup-type">${typeIcon(f.type)} ${f.type}</span>
+              <span class="followup-type">${typeIcon(f.type)} ${escapeHtml(f.type)}</span>
               <span style="display:flex;gap:6px;align-items:center">
-                <span class="followup-date">${fmtDate(f.date)} (${daysAgoText(f.date)})</span>
-                <button onclick="cancelFollowup('${(f.contractNo||'').replace(/'/g, "\\'")}','${c.company.replace(/'/g, "\\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-muted);font-size:11px;padding:1px 6px" title="Remove from chase loop (keeps the Sheet record)">⏹ Stop chasing</button>
+                <span class="followup-date">${escapeHtml(fmtDate(f.date))} (${daysAgoText(f.date)})</span>
+                <button onclick="cancelFollowup(${jsArg(f.contractNo||'')},${jsArg(c.company)})" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-muted);font-size:11px;padding:1px 6px" title="Remove from chase loop (keeps the Sheet record)">⏹ Stop chasing</button>
               </span>
             </div>
             <div class="followup-desc">${escapeHtml(f.description)}</div>
             <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">
               ${f.contractNo ? `📋 ${escapeHtml(f.contractNo)}` : ''}
-              ${f.nextFollowupDate ? ` · Next: <strong style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${fmtDate(f.nextFollowupDate)}${isOverdue ? ' ⚠ OVERDUE' : ''}</strong>` : ''}
-              ${f.outcome ? ` · <span class="pill pill-${f.outcome==='Positive'?'success':f.outcome==='Negative'?'danger':'gray'}">${f.outcome}</span>` : ''}
+              ${f.nextFollowupDate ? ` · Next: <strong style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${escapeHtml(fmtDate(f.nextFollowupDate))}${isOverdue ? ' ⚠ OVERDUE' : ''}</strong>` : ''}
+              ${f.outcome ? ` · <span class="pill pill-${f.outcome==='Positive'?'success':f.outcome==='Negative'?'danger':'gray'}">${escapeHtml(f.outcome)}</span>` : ''}
             </div>
           </div>
         </div>
@@ -1899,7 +1900,7 @@ function openContractRepEditor(contractNo) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveContractRep('${contractNo.replace(/'/g, "\\'")}')">💾 Save</button>
+    <button class="btn" onclick="saveContractRep(${jsArg(contractNo)})">💾 Save</button>
   `;
   $('modal-overlay').classList.add('show');
 }
@@ -1939,7 +1940,7 @@ function openCustomerRepEditor(company) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveCustomerRep('${company.replace(/'/g, "\\'")}')">💾 Save</button>
+    <button class="btn" onclick="saveCustomerRep(${jsArg(company)})">💾 Save</button>
   `;
   $('modal-overlay').classList.add('show');
 }
@@ -1972,7 +1973,7 @@ function openCountryEditor(company) {
   $('modal-title').textContent = `Change Country — ${company}`;
   $('modal-body').innerHTML = `
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
-      Currently: <strong>${flagFor(currentCountry)} ${currentCountry}</strong> (auto-detected)
+      Currently: <strong>${flagFor(currentCountry)} ${escapeHtml(currentCountry)}</strong> (auto-detected)
     </div>
     <div class="form-row">
       <label>Set Country</label>
@@ -1986,7 +1987,7 @@ function openCountryEditor(company) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveCountry('${company.replace(/'/g, "\\'")}')">💾 Save</button>
+    <button class="btn" onclick="saveCountry(${jsArg(company)})">💾 Save</button>
   `;
   $('modal-overlay').classList.add('show');
 }
@@ -2013,7 +2014,7 @@ async function saveCountry(company) {
   const select = $('crm-country');
   const cur = select.value;
   select.innerHTML = '<option value="">All Countries</option>' +
-    Array.from(STATE.countries).sort().map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+    Array.from(STATE.countries).sort().map(c => `<option value="${escapeHtml(c)}">${flagFor(c)} ${escapeHtml(c)}</option>`).join('');
   select.value = cur;
   renderCustomerList();
   // Re-render customer detail
@@ -2045,8 +2046,8 @@ function openRenameModal(originalName) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    ${isAlreadyRenamed ? `<button class="btn btn-outline" onclick="resetCustomerName('${originalName.replace(/'/g, "\\'")}')">↺ Reset to Original</button>` : ''}
-    <button class="btn" onclick="saveCustomerName('${originalName.replace(/'/g, "\\'")}')">💾 Save</button>
+    ${isAlreadyRenamed ? `<button class="btn btn-outline" onclick="resetCustomerName(${jsArg(originalName)})">↺ Reset to Original</button>` : ''}
+    <button class="btn" onclick="saveCustomerName(${jsArg(originalName)})">💾 Save</button>
   `;
   $('modal-overlay').classList.add('show');
   // Focus the input for quick editing
@@ -2078,6 +2079,13 @@ function escapeHtml(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// v2.63 security: a data value used as an argument inside an inline on*="..." handler.
+// JSON.stringify gives a valid JS string literal (handles ' " \ and newlines); escapeHtml then makes it
+// safe inside the double-quoted HTML attribute (the browser decodes the entities before running the code).
+function jsArg(v) { return escapeHtml(JSON.stringify(v == null ? '' : String(v))); }
+// v2.63 security: a sheet-supplied URL used as a clickable link — only http(s) may open (blocks javascript: links).
+function safeUrl(u) { return /^https?:\/\//i.test(String(u == null ? '' : u)) ? String(u) : '#'; }
 
 function openContractInGenerator(contractNo) {
   window.open(`index.html?contract=${encodeURIComponent(contractNo)}&load=true`, '_blank');
@@ -2190,7 +2198,7 @@ function renderTarget(){
       <td><span class="mono" style="background:#e8f5e9;color:#2e7d32;padding:1px 7px;border-radius:4px;font-weight:600">${r.model}</span></td>
       <td class="mono">${escapeHtml(r.signedDate)}</td>
       <td class="mono" style="color:var(--text-muted);font-size:11px">${escapeHtml(r.contractNo)}</td>
-      <td style="text-align:right"><button onclick="targetUnmark('${r.contractNo.replace(/'/g,"\\'")}')" class="btn btn-sm btn-outline" style="font-size:10px;border-color:#c62828;color:#c62828" title="Remove the signed mark">✕ Unmark</button></td>
+      <td style="text-align:right"><button onclick="targetUnmark(${jsArg(r.contractNo)})" class="btn btn-sm btn-outline" style="font-size:10px;border-color:#c62828;color:#c62828" title="Remove the signed mark">✕ Unmark</button></td>
     </tr>`; }).join('') : `<tr><td colspan="5" style="color:var(--text-muted);padding:14px;text-align:center">No machines marked signed for ${TARGET_YEAR} yet — use the candidates below.</td></tr>`;
 
   const candRows = candidates.length ? candidates.map(g => `
@@ -2198,7 +2206,7 @@ function renderTarget(){
       <td style="font-weight:600">${escapeHtml(g.company)}</td>
       <td><span class="mono" style="background:#fff3e0;color:#e65100;padding:1px 7px;border-radius:4px;font-weight:600">${g.model}</span></td>
       <td class="mono" style="color:var(--text-muted);font-size:11px">${escapeHtml(g.contractNo)} · <span style="color:var(--text-faint)">${escapeHtml(g.status||'')}</span></td>
-      <td style="text-align:right"><button onclick="targetMarkSigned('${g.contractNo.replace(/'/g,"\\'")}')" class="btn btn-sm" style="background:#2e7d32;color:#fff;font-size:10px;padding:2px 10px" title="Confirm this order was really signed / deposit received">✓ Mark signed</button></td>
+      <td style="text-align:right"><button onclick="targetMarkSigned(${jsArg(g.contractNo)})" class="btn btn-sm" style="background:#2e7d32;color:#fff;font-size:10px;padding:2px 10px" title="Confirm this order was really signed / deposit received">✓ Mark signed</button></td>
     </tr>`).join('') : `<tr><td colspan="4" style="color:var(--text-muted);padding:14px;text-align:center">No eligible unmarked deals. 🎉</td></tr>`;
 
   body.innerHTML = `
@@ -2314,7 +2322,7 @@ function renderPipeline() {
       // Format as multi-line if multiple currencies
       const totalText = Object.entries(totalByCurrency)
         .sort((a,b) => b[1] - a[1])  // largest first
-        .map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US', {maximumFractionDigits: 0})}`)
+        .map(([cur, amt]) => `${escapeHtml(cur)} ${amt.toLocaleString('en-US', {maximumFractionDigits: 0})}`)
         .join(' · ');
       
       return `
@@ -2394,12 +2402,12 @@ function renderKanbanCard(c) {
   const agingStatus = getContractAgingStatus(c);  // v1.7
   
   return `
-    <div class="kanban-card ${cardClass}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${c.contractNo}');event.dataTransfer.effectAllowed='move'" onclick="openContractInGenerator('${c.contractNo}')" title="${c.contractNo} — ${escapeHtml(c.machine)}">
+    <div class="kanban-card ${cardClass}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain',${jsArg(c.contractNo)});event.dataTransfer.effectAllowed='move'" onclick="openContractInGenerator(${jsArg(c.contractNo)})" title="${escapeHtml(c.contractNo)} — ${escapeHtml(c.machine)}">
       <div class="kanban-card-company">${flag} ${showWarn ? '<span style="color:var(--warning)">⚠</span> ' : ''}${escapeHtml(displayName)}${renderAgingTag(agingStatus)}</div>
       <div class="kanban-card-machine">${escapeHtml(c.machine || '—')}</div>
-      <div class="kanban-card-amount">${fmtMoney(c.amount, c.currency)}</div>
+      <div class="kanban-card-amount">${escapeHtml(fmtMoney(c.amount, c.currency))}</div>
       <div class="kanban-card-footer">
-        <span>${c.contractNo.split('-').pop()}</span>
+        <span>${escapeHtml(c.contractNo.split('-').pop())}</span>
         ${isStuck ? `<span class="kanban-card-stuck-tag">⚠ ${days}d STUCK</span>` :
           (days !== null ? `<span>${daysAgoText(c.date)}</span>` : '<span>—</span>')}
       </div>
@@ -2419,7 +2427,7 @@ function initPipelineFilters() {
   const cur = select.value;
   const sortedCountries = Object.keys(countryCounts).sort((a,b) => countryCounts[b] - countryCounts[a] || a.localeCompare(b));
   select.innerHTML = '<option value="">All Countries</option>' +
-    sortedCountries.map(c => `<option value="${c}">${flagFor(c)} ${c}</option>`).join('');
+    sortedCountries.map(c => `<option value="${escapeHtml(c)}">${flagFor(c)} ${escapeHtml(c)}</option>`).join('');
   select.value = cur;
 }
 
@@ -2534,7 +2542,7 @@ function renderTaskCard(t, today) {
   
   if (t.status === 'done') {
     cardClass = 'done';
-    dueText = t.completedAt ? '✓ Done ' + fmtDate(t.completedAt.split('T')[0]) : '✓ Done';
+    dueText = t.completedAt ? '✓ Done ' + escapeHtml(fmtDate(t.completedAt.split('T')[0])) : '✓ Done';
   } else if (due) {
     if (due < today) {
       dueClass = 'overdue';
@@ -2556,19 +2564,19 @@ function renderTaskCard(t, today) {
   
   return `
     <div class="task-card ${cardClass}">
-      <input type="checkbox" class="task-checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTaskDone('${t.id}', this.checked)">
+      <input type="checkbox" class="task-checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTaskDone(${jsArg(t.id)}, this.checked)">
       <div class="task-body">
         <div class="task-title">${prioIcon} ${escapeHtml(t.title)}</div>
         ${t.notes ? `<div class="task-notes">${escapeHtml(t.notes)}</div>` : ''}
         <div class="task-meta">
           <span class="task-due ${dueClass}">${dueText}</span>
           ${t.customer ? `<span class="task-customer">👤 ${escapeHtml(t.customer)}</span>` : ''}
-          ${t.contractNo ? `<span style="color:var(--info)">📋 ${t.contractNo}</span>` : ''}
+          ${t.contractNo ? `<span style="color:var(--info)">📋 ${escapeHtml(t.contractNo)}</span>` : ''}
         </div>
       </div>
       <div class="task-actions">
-        <button class="task-action-btn" onclick="editTask('${t.id}')" title="Edit">✏️</button>
-        <button class="task-action-btn" onclick="deleteTask('${t.id}')" title="Delete">🗑</button>
+        <button class="task-action-btn" onclick="editTask(${jsArg(t.id)})" title="Edit">✏️</button>
+        <button class="task-action-btn" onclick="deleteTask(${jsArg(t.id)})" title="Delete">🗑</button>
       </div>
     </div>
   `;
@@ -2598,14 +2606,14 @@ function openNewTaskModal(prefillCustomer, prefillContractNo) {
     </div>
     <div class="form-row">
       <label>Customer (optional)</label>
-      <input type="text" id="task-customer" list="task-customer-list" value="${prefillCustomer || ''}" placeholder="Type to search..." style="width:100%">
+      <input type="text" id="task-customer" list="task-customer-list" value="${escapeHtml(prefillCustomer || '')}" placeholder="Type to search..." style="width:100%">
       <datalist id="task-customer-list">
         ${customers.map(c => `<option value="${escapeHtml(c)}">`).join('')}
       </datalist>
     </div>
     <div class="form-row">
       <label>Contract No (optional)</label>
-      <input type="text" id="task-contract" value="${prefillContractNo || ''}" placeholder="e.g. SEN/SC/NR/26-2425" style="width:100%">
+      <input type="text" id="task-contract" value="${escapeHtml(prefillContractNo || '')}" placeholder="e.g. SEN/SC/NR/26-2425" style="width:100%">
     </div>
     <div class="form-row">
       <label>Notes (optional)</label>
@@ -2719,7 +2727,7 @@ function editTask(id) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveEditTask('${id}')">💾 Save Changes</button>
+    <button class="btn" onclick="saveEditTask(${jsArg(id)})">💾 Save Changes</button>
   `;
   $('modal-overlay').classList.add('show');
 }
@@ -2933,7 +2941,7 @@ function renderDashboard() {
 function formatMultiCurrency(byCurr) {
   const entries = Object.entries(byCurr).filter(([_, v]) => v > 0).sort((a,b) => b[1] - a[1]);
   if (entries.length === 0) return '—';
-  return entries.map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US', {maximumFractionDigits: 0})}`).join(' · ');
+  return entries.map(([cur, amt]) => `${escapeHtml(cur)} ${amt.toLocaleString('en-US', {maximumFractionDigits: 0})}`).join(' · ');
 }
 
 function renderMachineRanking(contracts) {
@@ -3020,7 +3028,7 @@ function renderCountryRevenue(allContracts, wonContracts) {
   const maxCount = sorted[0][1].count || 1;
   return sorted.slice(0, 10).map(([country, data]) => `
     <div class="bar-row">
-      <div class="bar-label">${flagFor(country)} ${country}</div>
+      <div class="bar-label">${flagFor(country)} ${escapeHtml(country)}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round(100*data.count/maxCount)}%"></div></div>
       <div class="bar-value">${data.count} · ${formatMultiCurrency(data.currencies)}</div>
     </div>
@@ -3122,7 +3130,7 @@ function openRepModal(repId) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveRep('${editing ? editing.id : ''}')">💾 Save</button>
+    <button class="btn" onclick="saveRep(${jsArg(editing ? editing.id : '')})">💾 Save</button>
   `;
   $('modal-overlay').classList.add('show');
 }
@@ -3218,7 +3226,7 @@ function renderRepCard(r) {
     }
   });
   const wonTotal = Object.entries(wonByCurr).sort((a,b) => b[1]-a[1])
-    .map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US',{maximumFractionDigits:0})}`).join(' · ') || '—';
+    .map(([cur, amt]) => `${escapeHtml(cur)} ${amt.toLocaleString('en-US',{maximumFractionDigits:0})}`).join(' · ') || '—';
   
   // WhatsApp link (no auto-message, just open chat)
   const waLink = wa ? `https://wa.me/${wa}` : '';
@@ -3241,9 +3249,9 @@ function renderRepCard(r) {
       </div>
       <div class="rep-actions">
         ${waLink ? `<a href="${waLink}" target="_blank" class="rep-action-btn whatsapp" title="Open WhatsApp">💬 WhatsApp</a>` : ''}
-        ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Send email"><svg class="ic"><use href="#i-mail"></use></svg> Email</a>` : ''}
-        ${wa ? `<button class="rep-action-btn copy" onclick="copyText('${wa}', 'Phone copied')" title="Copy phone">📋 ${wa}</button>` : ''}
-        <button class="rep-action-btn" onclick="openRepModal('${escapeHtml((r.id||'').replace(/'/g,"\\'"))}')" style="background:var(--primary);color:#fff" title="Edit">✏️ Edit</button>
+        ${emailLink ? `<a href="${escapeHtml(emailLink)}" class="rep-action-btn email" title="Send email"><svg class="ic"><use href="#i-mail"></use></svg> Email</a>` : ''}
+        ${wa ? `<button class="rep-action-btn copy" onclick="copyText(${jsArg(wa)}, 'Phone copied')" title="Copy phone">📋 ${wa}</button>` : ''}
+        <button class="rep-action-btn" onclick="openRepModal(${jsArg(r.id||'')})" style="background:var(--primary);color:#fff" title="Edit">✏️ Edit</button>
       </div>
     </div>
   `;
@@ -3414,7 +3422,7 @@ function renderInquiryCard(inq) {
   
   let statusBadge, dateText;
   if (inq.converted) {
-    statusBadge = `<span class="inquiry-status-badge converted">✅ Converted${inq.convertedTo ? ' → ' + inq.convertedTo : ''}</span>`;
+    statusBadge = `<span class="inquiry-status-badge converted">✅ Converted${inq.convertedTo ? ' → ' + escapeHtml(inq.convertedTo) : ''}</span>`;
     dateText = inq.inquiryDate ? 'Inquiry ' + fmtDate(inq.inquiryDate) : '';
   } else if (overdue) {
     const days = daysAgo(inq.inquiryDate);
@@ -3436,7 +3444,7 @@ function renderInquiryCard(inq) {
         </div>
         <div style="text-align:right;flex-shrink:0">
           ${statusBadge}
-          <div style="margin-top:4px"><span class="inquiry-temp-no">${inq.tempNo}</span></div>
+          <div style="margin-top:4px"><span class="inquiry-temp-no">${escapeHtml(inq.tempNo)}</span></div>
         </div>
       </div>
       <div class="inquiry-meta">
@@ -3448,13 +3456,13 @@ function renderInquiryCard(inq) {
         ${inq.source ? `<span class="inquiry-meta-item">📍 ${escapeHtml(inq.source)}</span>` : ''}
       </div>
       ${inq.detail ? `<div class="inquiry-notes">📝 ${escapeHtml(inq.detail)}</div>` : ''}
-      ${(inq.images && inq.images.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${inq.images.map(u => `<a href="${u}" target="_blank" title="Open full image"><img src="${u}" style="width:54px;height:54px;object-fit:cover;border-radius:5px;border:1px solid var(--border)" onerror="this.style.opacity=0.3;this.alt='⚠'"></a>`).join('')}</div>` : ''}
+      ${(inq.images && inq.images.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${inq.images.map(u => `<a href="${escapeHtml(safeUrl(u))}" target="_blank" title="Open full image"><img src="${escapeHtml(u)}" style="width:54px;height:54px;object-fit:cover;border-radius:5px;border:1px solid var(--border)" onerror="this.style.opacity=0.3;this.alt='⚠'"></a>`).join('')}</div>` : ''}
       <div class="inquiry-actions">
-        ${!inq.converted ? `<button class="btn btn-sm" onclick="convertInquiry('${inq.id}')" style="background:var(--success);color:#fff">➡️ Convert to Quote</button>` : ''}
-        <button class="btn btn-sm btn-outline" onclick="editInquiry('${inq.id}')">✏️ Edit</button>
+        ${!inq.converted ? `<button class="btn btn-sm" onclick="convertInquiry(${jsArg(inq.id)})" style="background:var(--success);color:#fff">➡️ Convert to Quote</button>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="editInquiry(${jsArg(inq.id)})">✏️ Edit</button>
         ${!inq.converted && inq.tel ? `<a class="btn btn-sm" href="https://wa.me/${waNumber(inq.tel, inq.country || '')}" target="_blank" style="background:#25d366;color:#fff">💬 WhatsApp</a>` : ''}
-        ${inq.converted ? `<button class="btn btn-sm btn-outline" onclick="reopenInquiry('${inq.id}')">↩ Reopen</button>` : ''}
-        <button class="btn btn-sm btn-outline" onclick="deleteInquiry('${inq.id}')" style="color:var(--danger)">🗑 Delete</button>
+        ${inq.converted ? `<button class="btn btn-sm btn-outline" onclick="reopenInquiry(${jsArg(inq.id)})">↩ Reopen</button>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="deleteInquiry(${jsArg(inq.id)})" style="color:var(--danger)">🗑 Delete</button>
       </div>
     </div>
   `;
@@ -3465,11 +3473,11 @@ function renderInquiryMiniCard(inq) {
   const flag = inq.country ? flagFor(inq.country) : '🌍';
   const days = inq.inquiryDate ? Math.abs(daysAgo(inq.inquiryDate)) : null;
   return `
-    <div class="kanban-card inquiry-card-mini ${overdue ? 'overdue' : ''}" onclick="goToInquiry('${inq.id}')" title="Click to manage this inquiry">
+    <div class="kanban-card inquiry-card-mini ${overdue ? 'overdue' : ''}" onclick="goToInquiry(${jsArg(inq.id)})" title="Click to manage this inquiry">
       <div class="kanban-card-company">${overdue ? '🚨 ' : ''}${flag} ${escapeHtml(inq.customer)}</div>
       <div class="kanban-card-machine">${escapeHtml(inq.machine || '—')}</div>
       <div class="kanban-card-footer">
-        <span class="inquiry-temp-no">${inq.tempNo}</span>
+        <span class="inquiry-temp-no">${escapeHtml(inq.tempNo)}</span>
         ${days !== null ? `<span style="${overdue ? 'color:var(--danger);font-weight:600' : ''}">${days}d</span>` : '<span>—</span>'}
       </div>
     </div>
@@ -3947,7 +3955,7 @@ function renderInqImageThumbs() {
   if (!wrap) return;
   wrap.innerHTML = (_inqImages || []).map((url, i) =>
     `<div style="position:relative;width:64px;height:64px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
-      <img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=0.3;this.alt='⚠'">
+      <img src="${escapeHtml(url)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=0.3;this.alt='⚠'">
       <button type="button" title="Remove" onclick="removeInqImage(${i})" style="position:absolute;top:0;right:0;background:rgba(192,57,43,.92);color:#fff;border:none;width:18px;height:18px;line-height:18px;font-size:11px;cursor:pointer;border-radius:0 0 0 6px;padding:0">✕</button>
     </div>`
   ).join('');
@@ -4181,7 +4189,7 @@ function editInquiry(id) {
   }, 50);
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveEditInquiry('${id}')" style="background:var(--accent);color:#fff">💾 Save Changes</button>
+    <button class="btn" onclick="saveEditInquiry(${jsArg(id)})" style="background:var(--accent);color:#fff">💾 Save Changes</button>
   `;
 }
 
@@ -4484,7 +4492,7 @@ function renderSnapshot() {
     pipelineByCurr[cur] = (pipelineByCurr[cur] || 0) + (c.amount || 0);
   });
   const pipelineStr = Object.entries(pipelineByCurr).sort((a,b)=>b[1]-a[1])
-    .map(([cur, amt]) => `${cur} ${amt.toLocaleString('en-US',{maximumFractionDigits:0})}`).join(' · ') || '—';
+    .map(([cur, amt]) => `${escapeHtml(cur)} ${amt.toLocaleString('en-US',{maximumFractionDigits:0})}`).join(' · ') || '—';
   
   content.innerHTML = `
     <!-- Quick stats row -->
@@ -4542,7 +4550,7 @@ function renderSnapshot() {
           tasksToday.slice(0, 8).map(t => `
             <div class="snapshot-item">
               <div class="snapshot-item-title">${t.priority === 'high' ? '🔴 ' : ''}${escapeHtml(t.title)}</div>
-              ${t.customer ? `<div class="snapshot-item-meta">👤 ${escapeHtml(t.customer)}${t.contractNo ? ' · 📋 ' + t.contractNo : ''}</div>` : ''}
+              ${t.customer ? `<div class="snapshot-item-meta">👤 ${escapeHtml(t.customer)}${t.contractNo ? ' · 📋 ' + escapeHtml(t.contractNo) : ''}</div>` : ''}
             </div>
           `).join('')
         }
@@ -4578,10 +4586,10 @@ function renderSnapshot() {
                 <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(dispName)}</div>
                 <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late${x.customer.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(x.customer.openValueRM).toLocaleString()}</b>` : ''} · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
                 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
-                  <button onclick="waWithScript('${x.customer.company.replace(/'/g, "\\'")}')" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp (with script)">💬 WhatsApp</button>
-                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 3 days">⏰ +3d</button>
-                  <button onclick="snoozeFollowup('${x.customer.company.replace(/'/g, "\\'")}',7)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 1 week">⏰ +1wk</button>
-                  <button onclick="selectCustomer('${x.customer.company.replace(/'/g, "\\'")}');document.querySelector('[data-tab=&quot;crm&quot;]').click()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text-secondary);cursor:pointer" title="Open this customer">👤 Open</button>
+                  <button onclick="waWithScript(${jsArg(x.customer.company)})" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp (with script)">💬 WhatsApp</button>
+                  <button onclick="snoozeFollowup(${jsArg(x.customer.company)},3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 3 days">⏰ +3d</button>
+                  <button onclick="snoozeFollowup(${jsArg(x.customer.company)},7)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 1 week">⏰ +1wk</button>
+                  <button onclick="selectCustomer(${jsArg(x.customer.company)});document.querySelector('[data-tab=&quot;crm&quot;]').click()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text-secondary);cursor:pointer" title="Open this customer">👤 Open</button>
                 </div>
               </div>
             `;
@@ -4597,7 +4605,7 @@ function renderSnapshot() {
           hotDeals.slice(0, 8).map(c => `
             <div class="snapshot-item">
               <div class="snapshot-item-title">${escapeHtml(getDisplayName(c.company))}</div>
-              <div class="snapshot-item-meta">${escapeHtml(c.status)} · ${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machine||'').substring(0,50))}</div>
+              <div class="snapshot-item-meta">${escapeHtml(c.status)} · ${escapeHtml(c.currency)} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machine||'').substring(0,50))}</div>
             </div>
           `).join('')
         }
@@ -4610,7 +4618,7 @@ function renderSnapshot() {
           recentlyWon.slice(0, 8).map(c => `
             <div class="snapshot-item">
               <div class="snapshot-item-title">${escapeHtml(getDisplayName(c.company))}</div>
-              <div class="snapshot-item-meta">${c.currency} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machine||'').substring(0,50))}</div>
+              <div class="snapshot-item-meta">${escapeHtml(c.currency)} ${(c.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})} · ${escapeHtml((c.machine||'').substring(0,50))}</div>
             </div>
           `).join('')
         }
@@ -4623,7 +4631,7 @@ function renderSnapshot() {
           agingPayments.slice(0, 8).map(x => `
             <div class="snapshot-item">
               <div class="snapshot-item-title">${escapeHtml(getDisplayName(x.contract.company))} ${renderAgingTag(x.aging)}</div>
-              <div class="snapshot-item-meta">${x.contract.contractNo} · ${x.contract.currency} ${(x.contract.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+              <div class="snapshot-item-meta">${escapeHtml(x.contract.contractNo)} · ${escapeHtml(x.contract.currency)} ${(x.contract.amount||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
             </div>
           `).join('')
         }
@@ -4759,7 +4767,7 @@ function initPackCountryFilter() {
     const cur = sel.value;
     sel.innerHTML = '<option value="">All Countries</option>' +
       Object.keys(counts).sort((a,b) => counts[b]-counts[a]).map(c =>
-        `<option value="${c}">${flagFor(c)} ${c} (${counts[c]})</option>`).join('');
+        `<option value="${escapeHtml(c)}">${flagFor(c)} ${escapeHtml(c)} (${counts[c]})</option>`).join('');
     sel.value = cur;
   }
 }
@@ -4917,11 +4925,11 @@ function renderPackCustomerCard(x, today) {
             ${tel ? ` · 📞 ${escapeHtml(tel)}` : ''}
             ${email ? ` · 📧 ${escapeHtml(email)}` : ''}
           </div>
-          ${latest ? `<div class="pack-customer-meta" style="margin-top:2px">📋 Latest: <strong>${latest.contractNo}</strong> — ${escapeHtml((latest.machine||'').substring(0,60))}</div>` : ''}
+          ${latest ? `<div class="pack-customer-meta" style="margin-top:2px">📋 Latest: <strong>${escapeHtml(latest.contractNo)}</strong> — ${escapeHtml((latest.machine||'').substring(0,60))}</div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
-          ${waLink ? `<a href="${waLink}" target="_blank" onclick="event.preventDefault();waWithScript('${c.company.replace(/'/g, "\\'")}')" class="rep-action-btn whatsapp" title="WhatsApp ${escapeHtml(tel)} (auto-fills follow-up script)">💬 WhatsApp</a>` : ''}
-          ${emailLink ? `<a href="${emailLink}" class="rep-action-btn email" title="Email ${email}"><svg class="ic"><use href="#i-mail"></use></svg> Email</a>` : ''}
+          ${waLink ? `<a href="${waLink}" target="_blank" onclick="event.preventDefault();waWithScript(${jsArg(c.company)})" class="rep-action-btn whatsapp" title="WhatsApp ${escapeHtml(tel)} (auto-fills follow-up script)">💬 WhatsApp</a>` : ''}
+          ${emailLink ? `<a href="${escapeHtml(emailLink)}" class="rep-action-btn email" title="Email ${escapeHtml(email)}"><svg class="ic"><use href="#i-mail"></use></svg> Email</a>` : ''}
           <a href="${generatorUrl}" target="_blank" class="rep-action-btn call" style="background:var(--primary)"><svg class="ic"><use href="#i-doc"></use></svg> Open</a>
         </div>
       </div>
@@ -4930,14 +4938,14 @@ function renderPackCustomerCard(x, today) {
         ${x.overdue.map(f => `
           <div class="pack-followup-item">
             <span class="pack-followup-icon">🚨</span>
-            <span style="color:var(--danger);font-weight:600">${daysAgoText(f.nextFollowupDate)} (${fmtDate(f.nextFollowupDate)})</span>
+            <span style="color:var(--danger);font-weight:600">${daysAgoText(f.nextFollowupDate)} (${escapeHtml(fmtDate(f.nextFollowupDate))})</span>
             <span style="color:var(--text-secondary)">— ${escapeHtml((f.description || 'follow-up').substring(0, 100))}</span>
           </div>
         `).join('')}
         ${x.upcoming.map(f => `
           <div class="pack-followup-item">
             <span class="pack-followup-icon">📅</span>
-            <span style="color:var(--warning);font-weight:600">${toIsoDate(f.nextFollowupDate) === today ? 'Today' : 'in ' + Math.abs(daysAgo(toIsoDate(f.nextFollowupDate))) + 'd'} (${fmtDate(f.nextFollowupDate)})</span>
+            <span style="color:var(--warning);font-weight:600">${toIsoDate(f.nextFollowupDate) === today ? 'Today' : 'in ' + Math.abs(daysAgo(toIsoDate(f.nextFollowupDate))) + 'd'} (${escapeHtml(fmtDate(f.nextFollowupDate))})</span>
             <span style="color:var(--text-secondary)">— ${escapeHtml((f.description || 'follow-up').substring(0, 100))}</span>
           </div>
         `).join('')}
@@ -4958,14 +4966,14 @@ function renderPackCustomerCard(x, today) {
       </div>
 
       <div class="pack-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
-        <button class="btn btn-sm" onclick="openScriptModal('${c.company.replace(/'/g, "\\'")}')" style="background:#7c3aed;color:#fff;font-size:11px" title="Pick a script — copy or send via WhatsApp (pre-filled)">✍️ Script / WhatsApp</button>
-        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_reply')" style="background:#00897b;color:#fff;font-size:11px" title="Log: message sent, no reply yet — next follow-up auto-set +3 days">💬 No reply · in 3d</button>
-        <button class="btn btn-sm" onclick="packQuickFollowup('${c.company.replace(/'/g, "\\'")}','no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="Log: called, no answer — next +1 day">📞 No answer · call tomorrow</button>
-        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',3)" style="background:#8d6e63;color:#fff;font-size:11px" title="Snooze next follow-up by 3 days (no contact logged)">⏰ +3d</button>
-        <button class="btn btn-sm" onclick="snoozeFollowup('${c.company.replace(/'/g, "\\'")}',7)" style="background:#6d4c41;color:#fff;font-size:11px" title="Snooze next follow-up by 1 week">⏰ +1wk</button>
-        <button class="btn btn-sm btn-outline" onclick="openFollowupModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px" title="Detailed log: pick outcome / specify contract / custom next date">📝 Detailed log</button>
-        <button class="btn btn-sm btn-outline" onclick="openContractStatusModal('${c.company.replace(/'/g, "\\'")}')" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="Which one the customer picked / Won / Lost — set status per contract">📌 Close / Status</button>
-        ${latest ? `<button class="btn btn-sm btn-outline" onclick="openContractPDF('${latest.contractNo}')" style="font-size:11px;border-color:#0b6bcb;color:#0b6bcb" title="Preview the latest contract ${latest.contractNo}  PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>` : ''}
+        <button class="btn btn-sm" onclick="openScriptModal(${jsArg(c.company)})" style="background:#7c3aed;color:#fff;font-size:11px" title="Pick a script — copy or send via WhatsApp (pre-filled)">✍️ Script / WhatsApp</button>
+        <button class="btn btn-sm" onclick="packQuickFollowup(${jsArg(c.company)},'no_reply')" style="background:#00897b;color:#fff;font-size:11px" title="Log: message sent, no reply yet — next follow-up auto-set +3 days">💬 No reply · in 3d</button>
+        <button class="btn btn-sm" onclick="packQuickFollowup(${jsArg(c.company)},'no_answer')" style="background:#1565c0;color:#fff;font-size:11px" title="Log: called, no answer — next +1 day">📞 No answer · call tomorrow</button>
+        <button class="btn btn-sm" onclick="snoozeFollowup(${jsArg(c.company)},3)" style="background:#8d6e63;color:#fff;font-size:11px" title="Snooze next follow-up by 3 days (no contact logged)">⏰ +3d</button>
+        <button class="btn btn-sm" onclick="snoozeFollowup(${jsArg(c.company)},7)" style="background:#6d4c41;color:#fff;font-size:11px" title="Snooze next follow-up by 1 week">⏰ +1wk</button>
+        <button class="btn btn-sm btn-outline" onclick="openFollowupModal(${jsArg(c.company)})" style="font-size:11px" title="Detailed log: pick outcome / specify contract / custom next date">📝 Detailed log</button>
+        <button class="btn btn-sm btn-outline" onclick="openContractStatusModal(${jsArg(c.company)})" style="font-size:11px;border-color:#c0392b;color:#c0392b" title="Which one the customer picked / Won / Lost — set status per contract">📌 Close / Status</button>
+        ${latest ? `<button class="btn btn-sm btn-outline" onclick="openContractPDF(${jsArg(latest.contractNo)})" style="font-size:11px;border-color:#0b6bcb;color:#0b6bcb" title="Preview the latest contract ${escapeHtml(latest.contractNo)}  PDF (new tab)"><svg class="ic"><use href="#i-doc"></use></svg> Preview PDF</button>` : ''}
       </div>
     </div>
   `;
@@ -5017,12 +5025,12 @@ function buildContractStatusBody(c) {
   const terminal = ['Closed (Paid)','Closed (Won)','Delivered','Lost','Cancelled'];
   const contracts = (c.contracts || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
   if (!contracts.length) return '<div class="empty">This customer has no contracts yet</div>';
-  const coAttr = c.company.replace(/'/g, "\\'");
+  const coAttr = jsArg(c.company);
   const cards = contracts.map(ct => {
     const won = ct.status === 'Closed (Paid)' || ct.status === 'Closed (Won)' || ct.status === 'Delivered';
     const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
     const isTerminal = won || lost;
-    const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
+    const ctAttr = jsArg(ct.contractNo || '');
     if (ct.status === 'Price List') return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;opacity:.65;background:#fafafa"><div style="font-weight:600;font-size:13px">${escapeHtml(ct.contractNo)}</div><div style="font-size:12px;color:var(--text-muted)">Agent price list — not a deal</div></div>`;   // v2.62
     return `
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px${isTerminal ? ';opacity:.65;background:#fafafa' : ''}">
@@ -5030,9 +5038,9 @@ function buildContractStatusBody(c) {
         <div style="font-size:12px;color:var(--text-secondary);margin:2px 0">${escapeHtml((ct.machine||'').substring(0,80))}</div>
         <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(ct.currency||'')} ${Number(ct.amount||0).toLocaleString()} · Current: <b>${escapeHtml(ct.status||'')}</b></div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Closed (Paid)','${coAttr}')" ${won?'disabled':''} style="background:#2e7d32;color:#fff;font-size:11px${won?';opacity:.5':''}">✅ Won (picked this)</button>
-          <button class="btn btn-sm" onclick="setContractStatus('${ctAttr}','Lost','${coAttr}')" ${lost?'disabled':''} style="background:#c0392b;color:#fff;font-size:11px${lost?';opacity:.5':''}">🚫 Lost</button>
-          ${isTerminal ? `<select onchange="if(this.value){setContractStatus('${ctAttr}',this.value,'${coAttr}');this.value='';}" title="Clicked by mistake? Reopen this contract" style="font-size:11px;padding:5px 6px;border:1px solid #f0a020;border-radius:4px;color:#b86b00;background:#fff;cursor:pointer">
+          <button class="btn btn-sm" onclick="setContractStatus(${ctAttr},'Closed (Paid)',${coAttr})" ${won?'disabled':''} style="background:#2e7d32;color:#fff;font-size:11px${won?';opacity:.5':''}">✅ Won (picked this)</button>
+          <button class="btn btn-sm" onclick="setContractStatus(${ctAttr},'Lost',${coAttr})" ${lost?'disabled':''} style="background:#c0392b;color:#fff;font-size:11px${lost?';opacity:.5':''}">🚫 Lost</button>
+          ${isTerminal ? `<select onchange="if(this.value){setContractStatus(${ctAttr},this.value,${coAttr});this.value='';}" title="Clicked by mistake? Reopen this contract" style="font-size:11px;padding:5px 6px;border:1px solid #f0a020;border-radius:4px;color:#b86b00;background:#fff;cursor:pointer">
             <option value="">↩️ Reopen / change back…</option>
             <option value="Quotation Sent">↩️ Back to Quotation Sent</option>
             <option value="Sales Contract">↩️ Back to Sales Contract</option>
@@ -5089,8 +5097,8 @@ async function refreshAfterChange(company) {
 
 // The little action bar shown on each contract (rows + kanban cards).
 function contractActionBar(ct, company) {
-  const ctAttr = (ct.contractNo || '').replace(/'/g, "\\'");
-  const coAttr = (company || '').replace(/'/g, "\\'");
+  const ctAttr = jsArg(ct.contractNo || '');
+  const coAttr = jsArg(company || '');
   const won  = ct.status === 'Closed (Paid)' || ct.status === 'Closed (Won)' || ct.status === 'Delivered';
   const lost = ct.status === 'Lost' || ct.status === 'Cancelled';
   const base = 'font-size:11px;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid';
@@ -5098,17 +5106,17 @@ function contractActionBar(ct, company) {
   if (won || lost) {
     return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px">
       <span style="font-size:11px;font-weight:600;color:${won ? '#2e7d32' : '#c0392b'}">${won ? 'Won' : 'Closed ('+escapeHtml(ct.status)+')'}</span>
-      <select onchange="if(this.value){reopenContract('${ctAttr}','${coAttr}',this.value);this.value='';}" style="font-size:11px;padding:4px 6px;border:1px solid #f0a020;border-radius:5px;color:#b86b00;background:#fff;cursor:pointer">
+      <select onchange="if(this.value){reopenContract(${ctAttr},${coAttr},this.value);this.value='';}" style="font-size:11px;padding:4px 6px;border:1px solid #f0a020;border-radius:5px;color:#b86b00;background:#fff;cursor:pointer">
         <option value="">Reopen…</option>
         <option value="Quotation Sent">Back to Quotation</option>
         <option value="Sales Contract">Back to Sales Contract</option>
       </select></div>`;
   }
   return `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-    <button onclick="quickNextFollowup('${ctAttr}','${coAttr}')" style="${base} #90caf9;background:#e3f2fd;color:#1565c0" title="Set next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Follow-up</button>
-    <button onclick="markSigned('${ctAttr}','${coAttr}')" style="${base} #ffcc80;background:#fff3e0;color:#b86b00" title="Contract signed / deposit received → counts to 12-machine target (Closed Won)"><svg class="ic"><use href="#i-check"></use></svg> Signed</button>
-    <button onclick="markWon('${ctAttr}','${coAttr}')" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="Full payment received → Won (Closed / Paid)"><svg class="ic"><use href="#i-check"></use></svg> Paid</button>
-    <button onclick="markLost('${ctAttr}','${coAttr}')" style="${base} #f5c6cb;background:#fdecea;color:#c0392b" title="Drop this one → Lost"><svg class="ic"><use href="#i-x"></use></svg> Lost</button>
+    <button onclick="quickNextFollowup(${ctAttr},${coAttr})" style="${base} #90caf9;background:#e3f2fd;color:#1565c0" title="Set next follow-up date"><svg class="ic"><use href="#i-cal"></use></svg> Follow-up</button>
+    <button onclick="markSigned(${ctAttr},${coAttr})" style="${base} #ffcc80;background:#fff3e0;color:#b86b00" title="Contract signed / deposit received → counts to 12-machine target (Closed Won)"><svg class="ic"><use href="#i-check"></use></svg> Signed</button>
+    <button onclick="markWon(${ctAttr},${coAttr})" style="${base} #a5d6a7;background:#e8f5e9;color:#2e7d32" title="Full payment received → Won (Closed / Paid)"><svg class="ic"><use href="#i-check"></use></svg> Paid</button>
+    <button onclick="markLost(${ctAttr},${coAttr})" style="${base} #f5c6cb;background:#fdecea;color:#c0392b" title="Drop this one → Lost"><svg class="ic"><use href="#i-x"></use></svg> Lost</button>
   </div>`;
 }
 
@@ -5173,24 +5181,24 @@ function quickNextFollowup(contractNo, company) {
   const base = new Date();
   const iso  = d => localISO(d);
   const plus = n => iso(new Date(base.getTime() + n * 86400000));
-  const ca = contractNo.replace(/'/g, "\\'");
-  const oa = company.replace(/'/g, "\\'");
+  const ca = jsArg(contractNo);
+  const oa = jsArg(company);
   const chips = [['Tomorrow', plus(1)], ['In 3 days', plus(3)], ['In 1 week', plus(7)], ['In 2 weeks', plus(14)], ['In 1 month', plus(30)]];
   $('modal-title').textContent = `📅 Set next follow-up — ${contractNo}`;
   $('modal-body').innerHTML = `
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">One tap — no text needed. Auto-syncs to the follow-up list.</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-      ${chips.map(([lbl, d]) => `<button class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:13px;padding:9px 14px;line-height:1.3" onclick="saveQuickNext('${ca}','${oa}','${d}')">${lbl}<br><span style="font-size:10px;opacity:.7">${fmtDate(d)}</span></button>`).join('')}
+      ${chips.map(([lbl, d]) => `<button class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:13px;padding:9px 14px;line-height:1.3" onclick="saveQuickNext(${ca},${oa},'${d}')">${lbl}<br><span style="font-size:10px;opacity:.7">${fmtDate(d)}</span></button>`).join('')}
     </div>
     <div class="form-row">
       <label>Or pick a custom date</label>
       <div style="display:flex;gap:8px">
         <input type="date" id="qnext-date" value="${plus(7)}" style="flex:1">
-        <button class="btn btn-primary" onclick="saveQuickNext('${ca}','${oa}', document.getElementById('qnext-date').value)">Set</button>
+        <button class="btn btn-primary" onclick="saveQuickNext(${ca},${oa}, document.getElementById('qnext-date').value)">Set</button>
       </div>
     </div>
     <div style="margin-top:14px;font-size:12px">
-      <a href="#" onclick="event.preventDefault();closeModal();openFollowupModal('${oa}')" style="color:var(--info)">Need to write follow-up notes? Switch to full form →</a>
+      <a href="#" onclick="event.preventDefault();closeModal();openFollowupModal(${oa})" style="color:var(--info)">Need to write follow-up notes? Switch to full form →</a>
     </div>`;
   $('modal-footer').innerHTML = `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>`;
   $('modal-overlay').classList.add('show');
@@ -5386,7 +5394,7 @@ function buildPackDocHTML(forWord) {
     // What to follow up
     const items = [];
     x.overdue.forEach(f => items.push(`<span style="color:#c0392b">[Overdue ${daysAgoText(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
-    x.upcoming.forEach(f => items.push(`<span style="color:#e67e00">[${fmtDate(f.nextFollowupDate)}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
+    x.upcoming.forEach(f => items.push(`<span style="color:#e67e00">[${escapeHtml(fmtDate(f.nextFollowupDate))}]</span> ${escapeHtml((f.description||'').substring(0,90))}`));
     x.inquiries.forEach(inq => items.push(`<span style="color:#1565c0">[Inquiry]</span> ${escapeHtml((inq.machine||'').substring(0,70))}${inq.quantity?' × '+escapeHtml(inq.quantity):''}${inq.budget?' · Budget '+escapeHtml(inq.budget):''}`));
     if (x.noFollowup) items.push(`<span style="color:#999">[No follow-up scheduled — suggest reaching out]</span>`);
     // Machine / contracts (what to quote)
@@ -5657,7 +5665,7 @@ function openFollowupModal(customer) {
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn" onclick="saveFollowup('${customer.replace(/'/g, "\\'")}')">💾 Save Follow-up</button>
+    <button class="btn" onclick="saveFollowup(${jsArg(customer)})">💾 Save Follow-up</button>
   `;
   $('modal-overlay').classList.add('show');
 }
@@ -5837,7 +5845,7 @@ async function loadInvoices() {
     populateInvoiceCustomers();
     renderInvoices();
   } catch (e) {
-    if (list) list.innerHTML = '<div class="empty">⚠ Failed to load invoices: ' + (e.message || e) + '</div>';
+    if (list) list.innerHTML = '<div class="empty">⚠ Failed to load invoices: ' + escapeHtml(e.message || e) + '</div>';
   }
 }
 
@@ -5910,7 +5918,7 @@ function renderInvoices() {
       + '<div style="font-size:12px;color:var(--text-secondary)">' + esc(i.customer) + ' · ' + esc(i.category) + ' · ' + esc(i.date) + (i.contractNo ? ' · ' + esc(i.contractNo) : '') + '</div></div>'
       + '<div style="text-align:right;font-size:12px"><div style="font-weight:700">' + esc(i.currency) + ' ' + num(total) + '</div>'
       + '<div style="color:var(--text-muted)">Paid ' + num(paid) + ' · Outstanding ' + num(out) + '</div></div>'
-      + '<div><button class="btn btn-sm" onclick="recordInvoicePayment(\'' + esc(i.invoiceNo).replace(/'/g, "\\'") + '\')" ' + (i.status === 'Paid' ? 'disabled style="opacity:.5"' : 'style="background:var(--primary);color:#fff"') + '>+ Record Payment</button></div>'
+      + '<div><button class="btn btn-sm" onclick="recordInvoicePayment(' + jsArg(i.invoiceNo) + ')" ' + (i.status === 'Paid' ? 'disabled style="opacity:.5"' : 'style="background:var(--primary);color:#fff"') + '>+ Record Payment</button></div>'
       + '</div>';
   }).join('');
   list.innerHTML = strip + list.innerHTML;
