@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.24</title>
+<title>Sen Labels — Contract Generator v13.25</title>
+<!-- v13.25: ADD — Installment: changing Instalment 1 auto-splits the remaining balance over the later instalments (same rounding as Calculate, last absorbs remainder, schedule total unchanged). Checkbox "Auto-balance…" (default on, UI-only, not saved); untick = old behaviour. Rendering/saved contracts unchanged. -->
 <!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
 <!-- v13.23: FIX — Agent Price List signature now shows the same signature image as contracts/quotations (was an empty line). Editor checkbox "Show signature image" (a.hideSig) turns it off. Other doc types unchanged. -->
 <!-- v13.22: ADD — Agent Price List: every fixed heading/label on the price list is now editable in a "Headings & labels" block (a.labels.*; unset = the old fixed text, so existing lists render unchanged). Company letterhead stays fixed. Other doc types unchanged. -->
@@ -528,7 +529,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.24</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.25</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -908,6 +909,10 @@ function mobileTab(tab) {
         <input type="date" id="f-inst-start" style="width:100%;padding:6px 8px;border:1px solid #ccd;border-radius:4px;font-size:13px">
       </div>
       <button onclick="generateInstallments()" style="width:100%;padding:7px;background:#1a3a5c;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px">⟳ Calculate Schedule</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#1a3a5c;margin-bottom:6px;cursor:pointer">
+        <input type="checkbox" id="f-inst-autobal" checked style="width:auto;margin:0">
+        Auto-balance the other instalments when I change Instalment 1
+      </label>
       <div id="inst-rows-wrap" style="font-size:11px;color:#888;text-align:center;padding:6px">Fill in the fields above and click Calculate</div>
     </div>
 
@@ -2383,9 +2388,33 @@ function renderInstallmentRows() {
         oninput="state.installmentRows[${i}].label=this.value;updatePreview()">
       <input type="date" value="${r.date||''}" style="flex:1.5;min-width:110px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
         oninput="state.installmentRows[${i}].date=this.value;updatePreview()">
-      <input type="number" value="${r.total}" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
-        oninput="state.installmentRows[${i}].total=parseFloat(this.value)||0;updatePreview()">
+      <input type="number" value="${r.total}" data-inst-total="${i}" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
+        oninput="${i === 0 ? 'instSetFirst(parseFloat(this.value)||0)' : `state.installmentRows[${i}].total=parseFloat(this.value)||0;_instTarget=instScheduleTotal()`};updatePreview()">
     </div>`).join('');
+  _instTarget = instScheduleTotal(); _instTargetRows = state.installmentRows;
+}
+// v13.25: changing Instalment 1 re-splits the remaining balance over the later instalments
+// (same rounding as Calculate: whole numbers, or cents if "exact"; last one absorbs the remainder),
+// so the schedule total stays the same. Unticking "Auto-balance" = old behaviour (only row 1 changes).
+var _instTarget = null;   // schedule total to keep (set on render / manual edit of other rows)
+var _instTargetRows = null;   // the installmentRows array _instTarget belongs to (another contract loaded → ignore it)
+function instSetFirst(v) {
+  const rows = state.installmentRows || [];
+  if (!rows.length) return;
+  const target = (_instTarget != null && _instTargetRows === rows) ? _instTarget : instScheduleTotal();
+  _instTarget = target; _instTargetRows = rows;
+  rows[0].total = v;
+  const n = rows.length - 1;
+  const rest = Math.round((target - v) * 100) / 100;
+  if (!document.getElementById('f-inst-autobal')?.checked) { _instTarget = instScheduleTotal(); return; }
+  if (n < 1 || rest < 0) return;
+  const per = state.installmentExactSplit ? Math.floor((rest / n) * 100) / 100 : Math.floor(rest / n);
+  for (let i = 1; i <= n; i++) {
+    rows[i].total = (i === n) ? Math.round((rest - per * (n - 1)) * 100) / 100 : per;
+    rows[i].principal = Math.round((rows[i].total - (rows[i].interest || 0)) * 100) / 100;
+    const inp = document.querySelector(`#inst-rows-wrap [data-inst-total="${i}"]`);
+    if (inp) inp.value = rows[i].total;
+  }
 }
 
 // ============================================================
