@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.64</title>
+<title>Sen Labels — CRM v2.65</title>
+<!-- v2.65: Funnel — stuck deals skip the no-chase list (localStorage sen_funnel_nochase, per-row hide ✕), long machine titles truncated, Inquiry→Quote % shown as n/a when inquiries are under-logged, section ids for the daily screenshot. -->
 <!-- v2.64: NEW "Funnel" tab — read-only sales funnel (Inquiries → Quotations → Confirmed/Won → Paid) with date/rep/country/category filters, breakdown by country + category, monthly trend bars, and a stuck-deals list (>30 days no activity). Uses only data already loaded; ≈USD via the existing _toRM rough rates. Nothing else changed. -->
 <!-- v2.63: SECURITY — stored-XSS fix. Sheet data (company / contract no / currency / country / ids / follow-up fields / image URLs …) is now escaped wherever it is put into HTML; inline on*="…" handler arguments go through jsArg() (JSON.stringify + escapeHtml) instead of the old single-quote-only escape; inquiry image links only open http(s) URLs (safeUrl). No business logic / layout change. -->
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
@@ -554,7 +555,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.64</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.65</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -2954,6 +2955,13 @@ const FNL_OPEN = ['Quotation Sent', 'Following Up', 'Negotiating'];
 const FNL_WON = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)', 'Closed (Won)'];
 const FNL_PAID = ['Closed (Paid)', 'Delivered'];
 const FNL_STUCK_DAYS = 30;
+const FNL_NOCHASE_KEY = 'sen_funnel_nochase';   // v2.65: customers Max said not to chase (JSON array of names)
+function fnlNoChase() { try { return new Set((JSON.parse(localStorage.getItem(FNL_NOCHASE_KEY) || '[]') || []).map(n => String(n).trim().toLowerCase()).filter(Boolean)); } catch (e) { return new Set(); } }
+function fnlHide(company) {
+  if (!confirm('Hide "' + company + '" from Stuck Deals (no-chase list on this browser)?')) return;
+  let arr = []; try { arr = JSON.parse(localStorage.getItem(FNL_NOCHASE_KEY) || '[]') || []; } catch (e) {}
+  arr.push(String(company).trim()); localStorage.setItem(FNL_NOCHASE_KEY, JSON.stringify(Array.from(new Set(arr)))); renderFunnel();
+}
 
 // ≈USD from the CRM's existing rough RM table (_toRM); null = currency not in that table (never guessed)
 function fnlUSD(amt, cur) {
@@ -3050,7 +3058,8 @@ function renderFunnel() {
   const maxN = Math.max(1, ...stages.map(s => s.n));
   const funnelHtml = stages.map((s, k) => {
     const w = Math.max(4, Math.round(100 * s.n / maxN));
-    const conv = k > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin:2px 0 6px 4px">↓ ${fnlPct(s.n, stages[k - 1].n)} of ${escapeHtml(stages[k - 1].name.toLowerCase())}</div>` : '';
+    const pctTxt = k === 0 ? '' : (k === 1 && stages[0].n > 0 && s.n > 3 * stages[0].n) ? 'n/a (most inquiries not logged)' : fnlPct(s.n, stages[k - 1].n);   // v2.65
+    const conv = k > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin:2px 0 6px 4px">↓ ${pctTxt} of ${escapeHtml(stages[k - 1].name.toLowerCase())}</div>` : '';
     return conv + `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">
         <div style="flex:0 0 130px;font-size:12px;font-weight:600">${s.name}</div>
@@ -3115,7 +3124,9 @@ function renderFunnel() {
     const d = toIsoDate(f.loggedAt) || toIsoDate(f.date);
     if (d && (!lastAct[k] || d > lastAct[k])) lastAct[k] = d;
   });
-  const stuck = deals.filter(x => dims(x) && FNL_OPEN.includes(x.c.status) && x.d).map(x => {
+  const noChase = fnlNoChase();   // v2.65
+  const hiddenNC = deals.filter(x => dims(x) && FNL_OPEN.includes(x.c.status) && noChase.has(String(x.c.company || '').trim().toLowerCase())).length;
+  const stuck = deals.filter(x => dims(x) && FNL_OPEN.includes(x.c.status) && x.d && !noChase.has(String(x.c.company || '').trim().toLowerCase())).map(x => {
     const fu = lastAct[(x.c.contractNo || '').trim()] || '';
     const last = fu > x.d ? fu : x.d;
     return { x: x, last: last, days: daysAgo(last), usd: fnlUSD(x.c.amount, x.c.currency) };
@@ -3127,28 +3138,29 @@ function renderFunnel() {
       ${stuck.map(s => { const c = s.x.c; return `<tr>
         <td style="${tdS};white-space:nowrap">${escapeHtml(c.contractNo)}</td>
         <td style="${tdS}"><a href="#" onclick="selectCustomer(${jsArg(c.company)});document.querySelector('[data-tab=&quot;crm&quot;]').click();return false" style="color:var(--primary-light);font-weight:600">${escapeHtml(c.company)}</a> <span style="color:var(--text-faint)">${escapeHtml(s.x.country)}</span></td>
-        <td style="${tdS}">${escapeHtml(c.machine)}</td>
+        <td style="${tdS}" title="${escapeHtml(c.machine)}">${escapeHtml(String(c.machine || '').length > 90 ? String(c.machine).slice(0, 90) + '…' : c.machine)}</td>
         <td style="${tdS};white-space:nowrap">${escapeHtml(c.status)}</td>
         <td style="${tdS};white-space:nowrap;font-weight:600">${escapeHtml(fmtMoney(c.amount, c.currency))}${s.usd !== null && String(c.currency || 'USD').toUpperCase() !== 'USD' ? `<div style="font-size:10.5px;color:var(--text-muted);font-weight:400">≈ USD ${Math.round(s.usd).toLocaleString('en-US')}</div>` : ''}</td>
         <td style="${tdS};white-space:nowrap">${escapeHtml(fmtDate(s.last))} <span style="color:#c0392b;font-weight:600">${s.days}d</span></td>
-        <td style="${tdS}">${escapeHtml(s.x.rep)}</td></tr>`; }).join('')}
+        <td style="${tdS};white-space:nowrap">${escapeHtml(s.x.rep)} <a href="#" title="Don't chase — hide from this list" onclick="fnlHide(${jsArg(c.company)});return false" style="color:var(--text-faint);text-decoration:none;margin-left:4px">✕</a></td></tr>`; }).join('')}
     </table></div>` : '<div class="empty" style="padding:12px">No stuck quotations 🎉</div>';
 
   el.innerHTML = bar + `
-    <div class="dashboard-section">
+    <div class="dashboard-section" id="fnl-funnel">
       <h3>🔻 Sales Funnel <span style="font-size:11px;font-weight:400;color:var(--text-muted)">${escapeHtml(fmtDate(F.from))} – ${escapeHtml(fmtDate(F.to))} · by inquiry / quote date</span></h3>
       ${funnelHtml}
       <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Stages are counted from records dated in the range. Not every quote is linked to a logged inquiry, so Inquiries → Quotations can exceed 100%.</div>
     </div>
-    <div class="dashboard-row">
+    <div class="dashboard-row" id="fnl-breakdown">
       <div class="dashboard-section"><h3>🌍 By Country</h3>${breakdown(x => x.country, 'Country')}</div>
       <div class="dashboard-section"><h3>🏭 By Category</h3>${breakdown(x => x.cat, 'Category')}
         <h3 style="margin-top:14px">Top machine families</h3>${breakdown(x => x.fam, 'Family', 8)}</div>
     </div>
-    <div class="dashboard-section"><h3>📅 Monthly Trend</h3>${trendHtml}</div>
-    <div class="dashboard-section">
+    <div class="dashboard-section" id="fnl-trend"><h3>📅 Monthly Trend</h3>${trendHtml}</div>
+    <div class="dashboard-section" id="fnl-stuck">
       <h3>⏳ Stuck Deals <span style="font-size:11px;font-weight:400;color:var(--text-muted)">open quotes, no activity &gt; ${FNL_STUCK_DAYS} days · top 10 by value</span></h3>
       ${stuckHtml}
+      ${hiddenNC ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">${hiddenNC} open quote(s) hidden — customer on the no-chase list.</div>` : ''}
       <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Open = Quotation Sent / Following Up / Negotiating. The CRM keeps no status-change date, so "last activity" = the later of the quote date and the last logged follow-up for that contract. Rep / country / category filters apply; the date range does not.</div>
     </div>`;
 }
