@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.63</title>
+<title>Sen Labels — CRM v2.64</title>
+<!-- v2.64: NEW "Funnel" tab — read-only sales funnel (Inquiries → Quotations → Confirmed/Won → Paid) with date/rep/country/category filters, breakdown by country + category, monthly trend bars, and a stuck-deals list (>30 days no activity). Uses only data already loaded; ≈USD via the existing _toRM rough rates. Nothing else changed. -->
 <!-- v2.63: SECURITY — stored-XSS fix. Sheet data (company / contract no / currency / country / ids / follow-up fields / image URLs …) is now escaped wherever it is put into HTML; inline on*="…" handler arguments go through jsArg() (JSON.stringify + escapeHtml) instead of the old single-quote-only escape; inquiry image links only open http(s) URLs (safeUrl). No business logic / layout change. -->
 <!-- v2.56: P2 polish — guard f.description null (was a TypeError that broke the whole customer-detail render); Partial invoice badge is now amber (was navy via a --accent fallback that never fired; green→amber→red now reads as a status scale). -->
 <!-- v2.55: FIX — selectCustomer guards against stale async overwrite when tapping A→B (no more cross-customer detail); refreshData fully rebuilds per-customer follow-up cache from fresh data (Refresh no longer shows snoozed/stale follow-ups); degraded (history ≤20) load now shows a warning toast instead of silently showing partial data; showToast gains optional duration. -->
@@ -553,7 +554,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.63</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.64</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -574,6 +575,7 @@
   <button class="tab" data-tab="tasks"><svg class="ic"><use href="#i-check-sq"/></svg> Tasks <span class="count" id="tasks-count">—</span></button>
   <button class="tab" data-tab="invoices"><svg class="ic"><use href="#i-doc"/></svg> Invoices <span class="count" id="invoices-count">—</span></button>
   <button class="tab" data-tab="dashboard"><svg class="ic"><use href="#i-chart"/></svg> Dashboard</button>
+  <button class="tab" data-tab="funnel"><svg class="ic"><use href="#i-chart"/></svg> Funnel</button>
   <button class="tab" data-tab="reps"><svg class="ic"><use href="#i-badge"/></svg> Sales Reps <span class="count" id="reps-count">—</span></button>
   <button class="tab" data-tab="packs"><svg class="ic"><use href="#i-package"/></svg> Follow-up Packs</button>
 </div>
@@ -747,6 +749,10 @@
       </div>
     </div>
     <div id="dashboard-content"><div class="loading"><span class="spinner"></span><div style="margin-top:8px">Loading dashboard...</div></div></div>
+  </div>
+  <!-- SALES FUNNEL TAB (v2.64) -->
+  <div class="tab-content" id="tab-funnel">
+    <div id="funnel-content"><div class="empty">No data yet</div></div>
   </div>
   <!-- SALES REPS TAB (v1.6) -->
   <div class="tab-content" id="tab-reps">
@@ -2936,6 +2942,215 @@ function renderDashboard() {
       </div>
     </div>
   `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// v2.64: SALES FUNNEL TAB — read-only; uses only data already loaded
+// (STATE.contracts, INQUIRIES_STATE / TASKS_STATE, STATE.allFollowups).
+// ═══════════════════════════════════════════════════════════════════
+const FUNNEL_STATE = { from: '', to: '', rep: '', country: '', cat: '' };
+const FNL_FX_KNOWN = ['USD', 'SGD', 'EUR', 'RMB', 'CNY', 'MYR', 'RM'];   // currencies covered by _toRM's built-in rough table
+const FNL_OPEN = ['Quotation Sent', 'Following Up', 'Negotiating'];
+const FNL_WON = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)', 'Closed (Won)'];
+const FNL_PAID = ['Closed (Paid)', 'Delivered'];
+const FNL_STUCK_DAYS = 30;
+
+// ≈USD from the CRM's existing rough RM table (_toRM); null = currency not in that table (never guessed)
+function fnlUSD(amt, cur) {
+  cur = String(cur || 'USD').trim().toUpperCase();
+  if (!FNL_FX_KNOWN.includes(cur)) return null;
+  return _toRM(amt, cur) / _toRM(1, 'USD');
+}
+function fnlCategory(title) {
+  const t = String(title || '').trim();
+  if (!t) return 'Unknown';
+  const cond = detectMachineCondition(t), fam = detectMachineFamily(t);
+  if (_isUsedMachine(t) || cond === 'Refurbished' || /\(Refurbished\)/.test(fam)) return 'Refurbished / used';
+  if (cond === 'Parts' || /\(Parts\)/.test(fam)) return 'Parts';
+  return 'New machine';
+}
+function fnlRep(company, contractRep) {
+  return repCanon(contractRep || CUSTOMER_DEFAULT_REP[repKey(company || '')] || '') || 'Unassigned';
+}
+function fnlMoney() { return { usd: 0, cur: {}, unconv: {} }; }
+function fnlAdd(m, amt, cur) {
+  amt = Number(amt) || 0; cur = String(cur || 'USD').trim().toUpperCase();
+  m.cur[cur] = (m.cur[cur] || 0) + amt;
+  const u = fnlUSD(amt, cur);
+  if (u === null) m.unconv[cur] = (m.unconv[cur] || 0) + amt; else m.usd += u;
+}
+function fnlFmt(m) {
+  const exact = formatMultiCurrency(m.cur);
+  const un = Object.keys(m.unconv).filter(k => m.unconv[k] > 0);
+  const main = m.usd > 0 ? '≈ USD ' + Math.round(m.usd).toLocaleString('en-US') : (un.length ? '' : '—');
+  const extra = un.length ? ' <span style="color:#b26a00" title="No rate in CRM for this currency — not converted">+ ' + un.map(k => escapeHtml(k) + ' ' + Math.round(m.unconv[k]).toLocaleString('en-US')).join(' + ') + '</span>' : '';
+  return '<span title="' + escapeHtml('Exact: ' + exact) + '">' + main + '</span>' + extra;
+}
+function fnlPct(a, b) { return b > 0 ? Math.round(100 * a / b) + '%' : '—'; }
+function fnlSet(k, v) { FUNNEL_STATE[k] = v || ''; renderFunnel(); }
+function fnlReset() { FUNNEL_STATE.from = ''; FUNNEL_STATE.to = ''; FUNNEL_STATE.rep = ''; FUNNEL_STATE.country = ''; FUNNEL_STATE.cat = ''; renderFunnel(); }
+
+function renderFunnel() {
+  const el = $('funnel-content');
+  if (!el) return;
+  if (!STATE.contracts || STATE.contracts.length === 0) { el.innerHTML = '<div class="empty">No data yet — press Refresh</div>'; return; }
+  if (!INQUIRIES_STATE.loaded && TASKS_STATE.loaded) rebuildInquiriesFromTasks();
+  const F = FUNNEL_STATE;
+  if (!F.from) F.from = new Date().getFullYear() + '-01-01';
+  if (!F.to) F.to = localISO();
+
+  // ── normalise rows ──
+  const deals = STATE.contracts
+    .filter(c => c.status !== 'Price List' && c.status !== 'Sales Contract')   // same exclusions as the Pipeline
+    .map(c => ({ c: c, d: toIsoDate(c.date) || '', rep: fnlRep(c.company, c.salesRep), country: c.country || 'Unknown', cat: fnlCategory(c.machine), fam: detectMachineFamily(c.machine) }));
+  const inqs = (INQUIRIES_STATE.inquiries || []).map(i => ({
+    i: i, d: toIsoDate(i.inquiryDate) || '', rep: fnlRep(i.customer, ''),
+    country: i.country || (i.customer ? getCustomerCountry(String(i.customer).trim()) : '') || 'Unknown',
+    cat: fnlCategory(i.machine), fam: detectMachineFamily(i.machine)
+  }));
+  const dims = x => (!F.rep || x.rep === F.rep) && (!F.country || x.country === F.country) && (!F.cat || x.cat === F.cat);
+  const inR = x => x.d && x.d >= F.from && x.d <= F.to;
+  const isWon = x => FNL_WON.includes(x.c.status) || !!x.c.signedDate;
+  const isPaid = x => FNL_PAID.includes(x.c.status);
+
+  const qs = deals.filter(x => dims(x) && inR(x));
+  const won = qs.filter(isWon), paid = qs.filter(isPaid);
+  const iq = inqs.filter(x => dims(x) && inR(x));
+  const iqConv = iq.filter(x => x.i.converted).length;
+  const sum = arr => { const m = fnlMoney(); arr.forEach(x => fnlAdd(m, x.c.amount, x.c.currency)); return m; };
+
+  // ── filter bar ──
+  const uniq = arr => Array.from(new Set(arr.filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const opt = (list, cur, allLbl) => `<option value="">${allLbl}</option>` + list.map(v => `<option value="${escapeHtml(v)}"${v === cur ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  const reps = uniq(deals.map(x => x.rep).concat(inqs.map(x => x.rep)));
+  const ctys = uniq(deals.map(x => x.country).concat(inqs.map(x => x.country)));
+  const cats = ['New machine', 'Refurbished / used', 'Parts', 'Unknown'];
+  const selS = 'padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:#fff';
+  const lblS = 'font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase';
+  const bar = `
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <span style="${lblS}">From</span><input type="date" style="${selS}" value="${escapeHtml(F.from)}" onchange="fnlSet('from',this.value)">
+        <span style="${lblS}">To</span><input type="date" style="${selS}" value="${escapeHtml(F.to)}" onchange="fnlSet('to',this.value)">
+        <select style="${selS}" onchange="fnlSet('rep',this.value)">${opt(reps, F.rep, 'All reps')}</select>
+        <select style="${selS}" onchange="fnlSet('country',this.value)">${opt(ctys, F.country, 'All countries')}</select>
+        <select style="${selS}" onchange="fnlSet('cat',this.value)">${opt(cats, F.cat, 'All categories')}</select>
+        <button class="qf-chip" onclick="fnlReset()">Reset (this year)</button>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Values: ≈USD using the CRM's built-in rough rates (the same table as the follow-up list: 1 USD = RM 4.7; SGD 3.5, EUR 5.1, RMB/CNY 0.65 per RM). Not exact — hover a value for the exact per-currency totals. Currencies without a rate are shown separately in amber, never converted.</div>
+    </div>`;
+
+  // ── funnel ──
+  const stages = [
+    { name: 'Inquiries', n: iq.length, val: null, sub: iqConv + ' marked converted to quote', color: '#7f8c9a' },
+    { name: 'Quotations sent', n: qs.length, val: sum(qs), sub: 'every contract record dated in range (excl. Price List)', color: '#27557d' },
+    { name: 'Confirmed / Won', n: won.length, val: sum(won), sub: 'Confirmed → Delivered, or marked signed', color: '#16324a' },
+    { name: 'Paid', n: paid.length, val: sum(paid), sub: 'Closed (Paid) or Delivered', color: '#2e7d32' }
+  ];
+  const maxN = Math.max(1, ...stages.map(s => s.n));
+  const funnelHtml = stages.map((s, k) => {
+    const w = Math.max(4, Math.round(100 * s.n / maxN));
+    const conv = k > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin:2px 0 6px 4px">↓ ${fnlPct(s.n, stages[k - 1].n)} of ${escapeHtml(stages[k - 1].name.toLowerCase())}</div>` : '';
+    return conv + `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">
+        <div style="flex:0 0 130px;font-size:12px;font-weight:600">${s.name}</div>
+        <div style="flex:1;background:#eef1f4;border-radius:6px;overflow:hidden"><div style="width:${w}%;background:${s.color};color:#fff;padding:6px 10px;font-weight:700;font-size:13px;white-space:nowrap">${s.n}</div></div>
+        <div style="flex:0 0 210px;font-size:12px;text-align:right">${s.val ? fnlFmt(s.val) : '<span style="color:var(--text-faint)">no value field</span>'}</div>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin:0 0 4px 142px">${s.sub}</div>`;
+  }).join('');
+
+  // ── breakdown tables ──
+  const thS = 'text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);font-size:11px;color:var(--text-muted);text-transform:uppercase';
+  const tdS = 'padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px';
+  function breakdown(keyOf, label, limit) {
+    const g = {};
+    const row = k => (g[k] = g[k] || { k: k, inq: 0, q: 0, w: 0, p: 0, wv: fnlMoney() });
+    iq.forEach(x => row(keyOf(x)).inq++);
+    qs.forEach(x => row(keyOf(x)).q++);
+    won.forEach(x => { const r = row(keyOf(x)); r.w++; fnlAdd(r.wv, x.c.amount, x.c.currency); });
+    paid.forEach(x => row(keyOf(x)).p++);
+    let rows = Object.values(g).sort((a, b) => (b.wv.usd - a.wv.usd) || (b.q - a.q) || (b.inq - a.inq));
+    if (limit && rows.length > limit) rows = rows.slice(0, limit);
+    if (!rows.length) return '<div class="empty" style="padding:12px">No data in this range</div>';
+    return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <tr><th style="${thS}">${label}</th><th style="${thS}">Inq.</th><th style="${thS}">Quotes</th><th style="${thS}">Won</th><th style="${thS}">Paid</th><th style="${thS}">Win %</th><th style="${thS}">Won value</th></tr>
+      ${rows.map(r => `<tr><td style="${tdS};font-weight:600">${escapeHtml(r.k)}</td><td style="${tdS}">${r.inq}</td><td style="${tdS}">${r.q}</td><td style="${tdS}">${r.w}</td><td style="${tdS}">${r.p}</td><td style="${tdS}">${fnlPct(r.w, r.q)}</td><td style="${tdS};white-space:nowrap">${fnlFmt(r.wv)}</td></tr>`).join('')}
+    </table></div>`;
+  }
+
+  // ── monthly trend (quotes vs won, by month of contract date) ──
+  const months = [];
+  { let y = parseInt(F.from.slice(0, 4), 10), m = parseInt(F.from.slice(5, 7), 10);
+    const ey = parseInt(F.to.slice(0, 4), 10), em = parseInt(F.to.slice(5, 7), 10);
+    while ((y < ey || (y === ey && m <= em)) && months.length < 120) { months.push(y + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; y++; } }
+  }
+  const shown = months.slice(-24);
+  const mq = {}, mw = {}, mv = {};
+  qs.forEach(x => { const k = x.d.slice(0, 7); mq[k] = (mq[k] || 0) + 1; });
+  won.forEach(x => { const k = x.d.slice(0, 7); mw[k] = (mw[k] || 0) + 1; (mv[k] = mv[k] || fnlMoney()); fnlAdd(mv[k], x.c.amount, x.c.currency); });
+  const maxM = Math.max(1, ...shown.map(k => mq[k] || 0));
+  const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const trendHtml = shown.length ? `
+    <div style="display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:6px;overflow-x:auto">
+      ${shown.map(k => {
+        const q = mq[k] || 0, w = mw[k] || 0;
+        const tip = `${k}: ${q} quote(s), ${w} won${mv[k] ? ' · ≈USD ' + Math.round(mv[k].usd).toLocaleString('en-US') : ''}`;
+        return `<div title="${escapeHtml(tip)}" style="flex:1 0 26px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+          <div style="font-size:10px;color:var(--text-muted)">${q || ''}</div>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:110px">
+            <div style="width:9px;height:${Math.round(110 * q / maxM)}px;background:#27557d;border-radius:2px 2px 0 0"></div>
+            <div style="width:9px;height:${Math.round(110 * w / maxM)}px;background:#2e7d32;border-radius:2px 2px 0 0"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;white-space:nowrap">${MN[parseInt(k.slice(5, 7), 10) - 1]} ${k.slice(2, 4)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:10.5px;color:var(--text-faint);margin-top:6px"><span style="display:inline-block;width:9px;height:9px;background:#27557d"></span> Quotes &nbsp; <span style="display:inline-block;width:9px;height:9px;background:#2e7d32"></span> Won (by quote month)${months.length > 24 ? ' · last 24 months of the range shown' : ''}</div>` : '<div class="empty">Invalid date range</div>';
+
+  // ── stuck deals: open quotes with no activity > 30 days (filters except date apply) ──
+  const lastAct = {};
+  (STATE.allFollowups || []).forEach(f => {
+    const k = (f.contractNo || '').trim(); if (!k) return;
+    const d = toIsoDate(f.loggedAt) || toIsoDate(f.date);
+    if (d && (!lastAct[k] || d > lastAct[k])) lastAct[k] = d;
+  });
+  const stuck = deals.filter(x => dims(x) && FNL_OPEN.includes(x.c.status) && x.d).map(x => {
+    const fu = lastAct[(x.c.contractNo || '').trim()] || '';
+    const last = fu > x.d ? fu : x.d;
+    return { x: x, last: last, days: daysAgo(last), usd: fnlUSD(x.c.amount, x.c.currency) };
+  }).filter(s => s.days !== null && s.days > FNL_STUCK_DAYS)
+    .sort((a, b) => ((b.usd === null ? -1 : b.usd) - (a.usd === null ? -1 : a.usd)) || (b.x.c.amount - a.x.c.amount))
+    .slice(0, 10);
+  const stuckHtml = stuck.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <tr><th style="${thS}">Contract</th><th style="${thS}">Customer</th><th style="${thS}">Machine</th><th style="${thS}">Status</th><th style="${thS}">Value</th><th style="${thS}">Last activity</th><th style="${thS}">Rep</th></tr>
+      ${stuck.map(s => { const c = s.x.c; return `<tr>
+        <td style="${tdS};white-space:nowrap">${escapeHtml(c.contractNo)}</td>
+        <td style="${tdS}"><a href="#" onclick="selectCustomer(${jsArg(c.company)});document.querySelector('[data-tab=&quot;crm&quot;]').click();return false" style="color:var(--primary-light);font-weight:600">${escapeHtml(c.company)}</a> <span style="color:var(--text-faint)">${escapeHtml(s.x.country)}</span></td>
+        <td style="${tdS}">${escapeHtml(c.machine)}</td>
+        <td style="${tdS};white-space:nowrap">${escapeHtml(c.status)}</td>
+        <td style="${tdS};white-space:nowrap;font-weight:600">${escapeHtml(fmtMoney(c.amount, c.currency))}${s.usd !== null && String(c.currency || 'USD').toUpperCase() !== 'USD' ? `<div style="font-size:10.5px;color:var(--text-muted);font-weight:400">≈ USD ${Math.round(s.usd).toLocaleString('en-US')}</div>` : ''}</td>
+        <td style="${tdS};white-space:nowrap">${escapeHtml(fmtDate(s.last))} <span style="color:#c0392b;font-weight:600">${s.days}d</span></td>
+        <td style="${tdS}">${escapeHtml(s.x.rep)}</td></tr>`; }).join('')}
+    </table></div>` : '<div class="empty" style="padding:12px">No stuck quotations 🎉</div>';
+
+  el.innerHTML = bar + `
+    <div class="dashboard-section">
+      <h3>🔻 Sales Funnel <span style="font-size:11px;font-weight:400;color:var(--text-muted)">${escapeHtml(fmtDate(F.from))} – ${escapeHtml(fmtDate(F.to))} · by inquiry / quote date</span></h3>
+      ${funnelHtml}
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Stages are counted from records dated in the range. Not every quote is linked to a logged inquiry, so Inquiries → Quotations can exceed 100%.</div>
+    </div>
+    <div class="dashboard-row">
+      <div class="dashboard-section"><h3>🌍 By Country</h3>${breakdown(x => x.country, 'Country')}</div>
+      <div class="dashboard-section"><h3>🏭 By Category</h3>${breakdown(x => x.cat, 'Category')}
+        <h3 style="margin-top:14px">Top machine families</h3>${breakdown(x => x.fam, 'Family', 8)}</div>
+    </div>
+    <div class="dashboard-section"><h3>📅 Monthly Trend</h3>${trendHtml}</div>
+    <div class="dashboard-section">
+      <h3>⏳ Stuck Deals <span style="font-size:11px;font-weight:400;color:var(--text-muted)">open quotes, no activity &gt; ${FNL_STUCK_DAYS} days · top 10 by value</span></h3>
+      ${stuckHtml}
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Open = Quotation Sent / Following Up / Negotiating. The CRM keeps no status-change date, so "last activity" = the later of the quote date and the last logged follow-up for that contract. Rep / country / category filters apply; the date range does not.</div>
+    </div>`;
 }
 
 function formatMultiCurrency(byCurr) {
@@ -5792,6 +6007,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (t.dataset.tab === 'tasks' && !TASKS_STATE.loaded) loadTasks();
     if (t.dataset.tab === 'tasks') { renderTasks(); updateTaskCounts(); }
     if (t.dataset.tab === 'dashboard') renderDashboard();
+    if (t.dataset.tab === 'funnel') renderFunnel();   // v2.64
     // v2.22: Invoices
     if (t.dataset.tab === 'invoices') { if (!INVOICES_STATE.loaded) loadInvoices(); else renderInvoices(); }
     // v1.6: Sales Reps + Packs
