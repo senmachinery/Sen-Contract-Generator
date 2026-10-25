@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.65</title>
+<title>Sen Labels — CRM v2.66</title>
+<!-- v2.66: NEW "3D Factory" tab — interactive Three.js mini factory (loaded from CDN only when the tab is first opened). Click the Office → live business panel (stages, open USD value, recent deals, stuck 30d+); click the Factory → sold-not-shipped machine deals (last 120 days), also shown as small presses with name tags. Data = the CRM's already-loaded contracts/follow-ups (no new API calls); re-reads on every CRM refresh. Nothing else changed. -->
 <!-- v2.65: Funnel — stuck deals skip the no-chase list (localStorage sen_funnel_nochase, per-row hide ✕), long machine titles truncated, Inquiry→Quote % shown as n/a when inquiries are under-logged, section ids for the daily screenshot. -->
 <!-- v2.64: NEW "Funnel" tab — read-only sales funnel (Inquiries → Quotations → Confirmed/Won → Paid) with date/rep/country/category filters, breakdown by country + category, monthly trend bars, and a stuck-deals list (>30 days no activity). Uses only data already loaded; ≈USD via the existing _toRM rough rates. Nothing else changed. -->
 <!-- v2.63: SECURITY — stored-XSS fix. Sheet data (company / contract no / currency / country / ids / follow-up fields / image URLs …) is now escaped wherever it is put into HTML; inline on*="…" handler arguments go through jsArg() (JSON.stringify + escapeHtml) instead of the old single-quote-only escape; inquiry image links only open http(s) URLs (safeUrl). No business logic / layout change. -->
@@ -517,6 +518,56 @@
 }
 @media (max-width:560px){ .topbar h1{ font-size:15px; } }
 </style>
+<!-- v2.66: 3D Factory tab. The import map is inert: nothing is downloaded until the tab is first opened (f3dOpen → dynamic import). -->
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+<style>
+  /* v2.66: 3D Factory tab (all rules scoped to .f3d-*) */
+  .f3d-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#fff; padding:8px 12px; border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:10px; font-size:13px; }
+  .f3d-bar strong { color:var(--primary); }
+  .f3d-bar .f3d-upd { font-size:11px; color:var(--text-muted); }
+  .f3d-bar .f3d-hint { font-size:11px; color:var(--text-faint); margin-left:auto; }
+  .f3d-stage { position:relative; height:calc(100vh - 190px); min-height:420px; border-radius:var(--radius); overflow:hidden; background:#efece5; box-shadow:var(--shadow); }
+  .f3d-stage canvas { display:block; width:100%; height:100%; touch-action:none; outline:none; }
+  .f3d-msg { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); text-align:center; color:#4a5263; font-size:13px; max-width:86%; }
+  .f3d-labels { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .f3d-lbl { position:absolute; left:0; top:0; white-space:nowrap; pointer-events:auto; cursor:pointer; background:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,.95); box-shadow:0 6px 18px rgba(30,40,70,.18); border-radius:999px; padding:5px 12px 5px 9px; font-size:12px; font-weight:700; color:#151b2b; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:box-shadow .15s, background .15s; will-change:transform; }
+  .f3d-lbl i { display:inline-block; width:8px; height:8px; border-radius:50%; background:#ff7a1a; margin-right:6px; box-shadow:0 0 0 3px rgba(255,122,26,.2); vertical-align:1px; }
+  .f3d-lbl b { color:#2347d6; }
+  .f3d-lbl.hot { background:#151b2b; color:#fff; } .f3d-lbl.hot b { color:#ffb070; }
+  .f3d-tag { position:absolute; left:0; top:0; white-space:nowrap; pointer-events:auto; cursor:pointer; font-size:10px; font-weight:700; color:#fff; padding:2px 7px; border-radius:6px; box-shadow:0 3px 8px rgba(0,0,0,.18); will-change:transform; }
+  .f3d-panel { position:absolute; top:10px; right:10px; bottom:10px; width:380px; max-width:calc(100% - 20px); background:rgba(255,255,255,.97); border-radius:14px; box-shadow:0 18px 50px rgba(30,40,70,.25); display:flex; flex-direction:column; transform:translateX(110%); transition:transform .28s ease; z-index:3; }
+  .f3d-panel.open { transform:none; }
+  .f3d-ph { display:flex; align-items:center; gap:8px; padding:12px 14px 10px; border-bottom:1px solid var(--border); }
+  .f3d-ph h3 { margin:0; font-size:15px; color:#151b2b; flex:1; }
+  .f3d-ph button { border:none; background:#f0f2f5; border-radius:8px; width:30px; height:30px; font-size:18px; cursor:pointer; color:#4a5263; }
+  .f3d-pb { overflow-y:auto; padding:12px 14px 16px; -webkit-overflow-scrolling:touch; font-size:12.5px; }
+  .f3d-kpis { display:flex; gap:8px; margin-bottom:12px; }
+  .f3d-kpi { flex:1; background:#f5f7fb; border-radius:10px; padding:8px 10px; }
+  .f3d-kpi b { display:block; font-size:19px; color:#2347d6; line-height:1.1; }
+  .f3d-kpi span { display:block; font-size:10.5px; color:var(--text-muted); margin-top:3px; }
+  .f3d-sec { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin:14px 0 6px; letter-spacing:.04em; }
+  .f3d-stg { display:flex; align-items:center; gap:8px; margin:4px 0; }
+  .f3d-stg .n { width:112px; flex:none; } .f3d-stg .bar { flex:1; height:10px; background:#eef0f4; border-radius:5px; overflow:hidden; } .f3d-stg .bar div { height:100%; border-radius:5px; } .f3d-stg .c { width:30px; text-align:right; font-weight:700; }
+  .f3d-row { display:block; padding:8px 9px; border-radius:9px; border:1px solid #eceef2; margin-bottom:6px; cursor:pointer; background:#fff; }
+  .f3d-row:hover { border-color:#2347d6; background:#f7f9ff; }
+  .f3d-row .t { display:flex; justify-content:space-between; gap:8px; font-weight:700; color:#151b2b; }
+  .f3d-row .t span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .f3d-row .m { color:var(--text-secondary); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .f3d-row .s { display:flex; justify-content:space-between; gap:8px; color:var(--text-muted); font-size:11px; margin-top:3px; }
+  .f3d-chip { display:inline-block; padding:1px 7px; border-radius:999px; color:#fff; font-size:10.5px; font-weight:700; }
+  .f3d-note { font-size:10.5px; color:var(--text-faint); margin-top:6px; }
+  .f3d-ph2 { border:2px dashed #cfd5df; border-radius:10px; padding:12px; color:var(--text-muted); text-align:center; margin-top:14px; }
+  @media (max-width:700px) {
+    .f3d-stage { height:calc(100vh - 215px); height:calc(100svh - 215px); min-height:380px; }
+    .f3d-bar .f3d-hint { display:none; }
+    .f3d-panel { top:auto; left:0; right:0; bottom:0; width:auto; max-width:none; height:60%; border-radius:16px 16px 0 0; transform:translateY(105%); }
+    .f3d-panel.open { transform:none; }
+    .f3d-kpi b { font-size:17px; }
+  }
+</style>
 
 </head>
 <body>
@@ -555,7 +606,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.65</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.66</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -577,6 +628,7 @@
   <button class="tab" data-tab="invoices"><svg class="ic"><use href="#i-doc"/></svg> Invoices <span class="count" id="invoices-count">—</span></button>
   <button class="tab" data-tab="dashboard"><svg class="ic"><use href="#i-chart"/></svg> Dashboard</button>
   <button class="tab" data-tab="funnel"><svg class="ic"><use href="#i-chart"/></svg> Funnel</button>
+  <button class="tab" data-tab="factory3d"><span style="font-size:14px">🏭</span> 3D Factory</button>
   <button class="tab" data-tab="reps"><svg class="ic"><use href="#i-badge"/></svg> Sales Reps <span class="count" id="reps-count">—</span></button>
   <button class="tab" data-tab="packs"><svg class="ic"><use href="#i-package"/></svg> Follow-up Packs</button>
 </div>
@@ -754,6 +806,26 @@
   <!-- SALES FUNNEL TAB (v2.64) -->
   <div class="tab-content" id="tab-funnel">
     <div id="funnel-content"><div class="empty">No data yet</div></div>
+  </div>
+  <!-- 3D FACTORY TAB (v2.66) — nothing runs until the tab is first opened -->
+  <div class="tab-content" id="tab-factory3d">
+    <div class="f3d-bar">
+      <strong>🏭 3D Factory</strong>
+      <button class="qf-chip" onclick="f3dOpenPanel('office')">🏢 Office</button>
+      <button class="qf-chip" onclick="f3dOpenPanel('factory')">🏭 Factory</button>
+      <button class="btn btn-sm btn-outline" onclick="f3dRefresh()" title="Reload data from Sheets">↻</button>
+      <span class="f3d-upd" id="f3d-upd"></span>
+      <span class="f3d-hint">Drag to rotate · scroll / pinch to zoom · click a building</span>
+    </div>
+    <div class="f3d-stage" id="f3d-stage">
+      <canvas id="f3d-canvas"></canvas>
+      <div class="f3d-labels" id="f3d-labels"></div>
+      <div class="f3d-msg" id="f3d-msg"></div>
+      <div class="f3d-panel" id="f3d-panel">
+        <div class="f3d-ph"><h3 id="f3d-ptitle"></h3><button onclick="f3dClosePanel()" aria-label="Close">×</button></div>
+        <div class="f3d-pb" id="f3d-pbody"></div>
+      </div>
+    </div>
   </div>
   <!-- SALES REPS TAB (v1.6) -->
   <div class="tab-content" id="tab-reps">
@@ -1502,6 +1574,7 @@ async function refreshData() {
     }
     try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(_e){}   // v2.53: render landing tab after data loads (was stuck spinning)
     try { renderTarget(); } catch(_e){}   // v3.0: 12-machine target badge + prerender (hidden until tab clicked)
+    try { f3dOnData(); } catch(_e){}   // v2.66: 3D Factory — re-read data only if that tab was opened
   } catch (e) {
     $('customer-list').innerHTML = `<div class="empty">❌ Failed to load: ${escapeHtml(e.message)}</div>`;
     const _sc = $('snapshot-content'); if (_sc) _sc.innerHTML = `<div class="empty" style="padding:30px">❌ Couldn't load data: ${escapeHtml(e.message)}<br><br><button class="btn btn-sm" onclick="refreshData()">Retry</button></div>`;
@@ -6038,6 +6111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // v1.7: Phase 6 Today's Snapshot
     if (t.dataset.tab === 'snapshot') renderSnapshot();
     if (t.dataset.tab === 'target') renderTarget();
+    if (typeof f3dOnTab === 'function') f3dOnTab(t.dataset.tab);   // v2.66: 3D Factory (no-op until the tab has been opened once)
   }));
   
   // v1.2: ESC closes modal
@@ -6211,6 +6285,546 @@ async function recordInvoicePayment(invoiceNo) {
 }
 // ===== end INVOICES MODULE =====
 
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// v2.66 — 3D FACTORY TAB (internal). Three.js is downloaded ONLY when the
+// tab is first opened. Data = STATE.contracts / STATE.allFollowups that the
+// CRM already loaded (no new API calls). No customer data lives in this file.
+// ═══════════════════════════════════════════════════════════════════
+const F3D = { started: false, ready: false, failed: false, running: false, raf: 0, dataAt: null, data: null, panel: '', hover: '' };
+const F3D_QUOTE = ['Quotation Sent', 'Quotation', 'Following Up', 'Negotiating'];
+const F3D_CONFIRMED = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
+const F3D_PAID = ['Closed (Paid)', 'Closed (Won)', 'Delivered'];
+const F3D_EXCL = ['Price List', 'Lost', 'Cancelled'];
+const F3D_FACTORY_DAYS = 120;
+const F3D_COL = { blue: '#2347d6', teal: '#16a394', green: '#4caf50', orange: '#ff7a1a', grey: '#9aa1ad' };
+
+function f3dStage(s) {
+  if (F3D_QUOTE.includes(s)) return 'quote';
+  if (F3D_CONFIRMED.includes(s)) return 'confirmed';
+  if (s === 'Sales Contract') return 'sc';
+  if (F3D_PAID.includes(s)) return 'paid';
+  return 'other';
+}
+function f3dStatusColor(s) {
+  if (s === 'Ready to Ship') return F3D_COL.orange;
+  const g = f3dStage(s);
+  return g === 'confirmed' ? F3D_COL.blue : g === 'sc' ? F3D_COL.teal : g === 'paid' ? F3D_COL.green : F3D_COL.grey;
+}
+function f3dIsMachine(title) {
+  const t = String(title || '').trim();
+  return !!t && !/^(for\s*:|parts\b|spare\s*parts|agent\s+price\s+list)/i.test(t);
+}
+function f3dShort(name) {
+  let s = String(name || '').replace(/\b(sdn\.?\s*bhd\.?|bhd\.?|pte\.?\s*ltd\.?|co\.?,?\s*ltd\.?|ltd\.?|limited|inc\.?|corp(oration)?\.?|llc|jsc|tbk|tnhh|company)\b/gi, ' ')
+    .replace(/^\s*(pt|cv|cong ty)\.?\s+/i, '').replace(/[.,()]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = s.split(' ');
+  let w = parts.slice(0, 2).join(' ');
+  if (w.length > 13) w = parts[0];
+  return (w.length > 13 ? w.slice(0, 12) + '…' : w) || String(name || '').slice(0, 12);
+}
+function f3dTime(d) { return d ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : ''; }
+
+// Pure data step — reads only what the CRM has in memory.
+function f3dCompute() {
+  const rows = (STATE.contracts || []).filter(c => c && !F3D_EXCL.includes(c.status)).map(c => ({ c: c, d: toIsoDate(c.date) || '', g: f3dStage(c.status) }));
+  const stages = { quote: 0, confirmed: 0, sc: 0, paid: 0, other: 0 };
+  rows.forEach(r => { stages[r.g]++; });
+  const active = rows.filter(r => r.g === 'quote' || r.g === 'confirmed' || r.g === 'sc');
+  let usd = 0; const other = {};
+  active.forEach(r => {
+    const cur = String(r.c.currency || 'USD').trim().toUpperCase();
+    if (cur === 'USD') usd += Number(r.c.amount) || 0; else other[cur] = (other[cur] || 0) + (Number(r.c.amount) || 0);
+  });
+  const recent = active.slice().sort((a, b) => b.d.localeCompare(a.d)).slice(0, 10);
+  // Stuck = same rule as the Funnel tab: open quote, last activity (quote date or last logged follow-up) > FNL_STUCK_DAYS, no-chase list skipped
+  const lastAct = {};
+  (STATE.allFollowups || []).forEach(f => {
+    const k = (f.contractNo || '').trim(); if (!k) return;
+    const d = toIsoDate(f.loggedAt) || toIsoDate(f.date);
+    if (d && (!lastAct[k] || d > lastAct[k])) lastAct[k] = d;
+  });
+  const noChase = (typeof fnlNoChase === 'function') ? fnlNoChase() : new Set();
+  const stuckDays = (typeof FNL_STUCK_DAYS === 'number') ? FNL_STUCK_DAYS : 30;
+  const openSt = (typeof FNL_OPEN !== 'undefined') ? FNL_OPEN : ['Quotation Sent', 'Following Up', 'Negotiating'];
+  const stuck = active.filter(r => openSt.includes(r.c.status) && r.d && !noChase.has(String(r.c.company || '').trim().toLowerCase())).map(r => {
+    const fu = lastAct[(r.c.contractNo || '').trim()] || '';
+    const last = fu > r.d ? fu : r.d;
+    return { r: r, last: last, days: daysAgo(last) };
+  }).filter(s => s.days !== null && s.days > stuckDays).sort((a, b) => b.days - a.days);
+  // Factory = machine deals sold but not shipped, dated in the last 120 days
+  const cutoff = localISO(new Date(Date.now() - F3D_FACTORY_DAYS * 86400000));
+  const factory = rows.filter(r => (r.g === 'confirmed' || r.g === 'sc' || r.c.status === 'Closed (Paid)') && r.d && r.d >= cutoff && f3dIsMachine(r.c.machine))
+    .sort((a, b) => b.d.localeCompare(a.d));
+  return { stages: stages, active: active, usd: usd, other: other, recent: recent, stuck: stuck, stuckDays: stuckDays, factory: factory };
+}
+
+function f3dOnTab(tab) {
+  if (tab === 'factory3d') { f3dOpen(); return; }
+  if (F3D.started) f3dStop();
+}
+function f3dOnData() {
+  F3D.dataAt = new Date();
+  if (!F3D.started) return;   // tab never opened → nothing to do
+  F3D.data = f3dCompute();
+  f3dUpdateUi();
+}
+function f3dRefresh() {
+  if (typeof refreshData === 'function' && STATE.appsScriptUrl) refreshData();
+  else { F3D.dataAt = F3D.dataAt || new Date(); F3D.data = f3dCompute(); f3dUpdateUi(); }
+}
+function f3dOpen() {
+  if (!F3D.dataAt && STATE.contracts && STATE.contracts.length) F3D.dataAt = new Date();
+  F3D.data = f3dCompute();
+  if (!F3D.started) {
+    F3D.started = true;
+    f3dLoad();
+  } else f3dResume();
+  f3dUpdateUi();
+}
+function f3dUpdateUi() {
+  const u = $('f3d-upd');
+  if (u) u.textContent = F3D.dataAt ? 'updated ' + f3dTime(F3D.dataAt) : 'no data yet — press ↻';
+  f3dSetLabels();
+  if (F3D.ready) f3dSyncDeals();
+  if (F3D.panel) f3dRenderPanel();
+}
+
+// ── side panel / bottom sheet ──
+function f3dOpenPanel(which) {
+  if (!F3D.started) f3dOpen();
+  F3D.panel = which;
+  f3dRenderPanel();
+  const p = $('f3d-panel'); if (p) p.classList.add('open');
+  f3dFly(which);
+}
+function f3dClosePanel() {
+  F3D.panel = '';
+  const p = $('f3d-panel'); if (p) p.classList.remove('open');
+  f3dFly('home');
+}
+function f3dGoCustomer(company) {
+  selectCustomer(company);
+  const t = document.querySelector('[data-tab="crm"]'); if (t) t.click();
+}
+function f3dRowHtml(c, extra) {
+  return `<div class="f3d-row" onclick="f3dGoCustomer(${jsArg(c.company)})" title="Open ${escapeHtml(c.company)} in CRM">
+      <div class="t"><span>${escapeHtml(c.company)}</span><span>${escapeHtml(fmtMoney(c.amount, c.currency))}</span></div>
+      <div class="m" title="${escapeHtml(c.machine)}">${escapeHtml(c.machine || '—')}</div>
+      <div class="s"><span>${escapeHtml(c.contractNo)} · <span class="f3d-chip" style="background:${f3dStatusColor(c.status)}">${escapeHtml(c.status)}</span></span><span>${extra || escapeHtml(fmtDate(c.date))}</span></div>
+    </div>`;
+}
+function f3dRenderPanel() {
+  const D = F3D.data || f3dCompute();
+  const tEl = $('f3d-ptitle'), b = $('f3d-pbody');
+  if (!tEl || !b) return;
+  if (!STATE.contracts || !STATE.contracts.length) { tEl.textContent = F3D.panel === 'office' ? 'Office · live business' : 'Factory'; b.innerHTML = '<div class="empty">No data yet — press ↻</div>'; return; }
+  const keepScroll = b.dataset.panel === F3D.panel ? b.scrollTop : 0;
+  b.dataset.panel = F3D.panel;
+  setTimeout(() => { b.scrollTop = keepScroll; }, 0);
+  if (F3D.panel === 'office') {
+    tEl.textContent = 'Office · live business';
+    const st = D.stages, maxS = Math.max(1, st.quote, st.confirmed, st.sc, st.paid);
+    const stg = (n, k, col) => `<div class="f3d-stg"><span class="n">${n}</span><span class="bar"><div style="width:${Math.round(100 * st[k] / maxS)}%;background:${col}"></div></span><span class="c">${st[k]}</span></div>`;
+    const oth = Object.keys(D.other).filter(k => D.other[k] > 0).map(k => escapeHtml(k) + ' ' + Math.round(D.other[k]).toLocaleString('en-US')).join(' · ');
+    b.innerHTML = `
+      <div class="f3d-kpis">
+        <div class="f3d-kpi"><b>${D.active.length}</b><span>active deals</span></div>
+        <div class="f3d-kpi"><b>${D.usd >= 1e6 ? (D.usd / 1e6).toFixed(2) + 'M' : Math.round(D.usd / 1000) + 'k'}</b><span>open value, USD</span></div>
+        <div class="f3d-kpi"><b style="color:#c0392b">${D.stuck.length}</b><span>stuck ${D.stuckDays}d+</span></div>
+      </div>
+      <div class="f3d-note">Open value = USD ${Math.round(D.usd).toLocaleString('en-US')} (USD deals only)${oth ? '. Other currencies, not converted: ' + oth : ''}.</div>
+      <div class="f3d-sec">Deals by stage</div>
+      ${stg('Quotation Sent', 'quote', F3D_COL.grey)}${stg('Confirmed', 'confirmed', F3D_COL.blue)}${stg('Sales Contract', 'sc', F3D_COL.teal)}${stg('Closed (Paid)', 'paid', F3D_COL.green)}
+      ${D.stages.other ? `<div class="f3d-note">${D.stages.other} other (e.g. On Hold) not counted as active.</div>` : ''}
+      <div class="f3d-sec">Latest active deals</div>
+      ${D.recent.length ? D.recent.map(r => f3dRowHtml(r.c)).join('') : '<div class="empty">No active deals</div>'}
+      <div class="f3d-sec">Stuck — no activity ${D.stuckDays}+ days</div>
+      ${D.stuck.length ? D.stuck.slice(0, 10).map(s => f3dRowHtml(s.r.c, `<span style="color:#c0392b;font-weight:700">${s.days}d</span>`)).join('') : '<div class="empty" style="padding:8px">No stuck quotations 🎉</div>'}
+      ${D.stuck.length > 10 ? `<div class="f3d-note">+${D.stuck.length - 10} more — see the Funnel tab.</div>` : ''}
+      <div class="f3d-note">Active = Quotation Sent / Following Up / Negotiating / Confirmed (incl. deposit, production, ready to ship) / Sales Contract. Price List, Lost, Cancelled excluded. Stuck uses the Funnel rule (open quotes; last activity = quote date or last logged follow-up; no-chase list skipped).</div>`;
+  } else {
+    tEl.textContent = 'Factory · sold, not yet shipped';
+    const leg = [['Confirmed', F3D_COL.blue], ['Ready to Ship', F3D_COL.orange], ['Sales Contract', F3D_COL.teal], ['Closed (Paid)', F3D_COL.green]]
+      .map(([n, c]) => `<span class="f3d-chip" style="background:${c}">${n}</span>`).join(' ');
+    b.innerHTML = `
+      <div class="f3d-kpis"><div class="f3d-kpi"><b>${D.factory.length}</b><span>machines to ship</span></div>
+        <div class="f3d-kpi"><b>${Math.min(8, D.factory.length)}</b><span>shown in the yard</span></div></div>
+      <div>${leg}</div>
+      <div class="f3d-sec">Machine deals · last ${F3D_FACTORY_DAYS} days</div>
+      ${D.factory.length ? D.factory.map(r => f3dRowHtml(r.c, escapeHtml(fmtDate(r.c.date)) + (daysAgo(r.d) !== null ? ' · ' + daysAgo(r.d) + 'd ago' : ''))).join('') : '<div class="empty">No sold-but-unshipped machine deals in the last ' + F3D_FACTORY_DAYS + ' days</div>'}
+      <div class="f3d-note">Machine deals (title not starting with "For:", "PARTS", "Spare Parts" or "Agent Price List") with status Confirmed (incl. deposit / production / ready to ship / awaiting payment), Sales Contract or Closed (Paid), dated in the last ${F3D_FACTORY_DAYS} days. Delivered = shipped, not shown.</div>
+      <div class="f3d-ph2"><b>📦 Warehouse stock</b><br>Coming next version — needs the inventory sheet.</div>`;
+  }
+}
+
+// ── floating labels ──
+function f3dSetLabels() {
+  const box = $('f3d-labels'); if (!box) return;
+  const D = F3D.data; if (!D) return;
+  const mk = (key, html) => {
+    let el = box.querySelector('[data-f3d="' + key + '"]');
+    if (!el) { el = document.createElement('div'); el.className = 'f3d-lbl'; el.dataset.f3d = key; el.style.visibility = 'hidden'; el.onclick = () => f3dOpenPanel(key); box.appendChild(el); }
+    if (el.innerHTML !== html) { el.innerHTML = html; el._w = 0; } return el;
+  };
+  mk('office', `<i></i>Office · <b>${D.active.length}</b> active deals`);
+  mk('factory', `<i></i>Factory · <b>${D.factory.length}</b> to ship`);
+}
+
+// ── 3D engine ──
+function f3dMsg(t) { const m = $('f3d-msg'); if (m) m.innerHTML = t || ''; }
+function f3dLoad() {
+  f3dMsg('<span class="spinner"></span><div style="margin-top:8px">Loading 3D…</div>');
+  let ok = false;
+  try { const c = document.createElement('canvas'); ok = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); } catch (e) { ok = false; }
+  if (!ok) { F3D.failed = true; f3dMsg('3D view needs WebGL, which this browser has turned off.<br>Use the 🏢 Office / 🏭 Factory buttons above — the data still works.'); return; }
+  Promise.all([import('three'), import('three/addons/geometries/RoundedBoxGeometry.js'), import('three/addons/controls/OrbitControls.js')])
+    .then(([T, RB, OC]) => { f3dBuild(T, RB.RoundedBoxGeometry, OC.OrbitControls); f3dMsg(''); F3D.ready = true; f3dSyncDeals(); if (F3D.panel) f3dFly(F3D.panel); f3dResume(); })
+    .catch(e => { F3D.failed = true; console.warn('3D Factory: load failed', e); f3dMsg('Couldn\'t load the 3D engine (offline?).<br>Use the 🏢 Office / 🏭 Factory buttons above — the data still works.'); });
+}
+
+function f3dBuild(T, RoundedBoxGeometry, OrbitControls) {
+  const G = F3D.g = { T: T };
+  const stage = $('f3d-stage'), canvas = $('f3d-canvas');
+  const renderer = G.renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  const scene = G.scene = new T.Scene();
+  scene.background = new T.Color('#efece5');
+  const cam = G.cam = new T.PerspectiveCamera(30, 1, 1, 700);
+  scene.add(new T.HemisphereLight('#ffffff', '#c9c2b4', 1.25));
+  const sun = new T.DirectionalLight('#fff4e6', 2.4);
+  sun.position.set(26, 46, 18); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024); sun.shadow.radius = 4;
+  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 120 });
+  sun.shadow.bias = -0.0008; scene.add(sun);
+
+  const C = { ground: '#f6f3ec', slab: '#e6e1d6', road: '#c9c4bb', line: '#ffffff', blue: '#2347d6', teal: '#16a394', green: '#4caf50',
+              orange: '#ff7a1a', red: '#ed262c', white: '#ffffff', grey: '#9aa1ad', dark: '#2b3140', roof: '#dfe3ea', glass: '#a9c8ff', crate: '#d9b98a' };
+  const mats = {};
+  const M = c => mats[c] || (mats[c] = new T.MeshStandardMaterial({ color: c, roughness: 0.62, metalness: 0.04 }));
+  const glassM = new T.MeshStandardMaterial({ color: '#bcd6ff', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.55 });
+  G.M = M;
+  const box = G.box = (w, h, d, color, x, y, z, parent, r) => {
+    r = r == null ? 0.12 : r;
+    const m = new T.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2.2, h / 2.2, d / 2.2)), typeof color === 'string' ? M(color) : color);
+    m.position.set(x, y + h / 2, z); m.castShadow = true; m.receiveShadow = true; (parent || scene).add(m); return m;
+  };
+  const cylGeo = {};
+  const cyl = G.cyl = (r, h, color, x, y, z, parent, axis) => {
+    const k = r + '_' + h; const geo = cylGeo[k] || (cylGeo[k] = new T.CylinderGeometry(r, r, h, 18));
+    const m = new T.Mesh(geo, M(color));
+    if (axis === 'x') m.rotation.z = Math.PI / 2; if (axis === 'z') m.rotation.x = Math.PI / 2;
+    m.position.set(x, y, z); m.castShadow = true; (parent || scene).add(m); return m;
+  };
+  const group = (x, y, z, pick) => { const g = new T.Group(); g.position.set(x, y, z); if (pick) g.userData.pick = pick; scene.add(g); return g; };
+  G.pickables = [];
+
+  // slab + road loop
+  const slab = group(0, 0, 0);
+  box(40, 2.2, 30, C.slab, 0, -2.2, 0, slab, 0.9);
+  box(39, 0.3, 29, C.ground, 0, 0, 0, slab, 0.6);
+  [[0, 12.2, 38, 3.2], [0, -12.2, 38, 3.2]].forEach(([x, z, w, d]) => box(w, 0.08, d, C.road, x, 0.3, z, slab, 0.05));
+  [[17.6, 0, 3.2, 21.2], [-17.6, 0, 3.2, 21.2]].forEach(([x, z, w, d]) => box(w, 0.08, d, C.road, x, 0.3, z, slab, 0.05));
+  for (let i = -16; i <= 16; i += 4) { box(1.6, 0.04, 0.22, C.line, i, 0.39, 12.2, slab, 0.02); box(1.6, 0.04, 0.22, C.line, i, 0.39, -12.2, slab, 0.02); }
+
+  // main factory (back left)
+  const fac = group(-7, 0.3, -5, 'factory');
+  box(18, 6.5, 10, C.white, 0, 0, 0, fac, 0.25);
+  box(18.6, 0.6, 10.6, C.roof, 0, 6.5, 0, fac, 0.2);
+  for (let i = -7; i <= 7; i += 2.8) box(1.6, 0.35, 8.6, C.glass, i, 7.1, 0, fac, 0.1);
+  for (let i = -6.6; i <= 6.6; i += 2.2) { box(1.4, 1.1, 0.12, C.glass, i, 4.3, 5.02, fac, 0.04); box(1.4, 1.1, 0.12, C.glass, i, 2.8, 5.02, fac, 0.04); }
+  box(4.2, 3.6, 0.2, C.dark, 5.6, 0, 5.05, fac, 0.06);
+  box(5.4, 1.4, 0.3, C.red, -5.2, 5.3, 5.1, fac, 0.12);
+  box(1.6, 1.6, 0.34, C.white, -6.4, 5.2, 5.12, fac, 0.5);
+  box(2.6, 0.5, 0.34, C.white, -4.3, 5.75, 5.12, fac, 0.12);
+  G.pickables.push(fac);
+
+  // open shed with presses (right)
+  const shed = group(9.5, 0.3, -4.5, 'factory');
+  [[-5.6, -3.4], [5.6, -3.4], [-5.6, 3.4], [5.6, 3.4]].forEach(([x, z]) => box(0.45, 5, 0.45, C.grey, x, 0, z, shed, 0.1));
+  box(12.4, 0.35, 0.5, C.teal, 0, 5, -3.4, shed, 0.12); box(12.4, 0.35, 0.5, C.teal, 0, 5, 3.4, shed, 0.12);
+  for (let i = -5.6; i <= 5.6; i += 2.8) box(0.3, 0.3, 7.3, C.teal, i, 5.05, 0, shed, 0.08);
+  G.rollers = [];
+  const press = (parent, z, units, color) => {
+    const g = new T.Group(); g.position.set(0, 0, z); parent.add(g);
+    box(10.4, 0.5, 1.6, C.dark, 0, 0, 0, g, 0.1);
+    const step = 7.4 / units;
+    for (let i = 0; i < units; i++) { const x = -3.7 + step * (i + 0.5); box(step * 0.82, 1.5, 1.5, color, x, 0.5, 0, g, 0.14); box(step * 0.6, 0.35, 1.2, C.white, x, 2.0, 0, g, 0.1); }
+    G.rollers.push(cyl(0.75, 1.3, C.white, -4.6, 1.5, 0, g, 'z'), cyl(0.75, 1.3, C.white, 4.6, 1.5, 0, g, 'z'));
+    box(0.9, 1.8, 0.4, C.grey, 4.0, 0.5, 1.05, g, 0.08); box(0.9, 0.6, 0.12, C.glass, 4.0, 2.1, 1.26, g, 0.05);
+  };
+  press(shed, -2.2, 6, C.blue); press(shed, 1.0, 5, C.teal);
+  G.pickables.push(shed);
+  const crates = group(13.5, 0.3, 4.2, 'factory');
+  for (let i = 0; i < 3; i++) box(2.2, 1.8, 2.2, C.crate, i * 2.5 - 2.5, 0, 0, crates, 0.12);
+  G.pickables.push(crates);
+
+  // container yard (front left)
+  const yard = group(-1.4, 0.3, 6.8);
+  box(6.0, 2.6, 2.6, C.orange, 0, 0, 0, yard, 0.12);
+  box(6.0, 2.6, 2.6, C.blue, 0, 2.6, 0, yard, 0.12);
+
+  // office: glass, 2 floors (front right)
+  const off = group(7.2, 0.3, 7.6, 'office');
+  box(6.4, 0.3, 3.6, C.dark, 0, 0, 0, off, 0.08);
+  box(6.0, 2.3, 3.2, glassM, 0, 0.3, 0, off, 0.1);
+  box(6.3, 0.25, 3.5, C.white, 0, 2.6, 0, off, 0.08);
+  box(6.0, 2.3, 3.2, glassM, 0, 2.85, 0, off, 0.1);
+  box(6.5, 0.35, 3.7, C.white, 0, 5.15, 0, off, 0.1);
+  [[-2.95, -1.55], [2.95, -1.55], [-2.95, 1.55], [2.95, 1.55]].forEach(([x, z]) => box(0.18, 5.15, 0.18, C.white, x, 0.3, z, off, 0.05));
+  box(3.8, 1.0, 1.4, C.blue, -0.6, 0.3, -0.4, off, 0.2);     // desks / people visible through glass
+  box(3.2, 1.0, 1.4, C.teal, 0.4, 2.85, 0.2, off, 0.2);
+  box(1.4, 0.35, 0.2, C.orange, 2.1, 5.5, 1.5, off, 0.08);   // orange accent sign
+  box(1.6, 2.0, 0.12, C.dark, -2.0, 0.3, 1.66, off, 0.04);   // door
+  G.pickables.push(off);
+
+  // deal presses live here (rebuilt from data)
+  G.deals = group(0, 0.3, 0, 'factory'); G.pickables.push(G.deals);
+  G.groups = { factory: [fac, shed, crates, G.deals], office: [off] };
+
+  // truck looping the road
+  const truck = G.truck = new T.Group(); scene.add(truck);
+  box(2.2, 2.0, 2.4, C.blue, 3.4, 0.6, 0, truck, 0.3);
+  box(1.2, 0.8, 2.3, C.glass, 4.2, 1.6, 0, truck, 0.2);
+  box(7.4, 0.5, 2.4, C.dark, -1.2, 0.5, 0, truck, 0.1);
+  box(6.6, 2.4, 2.4, C.orange, -1.4, 1.0, 0, truck, 0.12);
+  [-3.6, -1.2, 1.8, 3.6].forEach(x => { cyl(0.55, 0.4, C.dark, x, 0.55, 1.25, truck, 'z'); cyl(0.55, 0.4, C.dark, x, 0.55, -1.25, truck, 'z'); });
+  // forklift shuttling a crate
+  const fork = G.fork = new T.Group(); scene.add(fork);
+  box(1.6, 1.1, 2.4, C.orange, 0, 0.3, 0, fork, 0.2);
+  box(1.4, 1.2, 1.2, C.glass, 0, 1.4, -0.4, fork, 0.15);
+  box(0.15, 2.8, 0.15, C.dark, -0.55, 0.3, 1.3, fork, 0.05); box(0.15, 2.8, 0.15, C.dark, 0.55, 0.3, 1.3, fork, 0.05);
+  G.forkCrate = box(1.6, 1.3, 1.6, C.crate, 0, 0.6, 2.2, fork, 0.12);
+  // trees, lamps, people
+  const treeTop = new T.SphereGeometry(1.0, 16, 12);
+  [[-18, 8.6], [-2.6, 9.6], [16, 8.4], [-18, -9], [18, -9.2], [4, -9.6], [-3, -9.6], [13.2, 9.0]].forEach(([x, z]) => {
+    const g = group(x, 0.3, z); cyl(0.22, 1.2, '#8a6a4a', 0, 0.6, 0, g);
+    const top = new T.Mesh(treeTop, M(C.green)); top.position.y = 1.9; top.castShadow = true; g.add(top);
+  });
+  [[-10, 10.4], [0, 10.4], [10.6, 10.4]].forEach(([x, z]) => { const g = group(x, 0.3, z); cyl(0.1, 3.2, C.dark, 0, 1.6, 0, g); box(0.7, 0.25, 0.4, C.orange, 0.25, 3.15, 0, g, 0.08); });
+  G.people = [];
+  const bodyGeo = new T.CapsuleGeometry(0.28, 0.6, 4, 8), headGeo = new T.SphereGeometry(0.24, 12, 8);
+  [C.blue, C.teal, C.orange, C.blue].forEach(col => {
+    const g = new T.Group(); const b = new T.Mesh(bodyGeo, M(col)); b.position.y = 0.75; b.castShadow = true; g.add(b);
+    const h = new T.Mesh(headGeo, M('#f1c9a5')); h.position.y = 1.45; g.add(h); scene.add(g); G.people.push(g);
+  });
+
+  // camera + controls
+  const ctr = G.controls = new OrbitControls(cam, canvas);
+  ctr.enableDamping = true; ctr.dampingFactor = 0.08;
+  ctr.minDistance = 22; ctr.maxDistance = 230;
+  ctr.minPolarAngle = 0.25; ctr.maxPolarAngle = 1.22;
+  ctr.enablePan = true; ctr.screenSpacePanning = false;
+  ctr.addEventListener('start', () => { G.fly = null; G.userMoved = true; });
+  G.anchors = { office: new T.Vector3(7.2, 7.2, 7.6), factory: new T.Vector3(-4, 9.6, -5) };
+  G.offCur = { x: 0, y: 0 }; G.offTo = { x: 0, y: 0 };
+  G.tmpV = new T.Vector3();
+  f3dResize(true);
+  f3dHomeView(true);
+  if (window.ResizeObserver) { G.ro = new ResizeObserver(() => f3dResize()); G.ro.observe(stage); }
+  else window.addEventListener('resize', () => f3dResize());
+
+  // picking: tap/click (not drag) + mouse hover
+  const ray = new T.Raycaster(), ndc = new T.Vector2();
+  const pick = (ev) => {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, cam);
+    const hit = ray.intersectObjects(G.pickables, true)[0];
+    let o = hit && hit.object;
+    while (o && !(o.userData && o.userData.pick)) o = o.parent;
+    return o ? o.userData.pick : '';
+  };
+  let down = null, nDown = 0, multi = false;
+  canvas.addEventListener('pointerdown', ev => { nDown++; if (nDown > 1) multi = true; down = { x: ev.clientX, y: ev.clientY, t: Date.now() }; });
+  canvas.addEventListener('pointercancel', () => { nDown = Math.max(0, nDown - 1); down = null; });
+  canvas.addEventListener('pointerup', ev => {
+    nDown = Math.max(0, nDown - 1);
+    if (multi) { if (!nDown) multi = false; down = null; return; }
+    if (!down) return; const moved = Math.hypot(ev.clientX - down.x, ev.clientY - down.y), dt = Date.now() - down.t; down = null;
+    if (moved > 8 || dt > 600) return;
+    const k = pick(ev);
+    if (k) f3dOpenPanel(k);
+  });
+  canvas.addEventListener('pointermove', ev => {
+    if (ev.pointerType !== 'mouse' || ev.buttons) return;
+    const k = pick(ev); if (k !== F3D.hover) { F3D.hover = k; canvas.style.cursor = k ? 'pointer' : ''; }
+  });
+  canvas.addEventListener('pointerleave', () => { F3D.hover = ''; canvas.style.cursor = ''; });
+}
+
+function f3dResize(force) {
+  const G = F3D.g; if (!G) return;
+  const st = $('f3d-stage'); if (!st) return;
+  const w = st.clientWidth, h = st.clientHeight;
+  if (!w || !h) return;
+  if (!force && w === G.w && h === G.h) return;
+  G.w = w; G.h = h;
+  G.renderer.setSize(w, h, false);
+  G.cam.aspect = w / h; G.cam.updateProjectionMatrix();
+  f3dSetOffsetTarget();
+  if (!F3D.panel && !G.userMoved) f3dHomeView(true);
+}
+// shift the rendered image so the focused building stays visible beside the side panel / above the bottom sheet
+function f3dSetOffsetTarget() {
+  const G = F3D.g; if (!G) return;
+  const narrow = G.w <= 700;
+  G.offTo = !F3D.panel ? { x: 0, y: 0 } : narrow ? { x: 0, y: Math.round(G.h * 0.27) } : { x: Math.round(Math.min(380, G.w * 0.4) / 2), y: 0 };
+}
+function f3dView(which) {
+  const G = F3D.g, T = G.T;
+  const a = G.w / Math.max(1, G.h);
+  const fit = a < 1 ? 1 / Math.pow(a, 1.15) : 1;   // portrait screens: back off so the whole slab fits
+  if (which === 'office') return { t: new T.Vector3(7.2, 2.6, 7.6), p: new T.Vector3(7.2 + 30, 2.6 + 30, 7.6 + 34) };
+  if (which === 'factory') return { t: new T.Vector3(-5, 2, 0), p: new T.Vector3(-5 + 26, 2 + 32, 0 + 38) };
+  const d = 66 * fit;
+  const ang = 0.45;
+  return { t: new T.Vector3(-0.5, 2, 1), p: new T.Vector3(Math.sin(ang) * d, d * 0.72, Math.cos(ang) * d) };
+}
+function f3dHomeView(instant) {
+  const G = F3D.g; if (!G) return;
+  const v = f3dView('home');
+  if (instant) { G.cam.position.copy(v.p); G.controls.target.copy(v.t); G.controls.update(); }
+  else f3dFly('home');
+}
+function f3dFly(which) {
+  const G = F3D.g; if (!G) return;
+  f3dSetOffsetTarget();
+  const v = f3dView(which);
+  if (which !== 'home') {
+    // keep roughly the user's current viewing direction when it is sensible
+    const dir = G.cam.position.clone().sub(G.controls.target).normalize();
+    const asp = G.w / Math.max(1, G.h), dist = v.p.distanceTo(v.t) * (asp < 1 ? 1 / Math.pow(asp, 0.9) : 1);   // portrait: back off
+    if (dir.y > 0.35) v.p = v.t.clone().add(dir.multiplyScalar(dist)); else v.p = v.t.clone().add(v.p.clone().sub(v.t).normalize().multiplyScalar(dist));
+  } else G.userMoved = false;
+  G.fly = { p0: G.cam.position.clone(), t0: G.controls.target.clone(), p1: v.p, t1: v.t, s: performance.now(), dur: 900 };
+  f3dKick();
+}
+function f3dKick() { if (F3D.ready && !F3D.running && !document.hidden && _tabActive('tab-factory3d')) { f3dRenderOnce(); } }
+
+function f3dSyncDeals() {
+  const G = F3D.g; if (!G || !F3D.data) return;
+  const T = G.T;
+  // dispose old deal presses + tags
+  while (G.deals.children.length) {
+    const ch = G.deals.children[0];
+    G.deals.remove(ch);
+    ch.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type !== 'CylinderGeometry') o.geometry.dispose(); });   // cylinder geometries are cached/shared
+  }
+  const box = $('f3d-labels');
+  if (box) box.querySelectorAll('.f3d-tag').forEach(el => el.remove());
+  G.tags = [];
+  const list = F3D.data.factory.slice(0, 8);
+  const slots = [[-15, 5.0], [-12.2, 5.0], [-9.4, 5.0], [-6.6, 5.0], [-15, 8.3], [-12.2, 8.3], [-9.4, 8.3], [-6.6, 8.3]];   // dispatch bay, front left
+  list.forEach((r, i) => {
+    const col = f3dStatusColor(r.c.status);
+    const g = new T.Group(); g.position.set(slots[i][0], 0, slots[i][1]); G.deals.add(g);
+    G.box(2.6, 0.3, 1.0, '#2b3140', 0, 0, 0, g, 0.08);
+    G.box(0.8, 0.9, 0.9, col, -0.8, 0.3, 0, g, 0.12); G.box(0.8, 0.9, 0.9, col, 0.1, 0.3, 0, g, 0.12);
+    G.box(0.6, 0.22, 0.7, '#ffffff', -0.8, 1.2, 0, g, 0.06); G.box(0.6, 0.22, 0.7, '#ffffff', 0.1, 1.2, 0, g, 0.06);
+    G.cyl(0.36, 0.8, '#ffffff', 0.95, 0.85, 0, g, 'z');
+    if (box) {
+      const el = document.createElement('div'); el.className = 'f3d-tag'; el.style.background = col; el.style.visibility = 'hidden';
+      el.textContent = f3dShort(r.c.company); el.title = r.c.company + ' — ' + (r.c.machine || '') + ' (' + r.c.status + ')';
+      el.onclick = () => f3dOpenPanel('factory');
+      box.appendChild(el);
+      G.tags.push({ el: el, pos: new T.Vector3(slots[i][0], i < 4 ? 3.6 : 1.9, slots[i][1]) });   // back row tags higher so the rows don't overlap
+    }
+  });
+  f3dKick();
+}
+
+function f3dPlaceLabels() {
+  const G = F3D.g; if (!G) return;
+  const box = $('f3d-labels'); if (!box) return;
+  const taken = [];   // screen rects already used — a name tag that would overlap one is hidden until the user zooms in
+  const place = (el, pos, cull) => {
+    const v = G.tmpV.copy(pos).project(G.cam);
+    if (v.z > 1 || v.x < -1.2 || v.x > 1.2 || v.y < -1.2 || v.y > 1.2) { el.style.visibility = 'hidden'; return; }
+    const x = Math.round((v.x + 1) / 2 * G.w), y = Math.round((1 - v.y) / 2 * G.h);
+    const w = el._w || (el._w = el.offsetWidth || 80), h = el._h || (el._h = el.offsetHeight || 20);
+    const r = { l: x - w / 2 - 2, r: x + w / 2 + 2, t: y - h - 2, b: y + 2 };
+    if (cull && taken.some(q => r.l < q.r && r.r > q.l && r.t < q.b && r.b > q.t)) { el.style.visibility = 'hidden'; return; }
+    taken.push(r);
+    el.style.visibility = 'visible';
+    el.style.transform = 'translate(' + x + 'px,' + y + 'px) translate(-50%,-100%)';
+  };
+  ['office', 'factory'].forEach(k => {
+    const el = box.querySelector('[data-f3d="' + k + '"]'); if (!el) return;
+    el.classList.toggle('hot', F3D.hover === k || F3D.panel === k);
+    place(el, G.anchors[k], false);
+  });
+  (G.tags || []).forEach(t => place(t.el, t.pos, true));
+}
+
+function f3dAnimate(now) {
+  const G = F3D.g, T = G.T;
+  const t = now / 1000;
+  // fly-to
+  if (G.fly) {
+    const k = Math.min(1, (now - G.fly.s) / G.fly.dur), e = 1 - Math.pow(1 - k, 3);
+    G.cam.position.lerpVectors(G.fly.p0, G.fly.p1, e);
+    G.controls.target.lerpVectors(G.fly.t0, G.fly.t1, e);
+    if (k >= 1) G.fly = null;
+  }
+  // keep the target on the slab
+  const tg = G.controls.target;
+  tg.x = Math.max(-18, Math.min(18, tg.x)); tg.z = Math.max(-14, Math.min(14, tg.z)); tg.y = Math.max(0, Math.min(8, tg.y));
+  // view offset for side panel / bottom sheet
+  G.offCur.x += (G.offTo.x - G.offCur.x) * 0.15; G.offCur.y += (G.offTo.y - G.offCur.y) * 0.15;
+  if (Math.abs(G.offCur.x) < 0.5 && Math.abs(G.offCur.y) < 0.5 && !G.offTo.x && !G.offTo.y) { if (G.cam.view && G.cam.view.enabled) G.cam.clearViewOffset(); }
+  else G.cam.setViewOffset(G.w, G.h, G.offCur.x, G.offCur.y, G.w, G.h);
+  // hover lift
+  Object.keys(G.groups).forEach(k => {
+    const s = (F3D.hover === k || F3D.panel === k) ? 1.025 : 1;
+    G.groups[k].forEach(g => { const c = g.scale.x + (s - g.scale.x) * 0.2; g.scale.setScalar(c); });
+  });
+  // truck loops the road
+  const RX = 17.6, RZ = 12.2, L = [2 * RX, 2 * RZ, 2 * RX, 2 * RZ], tot = 4 * RX + 4 * RZ;
+  let d = ((0.12 + t * 0.03) % 1) * tot, px, pz, ry;
+  if (d < L[0]) { px = -RX + d; pz = RZ; ry = 0; }
+  else if ((d -= L[0]) < L[1]) { px = RX; pz = RZ - d; ry = -Math.PI / 2; }
+  else if ((d -= L[1]) < L[2]) { px = RX - d; pz = -RZ; ry = Math.PI; }
+  else { d -= L[2]; px = -RX; pz = -RZ + d; ry = Math.PI / 2; }
+  G.truck.position.set(px, 0, pz); G.truck.rotation.y = -ry;
+  // forklift: shed crates ↔ container
+  const ph = (t * 0.16) % 1, tri = ph < 0.5 ? ph * 2 : 2 - ph * 2;
+  G.fork.position.set(12 - tri * 9.5, 0, 3.4 + Math.sin(tri * Math.PI) * 0.6);
+  G.fork.rotation.y = ph < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+  G.forkCrate.visible = ph < 0.5;
+  G.rollers.forEach((r, i) => { r.rotation.y = t * (i % 2 ? -3 : 3); });
+  G.people.forEach((p, i) => { const u = ((t * 0.02 + i * 0.25) % 1); p.position.set(-16 + u * 32, 0.3, 9.9 + (i % 2) * 0.6); p.rotation.y = Math.PI / 2; });
+  G.controls.update();
+  G.renderer.render(G.scene, G.cam);
+  f3dPlaceLabels();
+}
+function f3dRenderOnce() { if (F3D.g) f3dAnimate(performance.now()); }
+function f3dLoop(now) {
+  if (!F3D.running) return;
+  F3D.raf = requestAnimationFrame(f3dLoop);
+  f3dAnimate(now);
+}
+function f3dResume() {
+  if (!F3D.ready || F3D.running) return;
+  if (document.hidden || !_tabActive('tab-factory3d')) return;
+  f3dResize();
+  F3D.running = true;
+  F3D.raf = requestAnimationFrame(f3dLoop);
+}
+function f3dStop() {
+  F3D.running = false;
+  if (F3D.raf) cancelAnimationFrame(F3D.raf);
+  F3D.raf = 0;
+}
+document.addEventListener('visibilitychange', () => {
+  if (!F3D.started) return;
+  if (document.hidden) f3dStop(); else f3dResume();
+});
+// ===== end 3D FACTORY (v2.66) =====
 </script>
 </body>
 </html>
