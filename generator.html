@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator C v1.0 (base v13.25)</title>
+<title>Sen Labels — Contract Generator C v1.1 (base v13.25)</title>
 <!-- v13.25: ADD — Installment: changing Instalment 1 auto-splits the remaining balance over the later instalments (same rounding as Calculate, last absorbs remainder, schedule total unchanged). Checkbox "Auto-balance…" (default on, UI-only, not saved); untick = old behaviour. Rendering/saved contracts unchanged. -->
 <!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
 <!-- v13.23: FIX — Agent Price List signature now shows the same signature image as contracts/quotations (was an empty line). Editor checkbox "Show signature image" (a.hideSig) turns it off. Other doc types unchanged. -->
@@ -675,6 +675,41 @@ body.gx .modal .btn-primary{background:var(--ink)}
 }
 }
 </style>
+
+<style id="gxp-css">
+@media print{ .gxp-modal,#gxp-send,.gxp-only-screen{display:none!important} }
+@media screen{
+.gxp-modal{position:fixed;inset:0;z-index:100000;background:rgba(26,26,26,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.gxp-card{background:#fffdf8;color:#1a1a1a;border:2px solid #1a1a1a;border-radius:16px;box-shadow:5px 5px 0 #1a1a1a;width:100%;max-width:560px;max-height:calc(100vh - 32px);overflow:auto;padding:20px 22px;font-family:"Bricolage Grotesque","Segoe UI",Arial,sans-serif}
+.gxp-card h3{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-.5px}
+.gxp-card .gxp-sub{font-size:13px;color:#6b6455;margin-bottom:12px}
+.gxp-list{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:8px}
+.gxp-list li{border:2px solid #1a1a1a;border-radius:10px;padding:9px 11px;background:#fff3c4;font-size:13.5px;line-height:1.35}
+.gxp-list li.gxp-red{background:#fde2df}
+.gxp-list li b{display:block;font-size:14px;margin-bottom:2px}
+.gxp-list li .gxp-q{font-family:"Space Mono",monospace;font-size:11.5px;color:#4a4436;word-break:break-word}
+.gxp-list li button{margin-top:6px;border:1.5px solid #1a1a1a;background:#fffdf8;border-radius:8px;padding:3px 9px;font:700 12px "Bricolage Grotesque","Segoe UI",sans-serif;cursor:pointer}
+.gxp-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.gxp-btn{border:2px solid #1a1a1a;border-radius:10px;padding:10px 14px;font:800 14px "Bricolage Grotesque","Segoe UI",sans-serif;cursor:pointer;background:#fffdf8;color:#1a1a1a;box-shadow:3px 3px 0 #1a1a1a}
+.gxp-btn.pri{background:#ffd23f}
+.gxp-btn.ink{background:#1a1a1a;color:#fff}
+.gxp-btn:disabled{opacity:.5;cursor:default}
+.gxp-card input[type=date]{width:100%;padding:9px 10px;border:2px solid #1a1a1a;border-radius:10px;font-size:15px;margin:6px 0 12px;box-sizing:border-box}
+.gxp-msg{font-size:12.5px;margin:-4px 0 10px;min-height:16px}
+#gxp-send{position:fixed;right:18px;bottom:18px;z-index:99990;background:#fffdf8;border:2px solid #1a1a1a;border-radius:14px;box-shadow:4px 4px 0 #1a1a1a;padding:12px 14px;width:340px;max-width:calc(100vw - 32px);font-family:"Bricolage Grotesque","Segoe UI",sans-serif;color:#1a1a1a}
+#gxp-send .gxp-fn{font-family:"Space Mono",monospace;font-size:11px;word-break:break-word;margin:4px 0 10px;color:#4a4436}
+#gxp-send .gxp-x{position:absolute;top:6px;right:8px;border:0;background:none;font-size:18px;cursor:pointer}
+#gxp-send .gxp-row{justify-content:flex-start}
+.gxp-wa{background:#25d366!important}
+.gxp-tag{display:inline-block;font-size:10.5px;font-weight:700;border:1.5px solid currentColor;border-radius:99px;padding:0 7px;margin-left:6px;vertical-align:1px}
+.gxp-jp{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px dashed #8a8170;border-radius:10px;margin-bottom:10px;font-size:13px;flex-wrap:wrap}
+.gxp-jp.hit{border:2px solid #1a1a1a;background:#fff3c4}
+.gxp-jp input{width:auto;margin:0}
+.gxp-chips{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.gxp-chips button{border:1.5px solid #1a1a1a;background:#fffdf8;border-radius:8px;padding:2px 9px;font-size:11.5px;font-weight:700;cursor:pointer}
+@media (max-width:700px){ #gxp-send{right:16px;left:16px;width:auto} .gxp-card{padding:16px} .gxp-row .gxp-btn{flex:1} }
+}
+</style>
 </head>
 <body class="gx">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -724,7 +759,7 @@ body.gx .modal .btn-primary{background:var(--ink)}
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.0 · base v13.25</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.1 · base v13.25</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -8458,6 +8493,432 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
   } catch (err) {
     // Layout layer failed: fall back to the classic tabbed form so nothing becomes unreachable.
     try { console.error('gx layer failed', err); document.body.classList.remove('gx'); } catch(_){}
+  }
+})();
+</script>
+
+<script id="gxp-js">
+/* Generator C v1.1 plus layer. All features are opt-in / user-triggered; loading or exporting an
+   existing contract without touching them renders exactly as before. */
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  function mk(tag, attrs, html){ var e=document.createElement(tag); if(attrs) for(var k in attrs) e.setAttribute(k, attrs[k]); if(html!=null) e.innerHTML=html; return e; }
+  function fgOf(id){ var e=$(id); return e ? e.closest('.field-group') : null; }
+  function S(){ return (typeof state !== 'undefined' && state) ? state : null; }
+  function h(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function up(){ try { updatePreview(); } catch(_){} }
+  function goStep(k, focusId){
+    try { if (window.gxGo) window.gxGo(k); else switchTabDirect({1:'basic',2:'machine',3:'price',4:'price',5:'history'}[k]); } catch(_){}
+    if (focusId) setTimeout(function(){ var f=$(focusId); if (f) { try{ f.scrollIntoView({block:'center'}); f.focus(); }catch(_){} } }, 60);
+  }
+  var MYR_PORT = 'Included Inland Transit Insurance & Transport Charges';
+  var EXW_PORT = 'Exwork, Johor Bahru Factory, Johor, Malaysia.';
+  var BIND_DEP = '(quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances.';
+  var BIND_FULL = '(quoting our Sales Contract number). Once paid, all payments are non-refundable under all circumstances.';
+  var PRESET_PCT = {'20/80':20, '30/70':30, '50/50':50, 'full':100};
+  var PCT_PRESET = {20:'20/80', 30:'30/70', 50:'50/50', 100:'full'};
+
+  try {
+    /* ================= Step 1 fields ================= */
+    // (2) notes: label the printed one clearly + an internal note that is never printed
+    var notesFg = fgOf('f-notes');
+    if (notesFg) {
+      var nl = notesFg.querySelector('label');
+      if (nl) nl.innerHTML = 'Notes <span class="gxp-tag" style="color:#c0392b">Printed on contract</span> <span style="font-weight:400;font-size:11px;color:#888">(page 1, next to the date &mdash; the customer sees this)</span>';
+      var inFg = mk('div', {'class':'field-group', id:'gxp-internal-fg'},
+        '<label>Internal note <span class="gxp-tag" style="color:#2e7d32">Never printed</span> <span style="font-weight:400;font-size:11px;color:#888">(saved in the contract file; not on the PDF / Word / Excel)</span></label>'
+        + '<textarea id="gxp-internal" rows="2" placeholder="e.g. Customer asked for 2nd quote with UV; boss approved discount"></textarea>');
+      notesFg.parentNode.insertBefore(inFg, notesFg.nextSibling);
+      $('gxp-internal').addEventListener('input', function(){ var s=S(); if (s) s.internalNote = this.value; });
+    }
+    // (9) customer type + linked contract no
+    var repFg = fgOf('f-sales-rep');
+    if (repFg) {
+      var ctRow = mk('div', {'class':'field-row', id:'gxp-ct-row'},
+        '<div class="field-group"><label>Customer Type</label><select id="gxp-cust-type"><option value="direct">End-user</option><option value="agent">Agent</option></select></div>'
+        + '<div class="field-group"><label>Linked Contract No. <span style="font-weight:400;font-size:11px;color:#888">(agent &harr; end-user deal)</span></label><input type="text" id="gxp-linked" placeholder="SEN/SC/NR/26-XXXX"></div>');
+      repFg.parentNode.insertBefore(ctRow, repFg.nextSibling);
+      $('gxp-cust-type').addEventListener('change', function(){
+        var s=S(), v=this.value; var hid=$('f-cust-type'); if (hid) hid.value = v;
+        if (s && Array.isArray(s.machines)) s.machines.forEach(function(m){ if (m) m.custType = v; });
+      });
+      $('gxp-linked').addEventListener('input', function(){ var s=S(); if (s) s.linkedContractNo = this.value.trim(); });
+    }
+    // (8) revision no + supersedes
+    var revFg = fgOf('f-revised');
+    if (revFg) {
+      var rvRow = mk('div', {'class':'field-row', id:'gxp-rev-row'},
+        '<div class="field-group" style="max-width:110px"><label>Rev. No.</label><input type="number" id="gxp-rev" min="0" step="1" placeholder="0"></div>'
+        + '<div class="field-group"><label>Supersedes Contract No. <span style="font-weight:400;font-size:11px;color:#888">(the older version this replaces)</span></label><input type="text" id="gxp-supersedes" placeholder="SEN/SC/NR/26-XXXX"></div>');
+      revFg.parentNode.insertBefore(rvRow, revFg.nextSibling);
+      $('gxp-rev').addEventListener('input', function(){ var s=S(); if (s) s.revNo = this.value === '' ? '' : (parseInt(this.value,10)||0); });
+      $('gxp-supersedes').addEventListener('input', function(){ var s=S(); if (s) s.supersedes = this.value.trim(); });
+    }
+    // (4) delivery-port templates + (5) Japan naming toggle, under Delivery Port / Currency
+    var portEl = $('f-port'), curRow = portEl ? portEl.closest('.field-row') : null;
+    if (portEl) {
+      var chips = mk('div', {'class':'gxp-chips'}, '<button type="button" data-t="exw">EXW template</button><button type="button" data-t="cif">CIF template</button>');
+      portEl.parentNode.appendChild(chips);
+      chips.addEventListener('click', function(e){
+        var b = e.target.closest('button'); if (!b) return;
+        portEl.value = b.getAttribute('data-t') === 'exw' ? EXW_PORT : ('CIF, [port], ' + (countryOf() || '[country]'));
+        var s=S(); if (s) s.port = portEl.value; up(); portEl.focus();
+      });
+    }
+    if (curRow) {
+      var jp = mk('label', {'class':'gxp-jp', id:'gxp-jp'}, '<input type="checkbox" id="gxp-jp-on"> <span><b>Japan names</b> &mdash; show FX-350 / FX-450 as MAX-350 / MAX-450</span><span id="gxp-jp-hint" style="font-size:11.5px;color:#6b6455"></span>');
+      curRow.parentNode.insertBefore(jp, curRow.nextSibling);
+      $('gxp-jp-on').addEventListener('change', function(){ applyJp(this.checked); });
+    }
+
+    /* ================= (5) Japan naming ================= */
+    function countryOf(){
+      var a = (($('f-addr')||{}).value || '').replace(/\s+/g,' ').trim();
+      var m = a.match(/(Indonesia|Malaysia|Singapore|Korea|Japan|China|Thailand|Vietnam|Viet Nam|Philippines|India|Bangladesh|Sri Lanka|Pakistan|Costa Rica|Taiwan|Myanmar|Cambodia)\b/i);
+      return m ? m[1].replace(/^./, function(c){ return c.toUpperCase(); }) : '';
+    }
+    function jpDetected(){
+      var t = ['f-addr','f-port'].map(function(id){ var e=$(id); return e ? e.value : ''; }).join(' ');
+      return /\bjapan\b|日本/i.test(t);
+    }
+    function walk(o, fn, depth){
+      if (!o || depth > 6) return;
+      Object.keys(o).forEach(function(k){
+        if (k === 'images') return;
+        var v = o[k];
+        if (typeof v === 'string') { if (!/^(data:|https?:)/i.test(v)) { var nv = fn(v); if (nv !== v) o[k] = nv; } }
+        else if (v && typeof v === 'object') walk(v, fn, depth + 1);
+      });
+    }
+    var FX_RE = /\bFX-(350|450)(?!\d)/g, MAX_RE = /\bMAX-(350|450)(?!\d)/g;
+    function hasFX(){
+      var s=S(), hit=false; if (!s) return false;
+      walk({m:s.machines}, function(v){ if (/\bFX-(350|450)(?!\d)/.test(v)) hit = true; return v; }, 0);
+      return hit;
+    }
+    var jpBusy = false;
+    function applyJp(on){
+      var s=S(); if (!s || jpBusy) return;
+      jpBusy = true;
+      try {
+        try { saveCurrentMachineToState(); } catch(_){}
+        s.gxJpNames = !!on;
+        var fn = on ? function(v){ return v.replace(FX_RE, 'MAX-$1'); } : function(v){ return v.replace(MAX_RE, 'FX-$1'); };
+        walk({m:s.machines}, fn, 0);
+        try { renderMachineTabs(); } catch(_){}
+        try { loadMachineIntoForm(); } catch(_){}
+        try { renderCwItems(); renderOptItems(); } catch(_){}
+        try { calcPrice(); } catch(_){}
+        up();
+      } finally { jpBusy = false; }
+      syncFields();
+    }
+    ['f-addr','f-port'].forEach(function(id){
+      var e=$(id); if (!e) return;
+      e.addEventListener('input', function(){
+        var s=S(); if (!s) return;
+        // user typed a Japan customer: switch names on once (toggle stays visible to undo)
+        if (s.gxJpNames === undefined && jpDetected() && hasFX()) applyJp(true); else syncFields();
+      });
+    });
+
+    /* ================= (4) payment condition <-> deposit ================= */
+    var paySel = $('f-pay-cond'), depEl = $('f-deposit-pct');
+    function setBindingFull(full){
+      var s=S(); if (!s) return false;
+      var from = full ? BIND_DEP : BIND_FULL, to = full ? BIND_FULL : BIND_DEP, changed = false;
+      if (Array.isArray(s.remarkItems)) s.remarkItems = s.remarkItems.map(function(r){ if (typeof r === 'string' && r.indexOf(from) !== -1) { changed = true; return r.split(from).join(to); } return r; });
+      if (typeof s.remarks === 'string' && s.remarks.indexOf(from) !== -1) { s.remarks = s.remarks.split(from).join(to); var rm=$('f-remarks'); if (rm) rm.value = s.remarks; changed = true; }
+      if (changed) { try { renderRemarkItems(); } catch(_){} }
+      return changed;
+    }
+    if (paySel) paySel.addEventListener('change', function(){
+      var s=S(); if (!s) return;
+      s.payCond = paySel.value;
+      setBindingFull(paySel.value === 'full');
+      up();
+    });
+    // Deposit % typed by hand -> the condition follows. 20/30/50/100 pick their preset. Any other % keeps a
+    // "% deposit" preset (its printed text already uses the typed %); Full payment moves to 30/70 so the
+    // deposit rows print. Never auto-'custom': custom prints the Delivery sentence as Term Of Payment in Word/Excel.
+    if (depEl && paySel) depEl.addEventListener('change', function(){
+      var s=S(); if (!s) return;
+      var v = parseFloat(depEl.value), cur = paySel.value;
+      if (isNaN(v) || !(cur in PRESET_PCT) || PRESET_PCT[cur] === v) return;
+      var target = PCT_PRESET[v] || (cur === 'full' ? '30/70' : cur);
+      if (target === cur) return;
+      paySel.value = target; s.payCond = target;
+      setBindingFull(target === 'full');
+      try { if (window.gxSync) window.gxSync(); } catch(_){}
+      up();
+    });
+
+    /* ================= (4) currency -> delivery port template ================= */
+    if (typeof window.onCurrencyChange === 'function') {
+      var _occ = window.onCurrencyChange;
+      window.onCurrencyChange = function(){
+        var before = portEl ? portEl.value : '';
+        var r = _occ.apply(this, arguments);
+        try {
+          var cur = ($('f-currency')||{}).value;
+          if (portEl && before === MYR_PORT && cur !== 'MYR' && portEl.value === '') {
+            portEl.value = EXW_PORT; var s=S(); if (s) s.port = EXW_PORT; up();
+          }
+        } catch(_){}
+        return r;
+      };
+    }
+
+    /* ================= Sales Rep canonical name ================= */
+    function repCanonGx(n){
+      var raw = String(n || '').trim(), k = raw.toLowerCase().replace(/\s*\(you\)\s*$/, '').replace(/\s+/g, ' ');
+      if (k === 'max' || k === 'max goh') return 'Max';   // "Mr. Goh" is the boss - kept as is
+      return raw;
+    }
+    var repEl = $('f-sales-rep');
+    if (repEl) repEl.addEventListener('change', function(){
+      var c = repCanonGx(repEl.value);
+      if (c !== repEl.value) { repEl.value = c; var s=S(); if (s) s.salesRep = c; try{ updateSalesRepHint(); }catch(_){} up(); }
+    });
+    var dl = $('sales-rep-list');
+    function dedupeReps(){
+      if (!dl) return;
+      var seen = {}, html = '', changed = false;
+      Array.prototype.forEach.call(dl.querySelectorAll('option'), function(o){
+        var c = repCanonGx(o.value); if (c !== o.value) changed = true;
+        if (seen[c.toLowerCase()]) { changed = true; return; }
+        seen[c.toLowerCase()] = 1; html += '<option value="' + h(c) + '"></option>';
+      });
+      if (changed) dl.innerHTML = html;
+    }
+    if (dl && window.MutationObserver) new MutationObserver(dedupeReps).observe(dl, {childList:true});
+    dedupeReps();
+
+    /* ================= keep new fields in step with state (load / new / duplicate) ================= */
+    function setIf(id, v){ var e=$(id); if (e && document.activeElement !== e && e.value !== v) e.value = v; }
+    function syncFields(){
+      var s=S(); if (!s) return;
+      setIf('gxp-internal', s.internalNote || '');
+      setIf('gxp-linked', s.linkedContractNo || '');
+      setIf('gxp-rev', (s.revNo === undefined || s.revNo === null) ? '' : String(s.revNo));
+      setIf('gxp-supersedes', s.supersedes || '');
+      var m = (typeof M === 'function') ? M() : null;
+      setIf('gxp-cust-type', (m && m.custType === 'agent') ? 'agent' : 'direct');
+      var jc = $('gxp-jp-on'); if (jc) jc.checked = s.gxJpNames === true;
+      var jw = $('gxp-jp'), hit = jpDetected();
+      if (jw) jw.classList.toggle('hit', hit);
+      var hn = $('gxp-jp-hint'); if (hn) hn.textContent = hit ? (s.gxJpNames === true ? ' Japan customer ✓' : ' Japan customer detected') : '';
+      if (s.gxJpNames === true && !jpBusy && hasFX()) setTimeout(function(){ if (S() && S().gxJpNames === true && hasFX()) applyJp(true); }, 0);
+    }
+    if (typeof window.updatePreview === 'function') {
+      var _up = window.updatePreview;
+      window.updatePreview = function(){ var r = _up.apply(this, arguments); try { syncFields(); } catch(_){} return r; };
+    }
+
+    /* ================= (3) signed date -> backend crm_setSigned ================= */
+    var SIGNED_ST = ['Confirmed', 'Deposit Received'];
+    var askedFor = {};
+    function today(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function closeModal(id){ var e=$(id); if (e) e.remove(); }
+    function askSigned(reason){
+      var s=S(); if (!s) return;
+      var no = (s.contractNo || '').trim();
+      closeModal('gxp-signed');
+      var md = mk('div', {'class':'gxp-modal', id:'gxp-signed', role:'dialog', 'aria-modal':'true'});
+      md.innerHTML = '<div class="gxp-card"><h3>When was it signed?</h3>'
+        + '<div class="gxp-sub">' + h(reason) + '<br>Contract <b>' + h(no || '(no number yet)') + '</b> &middot; ' + h(s.company || '') + '</div>'
+        + '<label style="font-weight:700;font-size:13px">Signed / deposit date</label><input type="date" id="gxp-signed-d" value="' + h(s.signedDate || today()) + '">'
+        + '<div class="gxp-msg" id="gxp-signed-msg">Saves the date to the CRM (12-a-year target) &mdash; same as "Mark signed" in the CRM. If it is already marked there, press Skip.</div>'
+        + '<div class="gxp-row"><button type="button" class="gxp-btn" id="gxp-signed-skip">Skip</button><button type="button" class="gxp-btn ink" id="gxp-signed-ok">Save signed date</button></div></div>';
+      document.body.appendChild(md);
+      $('gxp-signed-skip').onclick = function(){ closeModal('gxp-signed'); };
+      md.addEventListener('click', function(e){ if (e.target === md) closeModal('gxp-signed'); });
+      $('gxp-signed-ok').onclick = async function(){
+        var d = $('gxp-signed-d').value, msg = $('gxp-signed-msg'), btn = this;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { msg.textContent = 'Pick a date first.'; msg.style.color = '#c0392b'; return; }
+        s.signedDate = d;
+        if (!no) { msg.textContent = 'Saved in this contract only - it has no number yet, so the CRM was not updated.'; msg.style.color = '#e67e00'; return; }
+        if (typeof gsUrl === 'undefined' || !gsUrl) { msg.textContent = 'Saved in this contract only - no backend URL set (Settings).'; msg.style.color = '#e67e00'; return; }
+        btn.disabled = true; msg.textContent = 'Saving to CRM...'; msg.style.color = '#6b6455';
+        try {
+          var m0 = (s.machines || [])[0] || {}, model = '';
+          try { model = m0.machineType === 'parts' ? '' : String(m0.customTitle || m0.otherModel || shortTitle(m0) || '').replace(/\[\[\/?[a-z]+\]\]/g, '').slice(0, 120); } catch(_){ model = m0.customTitle || ''; }
+          var resp = await fetch(gsUrl, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body: JSON.stringify({ action:'crm_setSigned', contractNo: no, signedDate: d, company: s.company || '', machineModel: model }) });
+          var j = await resp.json();
+          if (j && j.ok) { msg.textContent = '✓ Signed date ' + d + ' saved to CRM.'; msg.style.color = '#2e7d32'; setTimeout(function(){ closeModal('gxp-signed'); }, 1200); }
+          else { msg.textContent = 'CRM did not accept it: ' + ((j && j.error) || 'unknown') + '. Use "Mark signed" in the CRM.'; msg.style.color = '#c0392b'; btn.disabled = false; }
+        } catch(err) { msg.textContent = 'Could not reach the CRM (' + err.message + '). Use "Mark signed" in the CRM.'; msg.style.color = '#c0392b'; btn.disabled = false; }
+      };
+      setTimeout(function(){ var i=$('gxp-signed-d'); if (i) i.focus(); }, 30);
+    }
+    window.gxpAskSigned = askSigned;
+    var stEl = $('f-status');
+    var CONFIRMED_GRP = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)'];
+    var prevSt = stEl ? stEl.value : '';
+    if (stEl) ['focus', 'pointerdown'].forEach(function(ev){ stEl.addEventListener(ev, function(){ prevSt = stEl.value; }, true); });
+    if (stEl) stEl.addEventListener('change', function(){
+      var s=S(); if (!s) return;
+      var was = prevSt; prevSt = stEl.value;
+      // only when moving from a not-yet-confirmed status into Confirmed / Deposit Received: an already-confirmed
+      // contract may already have its real date in the CRM - never offer to overwrite it
+      if (SIGNED_ST.indexOf(stEl.value) !== -1 && CONFIRMED_GRP.indexOf(was) === -1 && !s.signedDate) {
+        var key = (s.recordId || s.contractNo || 'new') + '|' + stEl.value; if (askedFor[key]) return; askedFor[key] = 1;
+        askSigned('Status set to "' + stEl.options[stEl.selectedIndex].text + '".');
+      }
+    });
+    var spStatus = $('signed-pdf-status');
+    if (spStatus && window.MutationObserver) new MutationObserver(function(){
+      if (/Uploaded/.test(spStatus.textContent || '')) { var s=S(); var key = (s && s.contractNo || '') + '|pdf'; if (!askedFor[key]) { askedFor[key] = 1; askSigned('Signed PDF uploaded.'); } }
+    }).observe(spStatus, {childList:true, characterData:true, subtree:true});
+
+    /* ================= (1) pre-export check ================= */
+    function paperText(){ var p=$('contract-paper'); return p ? (p.innerText || p.textContent || '') : ''; }
+    function belowFloor(m){
+      // same rule as the Price step hint (selling price vs Machine DB floor; never anything else)
+      if (!m || m.machineType === 'parts') return false;
+      var ref = Number(m.refPrice) || 0, fs = Number(m.floorPrice) || 0, fu = fs > 0 ? fs : (ref > 0 ? ref * 0.90 : 0);
+      if (!(fu > 0)) return false;
+      var cur = S().currency, U = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };
+      var mult = (typeof FX_RATES !== 'undefined' && FX_RATES && Number(FX_RATES[cur])) || U[cur];
+      if (!mult) return false;
+      var sp = calcPriceForMachine(m).sellPrice, uq = m.unitQty || 1, nu = uq > 0 ? sp / uq : sp;
+      return nu < fu * mult - 0.5 && Math.abs(nu - ref) > 0.5;
+    }
+    function mTitle(m, i){ var t=''; try { t = m.machineType === 'parts' ? partsTitle(m) : (m.customTitle || shortTitle(m) || ''); } catch(_){} return 'Machine ' + (i+1) + (t ? ' (' + String(t).replace(/\[\[\/?[a-z]+\]\]/g,'').slice(0,60) + ')' : ''); }
+    function collectIssues(){
+      var s=S(), out=[]; if (!s) return out;
+      try { saveCurrentMachineToState(); } catch(_){}
+      try { if (typeof aplActive === 'function' && aplActive()) return out; } catch(_){}
+      var custom = Array.isArray(s.customPayRows) && s.customPayRows.some(function(r){ return r && r.label; });
+      var instFull = s.installmentEnabled && s.installmentFullAmount;
+      if (!custom && !instFull) {
+        var pc = s.payCond, dp = Number(s.depositPct), da = Number(s.depositAmt) || 0;
+        if (pc in PRESET_PCT && da > 0) out.push({k:'pay', step:3, focus:'f-deposit-amt', t:'Payment condition vs deposit', d:'Condition says "' + ((paySel && paySel.options[paySel.selectedIndex]) ? paySel.options[paySel.selectedIndex].text : pc) + '" but a fixed deposit amount is set.'});
+        else if (pc === 'full' && dp !== 100) out.push({k:'pay', step:3, focus:'f-deposit-pct', t:'Payment condition vs deposit %', d:'Condition is Full payment but deposit is ' + dp + '%.'});
+        else if (pc in PRESET_PCT && pc !== 'full' && (dp in PCT_PRESET) && PRESET_PCT[pc] !== dp) out.push({k:'pay', step:3, focus:'f-deposit-pct', t:'Payment condition vs deposit %', d:'Condition is ' + pc + ' but deposit is ' + dp + '%.'});
+      }
+      (s.machines || []).forEach(function(m, i){
+        if (!m) return;
+        var bad = [];
+        var chk = function(v){ v = String(v || ''); if (/duplicate|\bTBC\b|xxx/i.test(v)) bad.push(v.replace(/\[\[\/?[a-z]+\]\]/g,'').slice(0, 70)); };
+        chk(m.customTitle);
+        (m.extraSpecs || []).forEach(function(r){ if (r) { chk(r.label); chk(r.value); } });
+        chk(m.desc);
+        (m.cwItems || []).concat(m.optItems || [], m.partItems || []).forEach(function(r){ if (typeof r === 'string') chk(r); else if (r) { chk(r.desc); chk(r.name); chk(r.label); } });
+        if (bad.length) out.push({k:'spec', step:2, mi:i, t:'Placeholder text in ' + mTitle(m, i), d:'Contains "duplicate" / "TBC" / "xxx":', q:bad.slice(0, 4).join(' | ')});
+      });
+      if (String(s.notes || '').trim()) out.push({k:'notes', step:1, focus:'f-notes', t:'Notes print on page 1', d:'The customer will see this next to the date. Internal remarks belong in "Internal note".', q:String(s.notes).slice(0, 160)});
+      if ((s.port || '').trim() === MYR_PORT && s.currency !== 'MYR') out.push({k:'port', step:1, focus:'f-port', t:'Delivery term vs currency', d:'"' + MYR_PORT + '" is the Malaysia (MYR) term, but the currency is ' + s.currency + '.', fix:'EXW', fixFn:function(){ var p=$('f-port'); p.value = EXW_PORT; s.port = EXW_PORT; up(); }});
+      else if (/\[(port|country)\]/i.test(s.port || '')) out.push({k:'port', step:1, focus:'f-port', t:'Delivery port not filled', d:'Still has a [placeholder]:', q:s.port});
+      if (jpDetected() && /\bFX-\d/.test(paperText())) {
+        if (hasFX()) out.push({k:'jp', step:1, focus:'gxp-jp-on', t:'Japan customer but "FX-" is on the document', d:'For Japan use MAX-350 / MAX-450 (DKSH request).', fix:'Use MAX names', fixFn:function(){ applyJp(true); }});
+        else out.push({k:'jp', step:2, t:'Japan customer but "FX-" is on the document', d:'This FX name is generated from the machine type, so the Japan toggle cannot change it. Type a Custom Title with the MAX name in step 2.'});
+      }
+      (s.machines || []).forEach(function(m, i){ try { if (belowFloor(m)) out.push({k:'floor', step:3, mi:i, t:'Below floor price', d:mTitle(m, i) + ' is priced below the Machine DB floor price.', red:true}); } catch(_){} });
+      var rc = repCanonGx(s.salesRep);
+      if (s.salesRep && rc !== s.salesRep) out.push({k:'rep', step:1, focus:'f-sales-rep', t:'Sales Rep name', d:'Prints as "' + s.salesRep + '".', fix:'Use "' + rc + '"', fixFn:function(){ var e=$('f-sales-rep'); e.value = rc; s.salesRep = rc; up(); }});
+      return out;
+    }
+    window.gxpCollectIssues = collectIssues;
+    function showCheck(issues, proceed){
+      closeModal('gxp-check');
+      var md = mk('div', {'class':'gxp-modal', id:'gxp-check', role:'dialog', 'aria-modal':'true'});
+      var lis = issues.map(function(x, i){
+        return '<li class="' + (x.red ? 'gxp-red' : '') + '"><b>' + h(x.t) + '</b><div>' + h(x.d || '') + '</div>' + (x.q ? '<div class="gxp-q">' + h(x.q) + '</div>' : '')
+          + (x.fixFn ? '<button type="button" data-fix="' + i + '">' + h(x.fix) + '</button> ' : '') + '<button type="button" data-go="' + i + '">Go to field</button></li>';
+      }).join('');
+      md.innerHTML = '<div class="gxp-card"><h3>Check before export</h3><div class="gxp-sub">' + issues.length + ' thing' + (issues.length > 1 ? 's' : '') + ' to look at:</div>'
+        + '<ul class="gxp-list">' + lis + '</ul><div class="gxp-row"><button type="button" class="gxp-btn pri" id="gxp-fix">Fix</button><button type="button" class="gxp-btn" id="gxp-anyway">Export anyway</button></div></div>';
+      document.body.appendChild(md);
+      function go(x){ closeModal('gxp-check'); if (x.mi != null) { try { saveCurrentMachineToState(); state.activeMachineIdx = x.mi; renderMachineTabs(); loadMachineIntoForm(); renderCwItems(); renderOptItems(); calcPrice(); } catch(_){} } goStep(x.step, x.focus); }
+      md.addEventListener('click', function(e){
+        var b = e.target.closest('button'); if (!b) { if (e.target === md) closeModal('gxp-check'); return; }
+        if (b.hasAttribute('data-go')) go(issues[+b.getAttribute('data-go')]);
+        else if (b.hasAttribute('data-fix')) { try { issues[+b.getAttribute('data-fix')].fixFn(); } catch(_){} var left = collectIssues(); if (!left.length) { closeModal('gxp-check'); proceed(); } else showCheck(left, proceed); }
+        else if (b.id === 'gxp-fix') go(issues[0]);
+        else if (b.id === 'gxp-anyway') { closeModal('gxp-check'); proceed(); }
+      });
+    }
+    function guard(name, after){
+      var orig = window[name]; if (typeof orig !== 'function') return;
+      window[name] = function(){
+        var self = this, args = arguments;
+        var run = function(){ var r = orig.apply(self, args); try { if (after) after(); } catch(_){} return r; };
+        var issues = []; try { issues = collectIssues(); } catch(_){ issues = []; }
+        if (!issues.length) return run();
+        showCheck(issues, run);
+      };
+    }
+
+    /* ================= (6) one-tap send ================= */
+    function sendInfo(){
+      var s=S() || {}, fname = '';
+      try { fname = buildExportFilename('pdf'); } catch(_){ fname = (s.contractNo || 'Contract') + '.pdf'; }
+      // prefer the contact person's H/P in Attn (usually a mobile = WhatsApp), else the Tel field
+      var am = String(s.attn || '').match(/(\+?\d[\d\s\-]{6,}\d)/);
+      var telRaw = am ? am[1] : (s.tel || '');
+      var d = String(telRaw).split(/[\/,;]/)[0].replace(/\D/g, '');
+      if (d.indexOf('00') === 0) d = d.slice(2);
+      else if (d.charAt(0) === '0') {
+        var CC = {malaysia:'60', indonesia:'62', thailand:'66', vietnam:'84', 'viet nam':'84', philippines:'63', korea:'82', japan:'81', china:'86', india:'91', bangladesh:'880', 'sri lanka':'94', pakistan:'92', taiwan:'886', myanmar:'95', cambodia:'855'};
+        var cc = CC[countryOf().toLowerCase().replace(/\s+/g, ' ')] || (s.currency === 'MYR' ? '60' : (s.currency === 'IDR' ? '62' : ''));
+        if (cc) d = cc + d.slice(1);
+      }
+      var email = (String(s.email || '').match(/[^\s,;<>]+@[^\s,;<>]+/) || [''])[0];
+      var who = String(s.attn || '').replace(/\s*\(.*$/, '').replace(/\s*(h\/?p|tel|mobile)?\s*:?\s*\+?\d[\d\s\-]{6,}.*$/i, '').trim();
+      var doc = (s.docType || 'document').toLowerCase();
+      var body = 'Dear ' + (who || 'Sir/Madam') + ',\n\nPlease find attached our ' + doc + ' ' + (s.contractNo || '') + ' (' + fname + ').\n\nThank you.\nSen Labels Machinery Sdn. Bhd.';
+      return { fname: fname, wa: 'https://wa.me/' + (d.length >= 8 ? d : '') + '?text=' + encodeURIComponent(body),
+               mail: 'mailto:' + encodeURIComponent(email).replace(/%40/g, '@') + '?subject=' + encodeURIComponent(fname.replace(/\.pdf$/, '') ) + '&body=' + encodeURIComponent(body),
+               phone: d, email: email };
+    }
+    function openSend(kind){ var i = sendInfo(); window.open(kind === 'wa' ? i.wa : i.mail, kind === 'wa' ? '_blank' : '_self'); }
+    window.gxpSend = openSend;
+    function showSendBar(){
+      closeModal('gxp-send');
+      var i = sendInfo();
+      var bar = mk('div', {id:'gxp-send', role:'region', 'aria-label':'Send to customer'});
+      bar.innerHTML = '<button type="button" class="gxp-x" aria-label="Close">&times;</button><b>Send to customer</b>'
+        + '<div class="gxp-fn">Attach: ' + h(i.fname) + '</div>'
+        + '<div class="gxp-row"><button type="button" class="gxp-btn gxp-wa" data-k="wa">WhatsApp' + (i.phone ? '' : ' (pick chat)') + '</button>'
+        + '<button type="button" class="gxp-btn" data-k="mail"' + (i.email ? '' : ' title="No email on this contract"') + '>Email</button></div>';
+      document.body.appendChild(bar);
+      bar.addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; if (b.classList.contains('gxp-x')) { bar.remove(); return; } openSend(b.getAttribute('data-k')); });
+    }
+    window.gxpShowSendBar = showSendBar;
+    var grid = document.querySelector('.gx-export');
+    if (grid) {
+      var mob = grid.querySelector('.gx-mob');
+      [['wa', 'Send on WhatsApp', 'Customer phone + filename'], ['mail', 'Send by Email', 'Customer email + filename']].forEach(function(x){
+        var b = mk('button', {type:'button', 'class':x[0] === 'wa' ? 'gxp-wab' : 'gxp-mailb'}, x[1] + '<small>' + x[2] + '</small>');
+        b.addEventListener('click', function(){ openSend(x[0]); });
+        grid.insertBefore(b, mob || null);
+      });
+    }
+
+    // a duplicate / variant is a new, unsigned record: do not carry the signed date over
+    if (typeof window.makeVariantNo === 'function') {
+      var _var = window.makeVariantNo;
+      window.makeVariantNo = function(){
+        var no0 = ($('f-contract-no')||{}).value;
+        var r = _var.apply(this, arguments);
+        Promise.resolve(r).then(function(){ var s = S(); if (s && ($('f-contract-no')||{}).value !== no0) s.signedDate = ''; }).catch(function(){});
+        return r;
+      };
+    }
+    if (typeof window.duplicateAsNew === 'function') {
+      var _dup = window.duplicateAsNew;
+      window.duplicateAsNew = function(){ var before = S(); var r = _dup.apply(this, arguments); try { var s = S(); if (s && s !== before) { s.signedDate = ''; syncFields(); } } catch(_){} return r; };
+    }
+
+    guard('doPrint', showSendBar);
+    guard('exportToWord');
+    guard('exportToExcel');
+    syncFields();
+  } catch (err) {
+    try { console.error('gxp layer failed', err); } catch(_){}
   }
 })();
 </script>
