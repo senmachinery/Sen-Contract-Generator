@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator C v1.1 (base v13.25)</title>
+<title>Sen Labels — Contract Generator C v1.2 (base v13.25)</title>
 <!-- v13.25: ADD — Installment: changing Instalment 1 auto-splits the remaining balance over the later instalments (same rounding as Calculate, last absorbs remainder, schedule total unchanged). Checkbox "Auto-balance…" (default on, UI-only, not saved); untick = old behaviour. Rendering/saved contracts unchanged. -->
 <!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
 <!-- v13.23: FIX — Agent Price List signature now shows the same signature image as contracts/quotations (was an empty line). Editor checkbox "Show signature image" (a.hideSig) turns it off. Other doc types unchanged. -->
@@ -759,7 +759,7 @@ body.gx .modal .btn-primary{background:var(--ink)}
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.1 · base v13.25</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.2 · base v13.25</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -769,7 +769,7 @@ body.gx .modal .btn-primary{background:var(--ink)}
     <button class="btn btn-outline btn-sm" onclick="openSettings()"><svg class="ic"><use href="#i-settings"></use></svg> Settings</button>
     <button class="btn btn-success btn-sm" onclick="saveToSheets()"><svg class="ic"><use href="#i-save"></use></svg> Save Record</button>
     <button class="btn btn-sm" onclick="openLibrary()" style="background:#6a1b9a;color:#fff"><svg class="ic"><use href="#i-library"></use></svg> Library</button>
-    <a href="crm.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)"><svg class="ic"><use href="#i-users"></use></svg> CRM</a>
+    <a href="crm-c.html" target="_blank" class="btn btn-sm" style="background:#00897b;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="Open Sen Labels CRM (new tab)"><svg class="ic"><use href="#i-users"></use></svg> CRM</a>
     <button class="btn btn-sm" onclick="openMachineDB()" style="background:#e67e00;color:#fff"><svg class="ic"><use href="#i-wrench"></use></svg> Machine DB</button>
     <button class="btn btn-orange btn-sm" onclick="doPrint()"><svg class="ic"><use href="#i-printer"></use></svg> Print / PDF</button>
     <div class="more-menu" id="more-menu">
@@ -8311,7 +8311,7 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
     // secondary topbar buttons -> More menu (same elements, same handlers)
     var panel = actions.querySelector('.more-panel');
     var find = function(sel){ return actions.querySelector(sel); };
-    var toMore = [find('[onclick="location.reload()"]'), find('[onclick="openSettings()"]'), find('a[href="crm.html"]'),
+    var toMore = [find('[onclick="location.reload()"]'), find('[onclick="openSettings()"]'), find('a[href="crm-c.html"]'),
                   find('[onclick="openAppendMachineModal()"]'), find('[onclick="duplicateAsNew()"]'), find('[onclick="newContract()"]')].filter(Boolean);
     if (panel && toMore.length) { panel.appendChild(mk('div', {'class':'gx-sep'})); toMore.forEach(function(b){ panel.appendChild(b); }); }
     if (panel) panel.addEventListener('click', function(e){ if (e.target.closest('label')) return; if (e.target.closest('button,a')) setTimeout(function(){ try{ closeMoreMenu(); }catch(_){} }, 0); });
