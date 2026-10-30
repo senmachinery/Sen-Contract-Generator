@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sen Today v1.1</title>
+<meta name="theme-color" content="#111111">
+<link rel="apple-touch-icon" href="icon-crm-180.png">
+<link rel="icon" href="icon-crm-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Sen Today v1.1: CRM links now open crm-c.html (C suite). v1.0 — standalone neo-brutalist home page (direction C). Read-only.
+     Uses the SAME backend URL + access token as crm.html (localStorage keys sen_crm_apps_script_url / sen_api_token,
+     same origin on GitHub Pages). Calls only crm_getAllContracts, customerDB, crm_getFollowups. -->
+<style>
+:root{--bg:#fff6e0;--ink:#111;--red:#ed262c;--yel:#ffd23f;--blu:#5b8cff;--min:#4fe0a5;--pnk:#ff9ad5;--wht:#fff;--sk:#f1e6c8}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif;overflow-x:hidden;min-height:100vh;
+ background-image:radial-gradient(#11111122 1.2px,transparent 1.2px);background-size:22px 22px}
+a{color:inherit}
+.tick{background:var(--ink);color:var(--yel);border-bottom:3px solid var(--ink);overflow:hidden;white-space:nowrap;font-family:"Space Mono",monospace;font-weight:700;font-size:14px;padding:9px 0;min-height:39px}
+.tick div{display:inline-block;animation:mq 26s linear infinite;will-change:transform}
+.tick span{margin:0 22px}
+@keyframes mq{to{transform:translateX(-50%)}}
+.wrap{max-width:1260px;margin:0 auto;padding:26px 30px 44px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.logo{width:48px;height:48px;background:var(--red);color:#fff;border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);display:grid;place-items:center;font-weight:800;font-size:24px;border-radius:12px;transform:rotate(-6deg);text-decoration:none;flex:none}
+h1{font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1}
+.date{font-family:"Space Mono",monospace;font-size:13px;background:var(--wht);border:3px solid var(--ink);padding:6px 12px;border-radius:99px;box-shadow:3px 3px 0 var(--ink);margin-left:6px;white-space:nowrap}
+.hbtn{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn{font-family:"Space Mono",monospace;font-weight:700;font-size:13px;color:var(--ink);background:var(--wht);border:3px solid var(--ink);padding:8px 12px;border-radius:12px;text-decoration:none;box-shadow:3px 3px 0 var(--ink);cursor:pointer;transition:transform .15s,box-shadow .15s;white-space:nowrap}
+.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.btn.y{background:var(--yel)}
+.me{width:48px;height:48px;border-radius:50%;background:var(--blu);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);display:grid;place-items:center;font-weight:800;color:#fff;flex:none}
+.b{border:3px solid var(--ink);border-radius:18px;box-shadow:6px 6px 0 var(--ink);position:relative;min-width:0}
+.ready .b.anim{opacity:0;transform:translateY(40px) scale(.9);animation:pop .7s cubic-bezier(.34,1.56,.64,1) forwards}
+@media(hover:hover){.b.hov{transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s}.b.hov:hover{transform:translate(-3px,-3px) rotate(-.6deg);box-shadow:9px 9px 0 var(--ink)}}
+@keyframes pop{to{opacity:1;transform:none}}
+.stats{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:18px;margin-bottom:22px}
+.st{padding:20px 22px;min-height:150px}
+.st .k{font-family:"Space Mono",monospace;font-weight:700;font-size:13px;text-transform:uppercase}
+.st .n{font-size:58px;font-weight:800;letter-spacing:-3px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st .n small{font-size:24px;letter-spacing:-1px}
+.st .sub{font-family:"Space Mono",monospace;font-size:12px;font-weight:700;margin-top:8px;opacity:.85}
+.stk{position:absolute;top:-16px;right:14px;background:var(--wht);color:var(--ink);border:3px solid var(--ink);font-family:"Space Mono",monospace;font-weight:700;font-size:12px;padding:4px 10px;border-radius:99px;transform:rotate(6deg);box-shadow:3px 3px 0 var(--ink);animation:wob 2.4s ease-in-out infinite}
+@keyframes wob{50%{transform:rotate(-4deg) scale(1.06)}}
+.blocks{display:flex;gap:6px;margin-top:14px}
+.blocks i{flex:1;height:22px;border:2.5px solid var(--ink);border-radius:5px;background:var(--wht);transform:scale(0);animation:pop2 .5s cubic-bezier(.34,1.8,.64,1) forwards}
+.blocks i.on{background:var(--red)}
+@keyframes pop2{to{transform:scale(1)}}
+.main{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;margin-bottom:24px}
+.main>.pan:last-child{display:flex;flex-direction:column}
+.main>.pan:last-child .chart{flex:1;height:auto;min-height:260px}
+.mv{display:none}
+.pan{padding:20px;background:var(--wht)}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+.ph h2{font-size:28px;font-weight:800;letter-spacing:-1px}
+.ph a{font-family:"Space Mono",monospace;font-weight:700;font-size:13px;color:var(--ink);background:var(--yel);border:2.5px solid var(--ink);padding:4px 10px;border-radius:8px;text-decoration:none;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+.row{display:flex;align-items:center;gap:14px;padding:12px;border:2.5px solid var(--ink);border-radius:14px;margin-bottom:10px;background:var(--bg);text-decoration:none;color:var(--ink)}
+.ready .row.anim{opacity:0;transform:translateX(-30px);animation:pop .6s cubic-bezier(.34,1.56,.64,1) forwards}
+@media(hover:hover){.row{transition:transform .15s,box-shadow .15s,background .15s}.row:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink);background:var(--wht)}}
+.age{width:62px;height:56px;flex:none;border:2.5px solid var(--ink);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:24px;line-height:1}
+.age span{font-family:"Space Mono",monospace;font-size:10px;font-weight:700}
+.who{flex:1;min-width:0}
+.who>b{display:block;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who>span{font-family:"Space Mono",monospace;font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.val{font-weight:800;font-size:20px;letter-spacing:-.5px;white-space:nowrap}
+.wa{width:44px;height:44px;flex:none;border:2.5px solid var(--ink);border-radius:12px;background:var(--min);display:grid;place-items:center;box-shadow:3px 3px 0 var(--ink);transition:transform .15s,box-shadow .15s}
+.wa.nophone{background:var(--wht)}
+@media(hover:hover){.wa:hover{transform:rotate(-10deg) scale(1.1)}}
+.wa:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.wa svg{width:22px;height:22px;fill:var(--ink)}
+.empty{font-family:"Space Mono",monospace;font-size:13px;font-weight:700;padding:18px;border:2.5px dashed var(--ink);border-radius:14px;text-align:center}
+.chart{display:flex;align-items:flex-end;gap:12px;height:260px;border-bottom:3px solid var(--ink);padding:22px 4px 0}
+.col{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px;height:100%;position:relative}
+.bar{width:42%;max-width:30px;border:2.5px solid var(--ink);border-bottom:none;border-radius:8px 8px 0 0;transform:scaleY(0);transform-origin:bottom;transition:transform .9s cubic-bezier(.34,1.56,.64,1);will-change:transform}
+.bar.q{background:var(--blu)}.bar.w{background:var(--red)}
+.col .tip{position:absolute;top:-20px;font-family:"Space Mono",monospace;font-weight:700;font-size:11px;background:var(--ink);color:#fff;padding:3px 6px;border-radius:6px;white-space:nowrap;opacity:.0;transition:opacity .15s}
+.col:hover .tip,.col.on .tip{opacity:1}
+.ml{display:flex;gap:12px;padding:8px 4px 0}.ml span{flex:1;text-align:center;font-family:"Space Mono",monospace;font-weight:700;font-size:12px}
+.lgd{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.lgd span{font-family:"Space Mono",monospace;font-weight:700;font-size:12px;border:2.5px solid var(--ink);border-radius:99px;padding:3px 10px}
+.tiles{display:grid;grid-template-columns:repeat(9,1fr);gap:14px}
+.tile{padding:16px 12px;text-align:left;text-decoration:none;color:var(--ink);display:block}
+.tile .ic{width:38px;height:38px;border:2.5px solid var(--ink);border-radius:10px;background:var(--wht);display:grid;place-items:center;margin-bottom:12px;transition:transform .3s cubic-bezier(.34,1.8,.64,1)}
+@media(hover:hover){.tile:hover .ic{transform:rotate(-14deg) scale(1.15)}}
+.tile:active{transform:translate(4px,4px);box-shadow:2px 2px 0 var(--ink)}
+.ic svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tile b{display:block;font-size:16px;font-weight:800}
+.tile span{font-family:"Space Mono",monospace;font-size:11px;font-weight:700}
+.foot{margin-top:22px;font-family:"Space Mono",monospace;font-size:11px;font-weight:700;opacity:.7;line-height:1.6}
+/* skeleton */
+.skel{background:var(--sk);border-radius:8px;position:relative;overflow:hidden}
+.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,#ffffff99,transparent);animation:shim 1.3s infinite}
+@keyframes shim{to{transform:translateX(100%)}}
+.sk-n{height:52px;width:60%;margin-top:14px}.sk-k{height:14px;width:45%}.sk-row{height:72px;margin-bottom:10px;border-radius:14px}
+/* error */
+.err{padding:22px;background:var(--wht);margin-bottom:22px}
+.err h2{font-size:26px;font-weight:800;margin-bottom:8px}
+.err p{font-family:"Space Mono",monospace;font-size:13px;line-height:1.5;margin-bottom:14px}
+@media(max-width:900px){
+ .wrap{padding:16px 16px 32px}
+ header{gap:10px;margin-bottom:20px}
+ h1{font-size:40px}.date{display:none}.logo,.me{width:42px;height:42px}.me{display:none}
+ .btn{font-size:12px;padding:7px 10px}
+ .stats{grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+ .stats .b:first-child,.stats .b:last-child{grid-column:1/-1}
+ .st{padding:16px;min-height:0}.st .n{font-size:42px;letter-spacing:-2px}
+ .b{box-shadow:4px 4px 0 var(--ink)}
+ .main{grid-template-columns:1fr;gap:18px}
+ .ph h2{font-size:24px}
+ .row{padding:10px;gap:10px}.age{width:52px;height:50px;font-size:20px}.wa{width:40px;height:40px}
+ .who>b{font-size:15px}
+ .main>.pan:last-child .chart{min-height:190px;gap:6px}
+ .val{display:none}.mv{display:inline;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:14px;margin-right:6px}
+ .tiles{grid-template-columns:repeat(3,1fr);gap:12px}
+ .col .tip{font-size:10px;padding:2px 4px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.tick div{animation:none}}
+</style></head><body>
+<div class="tick"><div id="tk"></div></div>
+<div class="wrap" id="app">
+<header><a class="logo" href="crm-c.html" title="Open full CRM">S</a><h1>Today</h1><div class="date" id="hdate"></div>
+ <div class="hbtn"><button class="btn" id="refresh" onclick="load(true)" title="Reload data">↻</button><a class="btn y" href="crm-c.html">Full CRM →</a><div class="me">MG</div></div></header>
+<div id="body"></div>
+<div class="foot" id="foot"></div>
+</div>
+<script>
+'use strict';
+// ─── Same auth/API mechanism as crm.html (copied: apiGet / token keys) ───
+const URL_STORAGE_KEY = 'sen_crm_apps_script_url';
+const TOKEN_STORAGE_KEY = 'sen_api_token';
+const FNL_NOCHASE_KEY = 'sen_funnel_nochase';   // crm.html Funnel "hide" list (same browser)
+function lsGet(k){ try { return localStorage.getItem(k) || ''; } catch(e){ return ''; } }
+function getApiToken(){ return lsGet(TOKEN_STORAGE_KEY); }
+let _tokenPrompted = false;
+function ensureApiToken(){
+  if (_tokenPrompted) return; _tokenPrompted = true;
+  const t = prompt('Access Token required to connect to the CRM.\nPaste the Access Token you were given by your admin:', getApiToken());
+  if (t && t.trim()) { try { localStorage.setItem(TOKEN_STORAGE_KEY, t.trim()); } catch(e){} location.reload(); }
+}
+async function apiGet(action, params){
+  const base = lsGet(URL_STORAGE_KEY);
+  if (!base) throw new Error('noconfig');
+  const all = { action, ...(params || {}) };
+  const tok = getApiToken(); if (tok) all.token = tok;
+  const r = await fetch(base + '?' + new URLSearchParams(all).toString());
+  const j = await r.json();
+  if (j && j.error === 'unauthorized') { ensureApiToken(); throw new Error('unauthorized'); }
+  return j;
+}
+
+// ─── Business rules (mirrors crm.html: Target / Funnel / repCanon / _toRM) ───
+const TARGET_PER_YEAR = 12;
+const TARGET_MODELS = [
+  {re:/\bSMP\d?[\s._-]*280(?!\d)/i, m:'SMP-280'}, {re:/\bSMP\d?[\s._-]*300(?!\d)/i, m:'SMP-300'},
+  {re:/\bSMP\d?[\s._-]*320(?!\d)/i, m:'SMP-320'}, {re:/\bSPM\d?[\s._-]*350(?!\d)/i, m:'SPM-350'},
+  {re:/\bRIF\d?[\s._-]*350(?!\d)/i, m:'RIF-350'}, {re:/\bRIF\d?[\s._-]*450(?!\d)/i, m:'RIF-450'},
+  {re:/\bIF\d?[\s._-]*350(?!\d)/i,  m:'IF-350'},  {re:/\bIF\d?[\s._-]*450(?!\d)/i,  m:'IF-450'},
+  {re:/\bFX\d?[\s._-]*350(?!\d)/i,  m:'FX-350'},  {re:/\bFX\d?[\s._-]*450(?!\d)/i,  m:'FX-450'}
+];
+function targetModel(t){
+  t = String(t || '').trim();
+  if (!t) return null;
+  if (/\b(refurb|refurbished|used|second[\s-]?hand|2nd\s*hand|pre[\s-]?owned|recond?)\b/i.test(t)) return null;
+  if (/vorey|voret|auracut|VP[\s._-]*320/i.test(t)) return null;
+  for (const w of TARGET_MODELS) if (w.re.test(t)) return w.m;
+  return null;
+}
+const OPEN = ['Quotation Sent', 'Following Up', 'Negotiating'];
+const WON = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)', 'Closed (Won)'];
+const RM_RATE = { USD:4.7, SGD:3.5, EUR:5.1, RMB:0.65, CNY:0.65, MYR:1, RM:1, IDR:0.0003 };  // crm.html _toRM rates + IDR
+function toUSD(amt, cur){ cur = String(cur || 'USD').trim().toUpperCase(); return (cur in RM_RATE) ? amt * RM_RATE[cur] / 4.7 : null; }
+const REP_ALIASES = { 'max':'Max', 'max (you)':'Max', 'mr. goh':'Max', 'mr goh':'Max', 'max goh':'Max' };
+const repCanon = s => { const k = String(s || '').trim().toLowerCase(); return REP_ALIASES[k] || String(s || '').trim(); };
+// No-chase: vault _系统/不催名单.md (hardcoded) + Citra Label (boss handles) + crm.html Funnel hidden list on this browser
+const NO_CHASE = ['neha label'];
+function noChaseSet(){ const s = new Set(NO_CHASE); try { (JSON.parse(lsGet(FNL_NOCHASE_KEY) || '[]') || []).forEach(n => s.add(String(n).trim().toLowerCase())); } catch(e){} return s; }
+function excluded(co, set){ const l = String(co || '').trim().toLowerCase(); return set.has(l) || l.includes('citra label'); }
+const ckey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const WA_CC = { 'Malaysia':'60','Indonesia':'62','Philippines':'63','Singapore':'65','Thailand':'66','Vietnam':'84','South Korea':'82','Korea':'82','Japan':'81','China':'86','India':'91','Taiwan':'886','Hong Kong':'852','Australia':'61','Bangladesh':'880','Sri Lanka':'94','Myanmar':'95','Cambodia':'855','Brunei':'673','Pakistan':'92','UAE':'971','Saudi Arabia':'966','USA':'1','UK':'44' };
+function guessCountry(company, addr){
+  const blob = (addr || '') + ' ' + (company || '');
+  for (const k of Object.keys(WA_CC)) if (new RegExp('\\b' + k + '\\b', 'i').test(blob)) return k;
+  if (/^\s*(PT|CV|UD)\b\.?/i.test(company || '')) return 'Indonesia';
+  return 'Malaysia';
+}
+function waNumber(tel, country){   // same rule as crm.html v2.54
+  let d = String(tel || '').split(/[\/,;]/)[0].replace(/[^0-9+]/g, '');
+  if (!d) return '';
+  if (d.startsWith('+')) return d.slice(1);
+  if (d.startsWith('00')) return d.slice(2);
+  if (d.startsWith('0')) return (WA_CC[country] || '60') + d.slice(1);
+  return d;
+}
+// Local (MYT/browser) calendar date of a sheet date: ISO strings are UTC midnight-ish → convert; DD/MM/YYYY supported.
+function localDate(v){
+  if (!v) return null;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]); }
+  const d = new Date(s); if (isNaN(d)) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+const DAY = 86400000;
+
+function compute(cRes, custRes, fuRes){
+  const raw = cRes.contracts || cRes.records || [];
+  const custs = (custRes && custRes.customers) || [];
+  const fus = (fuRes && fuRes.followups) || [];
+  const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()), Y = today.getFullYear();
+  // normalise + de-dup by contractNo (last row wins, carry salesRep) — same as crm.html refreshData
+  const seen = {}, blanks = [];
+  raw.forEach(r => {
+    const c = { contractNo: r.contractNo || '', date: r.date || '', company: (r.company || '').trim(), machine: r.machineTitle || r.machine || '',
+      currency: r.currency || 'USD', amount: parseFloat(r.amount) || 0, status: r.status || 'Quotation Sent',
+      salesRep: (s => { s = (s || '').trim(); return /^https?:|drive\.google/i.test(s) ? '' : s; })(r.salesRep), signedDate: r.signedDate || '' };
+    if (!c.company) return;
+    const k = c.contractNo.trim();
+    if (!k) { blanks.push(c); return; }
+    if (seen[k] && seen[k].salesRep && !c.salesRep) c.salesRep = seen[k].salesRep;
+    seen[k] = c;
+  });
+  const C = Object.values(seen).concat(blanks);
+  C.forEach(c => { c.d = localDate(c.date); });
+  const defRep = {}, contact = {};
+  custs.forEach(x => { if (!x.company) return; defRep[x.company.trim().toLowerCase()] = x.defaultRep || ''; contact[ckey(x.company)] = { tel: x.tel || '', addr: x.addr || x.address || '' }; });
+  const rep = c => repCanon(c.salesRep || defRep[c.company.toLowerCase()] || '');
+  const nc = noChaseSet();
+
+  // 1) Signed this year — new target machines: marked signed (Target tab), else won status + ≥ RM200k (signedDate is empty today)
+  const signed = [], keys = new Set();
+  C.forEach(c => {
+    const m = targetModel(c.machine); if (!m) return;
+    if (c.signedDate) { const y = String(c.signedDate).match(/(\d{4})/); if (y && +y[1] === Y) signed.push({ co: c.company, m }); return; }
+    const u = toUSD(c.amount, c.currency) || 0;
+    if (WON.includes(c.status) && c.d && c.d.getFullYear() === Y && u * 4.7 >= 200000) {
+      const k = c.company.toLowerCase() + '|' + m; if (!keys.has(k)) { keys.add(k); signed.push({ co: c.company, m }); }
+    }
+  });
+
+  // 2) Last touch per customer = latest logged follow-up (not in the future)
+  const lt = {};
+  fus.forEach(f => { const d = localDate(f.date); if (!d || d > today) return; const k = ckey(f.customer); if (!lt[k] || d > lt[k]) lt[k] = d; });
+
+  // 3) My pipeline — Max's open quotes, last 12 months, latest quote per customer only
+  const cut = new Date(today.getTime() - 365 * DAY), by = {};
+  C.forEach(c => {
+    if (!OPEN.includes(c.status) || !c.d || c.d < cut || rep(c) !== 'Max' || excluded(c.company, nc)) return;
+    const k = c.company.toLowerCase(), p = by[k];
+    if (!p || c.d > p.d || (+c.d === +p.d && c.contractNo > p.contractNo)) by[k] = c;
+  });
+  const rows = Object.values(by).map(c => {
+    const t = (lt[ckey(c.company)] && lt[ckey(c.company)] > c.d) ? lt[ckey(c.company)] : c.d;
+    const ct = contact[ckey(c.company)] || {};
+    return { co: c.company, m: c.machine, usd: toUSD(c.amount, c.currency) || 0, days: Math.round((today - t) / DAY),
+      wa: waNumber(ct.tel, guessCountry(c.company, ct.addr)) };
+  });
+  const pipeUSD = rows.reduce((a, r) => a + r.usd, 0);
+  const hot = rows.filter(r => r.usd >= 100000 && r.days <= 30);
+  const chase = rows.filter(r => r.days >= 14).sort((a, b) => b.usd - a.usd).slice(0, 5);
+
+  // 4) Quotes (Funnel definition: everything except Price List / Sales Contract)
+  const Q = C.filter(c => c.status !== 'Price List' && c.status !== 'Sales Contract' && c.d);
+  const qMonth = Q.filter(c => c.d.getFullYear() === Y && c.d.getMonth() === today.getMonth());
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const md = new Date(Y, today.getMonth() - i, 1), y = md.getFullYear(), mo = md.getMonth();
+    const ms = Q.filter(c => c.d.getFullYear() === y && c.d.getMonth() === mo);
+    months.push({ lbl: md.toLocaleString('en-US', { month: 'short' }), q: ms.length, w: ms.filter(c => WON.includes(c.status) || c.signedDate).length });
+  }
+  return { Y, signed: signed.length, pipeUSD, pipeCos: rows.length, hot: hot.length, chase, quotesMonth: qMonth.length,
+    quotesMonthMine: qMonth.filter(c => rep(c) === 'Max').length, monthName: today.toLocaleString('en-US', { month: 'short' }),
+    months, openDeals: C.filter(c => OPEN.includes(c.status)).length, customers: custs.length,
+    quotesYTD: Q.filter(c => c.d.getFullYear() === Y).length };
+}
+
+// ─── Render ───
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+const $ = id => document.getElementById(id);
+const WA = '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>';
+const OPEN_IC = '<svg viewBox="0 0 24 24" style="fill:none;stroke:#111;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>';
+const IC = {Pipeline:'<path d="M4 6h16M4 12h10M4 18h6"/>',Customers:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 8M22 21c0-3-2-5-4-6"/>',Target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',Funnel:'<path d="M3 4h18l-7 9v7l-4-2v-5z"/>',Tasks:'<path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',Invoices:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5"/>',Inquiries:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',Reps:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',"3D Factory":'<path d="M12 2l9 5v10l-9 5-9-5V7zM12 22V12M21 7l-9 5-9-5"/>'};
+const TC = ['#ffd23f','#ff9ad5','#5b8cff','#4fe0a5','#fff','#ffd23f','#ff9ad5','#4fe0a5','#5b8cff'];
+const fmtK = u => '$' + (u >= 1e6 ? (u / 1e6).toFixed(2) + 'M' : Math.round(u / 1000) + 'k');
+const ageColor = d => d > 100 ? 'var(--red);color:#fff' : d > 70 ? 'var(--yel)' : 'var(--min)';
+const crmCustomer = co => 'crm-c.html?customer=' + encodeURIComponent(co);
+
+function skeleton(){
+  const st = ['var(--yel)','var(--blu)','var(--red)','var(--min)'].map(c => `<div class="b st" style="background:${c}"><div class="skel sk-k"></div><div class="skel sk-n"></div></div>`).join('');
+  $('body').innerHTML = `<section class="stats">${st}</section>
+  <section class="main"><div class="b pan"><div class="ph"><h2>Chase now</h2></div>${'<div class="skel sk-row"></div>'.repeat(5)}</div>
+  <div class="b pan"><div class="ph"><h2>Quotes vs won</h2></div><div class="skel" style="flex:1;min-height:220px"></div></div></section>`;
+  $('tk').innerHTML = '<span>★ LOADING LIVE CRM DATA…</span>'.repeat(8);
+}
+
+function showError(kind, msg){
+  document.body.classList.remove('ready');
+  const txt = kind === 'noconfig'
+    ? '<h2>Not connected yet</h2><p>This page uses the same connection as the CRM. Open the full CRM once on this device (it asks for the backend URL / access token), then come back here.</p><a class="btn y" href="crm-c.html">Open CRM →</a>'
+    : kind === 'unauthorized'
+    ? '<h2>Access token needed</h2><p>The CRM backend refused the request. Paste the access token when asked (same token as the CRM), or open the CRM to set it.</p><button class="btn y" onclick="load(true)">Try again</button> <a class="btn" href="crm-c.html">Open CRM</a>'
+    : `<h2>Couldn’t load CRM data</h2><p>${esc(msg || 'Network error')} — check your connection and retry.</p><button class="btn y" onclick="load(true)">Retry</button> <a class="btn" href="crm-c.html">Open CRM</a>`;
+  $('body').innerHTML = `<div class="b err">${txt}</div>`;
+  $('tk').innerHTML = '<span>★ OFFLINE</span>'.repeat(8);
+}
+
+function render(D){
+  const pm = D.pipeUSD / 1e6;
+  const top = D.chase[0];
+  const tk = `<span>★ ${D.signed} / ${TARGET_PER_YEAR} NEW MACHINES SIGNED ${D.Y}</span><span>★ $${pm.toFixed(2)}M MY PIPELINE</span><span>★ ${D.hot} HOT DEALS</span>` +
+    (top ? `<span>★ CHASE ${esc(top.co.toUpperCase())} · ${top.days} DAYS</span>` : '') + `<span>★ ${D.quotesMonth} QUOTES IN ${D.monthName.toUpperCase()}</span>`;
+  $('tk').innerHTML = tk + tk + tk + tk;
+  const blocks = Array.from({ length: TARGET_PER_YEAR }, (_, i) => `<i class="${i < D.signed ? 'on' : ''}" style="animation-delay:${.6 + i * .06}s"></i>`).join('');
+  const chase = D.chase.length ? D.chase.map((c, i) => {
+    const waBtn = c.wa
+      ? `<a class="wa" href="https://wa.me/${esc(c.wa)}" target="_blank" rel="noopener" title="WhatsApp" onclick="event.stopPropagation()">${WA}</a>`
+      : `<a class="wa nophone" href="${crmCustomer(c.co)}" title="No phone in CustomerDB — open CRM record" onclick="event.stopPropagation()">${OPEN_IC}</a>`;
+    return `<div class="row anim" role="link" tabindex="0" data-href="${crmCustomer(c.co)}" onclick="location.href=this.dataset.href" onkeydown="if(event.key==='Enter')location.href=this.dataset.href" style="cursor:pointer;animation-delay:${.55 + i * .09}s"><div class="age" style="background:${ageColor(c.days)}">${c.days}<span>DAYS</span></div><div class="who"><b>${esc(c.co)}</b><span><b class="mv">${fmtK(c.usd)}</b>${esc(c.m)}</span></div><div class="val">${fmtK(c.usd)}</div>${waBtn}</div>`;
+  }).join('') : '<div class="empty">Nothing waiting 14+ days. Nice.</div>';
+  const mx = Math.max(1, ...D.months.map(m => m.q));
+  const chart = D.months.map(m => `<div class="col" onclick="this.classList.toggle('on')"><span class="tip">${m.q} / ${m.w}</span><div class="bar q" style="height:${m.q / mx * 88}%"></div><div class="bar w" style="height:${Math.max(3, m.w / mx * 88)}%"></div></div>`).join('');
+  const tiles = [['Pipeline', D.openDeals + ' open'], ['Customers', String(D.customers)], ['Target', D.signed + ' / ' + TARGET_PER_YEAR], ['Funnel', D.quotesYTD + ' quoted'], ['Tasks', 'to-do'], ['Invoices', 'billing'], ['Inquiries', 'leads'], ['Reps', 'team'], ['3D Factory', 'live']];
+  document.body.classList.add('ready');
+  $('body').innerHTML = `
+<section class="stats">
+ <div class="b st anim hov" style="background:var(--yel);animation-delay:.05s"><div class="stk">GOAL ${TARGET_PER_YEAR}</div><div class="k">Signed ${D.Y}</div><div class="n"><span data-n="${D.signed}">0</span><small> / ${TARGET_PER_YEAR}</small></div><div class="blocks">${blocks}</div></div>
+ <div class="b st anim hov" style="background:var(--blu);color:#fff;animation-delay:.13s"><div class="k">My pipeline</div><div class="n">$<span data-n="${pm.toFixed(2)}" data-d="2">0</span><small>M</small></div><div class="sub">${D.pipeCos} customers · latest quote each</div></div>
+ <div class="b st anim hov" style="background:var(--red);color:#fff;animation-delay:.21s">${D.hot ? '<div class="stk">HOT!</div>' : ''}<div class="k">Hot deals</div><div class="n"><span data-n="${D.hot}">0</span></div><div class="sub">≥ $100k · touched ≤ 30 days</div></div>
+ <div class="b st anim hov" style="background:var(--min);animation-delay:.29s"><div class="k">Quotes · ${esc(D.monthName)}</div><div class="n"><span data-n="${D.quotesMonth}">0</span></div><div class="sub">${D.quotesMonthMine} mine · all reps total</div></div>
+</section>
+<section class="main">
+ <div class="b pan anim" style="animation-delay:.37s"><div class="stk" style="background:var(--pnk);right:auto;left:18px;transform:rotate(-5deg)">GO GO GO</div><div class="ph"><h2>Chase now</h2><a href="crm-c.html">ALL ${D.pipeCos} →</a></div>${chase}</div>
+ <div class="b pan anim" style="animation-delay:.45s"><div class="ph"><h2>Quotes vs won</h2><a href="crm-c.html">FUNNEL →</a></div><div class="chart">${chart}</div><div class="ml">${D.months.map(m => `<span>${esc(m.lbl.toUpperCase())}</span>`).join('')}</div><div class="lgd"><span style="background:var(--blu);color:#fff">QUOTES</span><span style="background:var(--red);color:#fff">WON</span></div></div>
+</section>
+<section class="tiles">${tiles.map((t, i) => `<a class="b tile anim hov" href="crm-c.html" style="background:${TC[i]};animation-delay:${.6 + i * .06}s"><div class="ic"><svg viewBox="0 0 24 24">${IC[t[0]]}</svg></div><b>${t[0]}</b><span>${esc(t[1])}</span></a>`).join('')}</section>`;
+  const t = new Date();
+  $('foot').innerHTML = `Live CRM data · updated ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · Signed = new target machines (marked signed, or won ≥ RM200k this year) · Pipeline = Max's open quotes, last 12 months, NEHA LABEL / Citra Label excluded · Sen Today v1.0`;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(() => {
+    document.querySelectorAll('[data-n]').forEach(el => count(el, reduce));
+    document.querySelectorAll('.bar').forEach((b, i) => setTimeout(() => { b.style.transform = 'scaleY(1)'; }, reduce ? 0 : i * 60));
+  }, reduce ? 0 : 450);
+}
+function count(el, reduce){
+  const n = +el.dataset.n, d = +(el.dataset.d || 0);
+  if (reduce || !n) { el.textContent = n.toFixed(d); return; }
+  const t0 = performance.now();
+  (function f(t){ const p = Math.min(1, (t - t0) / 1300); const e = p < 1 ? 1 - Math.pow(2, -10 * p) * Math.cos(p * 9) : 1; el.textContent = Math.max(0, n * e).toFixed(d); if (p < 1) requestAnimationFrame(f); })(t0);
+}
+
+let _loading = false;
+async function load(){
+  if (_loading) return; _loading = true;
+  $('refresh').disabled = true;
+  skeleton(); document.body.classList.remove('ready');
+  try {
+    const [c, cu, fu] = await Promise.all([
+      apiGet('crm_getAllContracts'),
+      apiGet('customerDB').catch(() => ({ customers: [] })),
+      apiGet('crm_getFollowups').catch(() => ({ followups: [] }))
+    ]);
+    if (!c || !(c.contracts || c.records)) throw new Error((c && c.error) || 'Bad response from CRM backend');
+    window.__today = compute(c, cu, fu);
+    render(window.__today);
+  } catch (e) {
+    const m = String(e && e.message || e);
+    showError(m === 'noconfig' ? 'noconfig' : m === 'unauthorized' ? 'unauthorized' : 'net', m);
+  } finally { _loading = false; $('refresh').disabled = false; }
+}
+$('hdate').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase().replace(',', '');
+load();
+</script></body></html>
