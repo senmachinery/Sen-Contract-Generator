@@ -2,7 +2,7 @@
   "id": "sen-crm",
   "name": "Sen Labels CRM",
   "short_name": "Sen CRM",
-  "start_url": "crm.html",
+  "start_url": "crm-c.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

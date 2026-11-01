@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM C v1.0</title>
-<!-- C v1.0: crm-c.html = crm.html v2.66 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<title>Sen Labels — CRM C v1.1</title>
+<!-- C v1.1: crm-c.html = crm.html v2.67 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<!-- v2.67: CHANGE — this page now forwards to crm-c.html (the C-design CRM, same URL params). Open crm.html?classic=1 to keep using this classic page. Nothing else changed. -->
 <!-- v2.66: NEW "3D Factory" tab — interactive Three.js mini factory (loaded from CDN only when the tab is first opened). Click the Office → live business panel (stages, open USD value, recent deals, stuck 30d+); click the Factory → sold-not-shipped machine deals (last 120 days), also shown as small presses with name tags. Data = the CRM's already-loaded contracts/follow-ups (no new API calls); re-reads on every CRM refresh. Nothing else changed. -->
 <!-- v2.65: Funnel — stuck deals skip the no-chase list (localStorage sen_funnel_nochase, per-row hide ✕), long machine titles truncated, Inquiry→Quote % shown as n/a when inquiries are under-logged, section ids for the daily screenshot. -->
 <!-- v2.64: NEW "Funnel" tab — read-only sales funnel (Inquiries → Quotations → Confirmed/Won → Paid) with date/rep/country/category filters, breakdown by country + category, monthly trend bars, and a stuck-deals list (>30 days no activity). Uses only data already loaded; ≈USD via the existing _toRM rough rates. Nothing else changed. -->
@@ -802,7 +803,7 @@ body.cx #pw-overlay{background:var(--bg)}
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.0 · base v2.66</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.1 · base v2.67</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="generator.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>

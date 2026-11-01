@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- CX-REDIRECT-START (v13.26): the default entry is the C-design generator.html. Add ?classic=1 to the URL to stay on this classic page. Query string + hash are kept (?customer / ?contract / ?preview / &inqimg handoffs). Build scripts strip this block. -->
+<script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
+<!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.25</title>
+<title>Sen Labels — Contract Generator v13.26</title>
+<!-- v13.26: CHANGE — this page now forwards to generator.html (the C-design Generator, same URL params). Open index.html?classic=1 to keep using this classic page. Nothing else changed. -->
 <!-- v13.25: ADD — Installment: changing Instalment 1 auto-splits the remaining balance over the later instalments (same rounding as Calculate, last absorbs remainder, schedule total unchanged). Checkbox "Auto-balance…" (default on, UI-only, not saved); untick = old behaviour. Rendering/saved contracts unchanged. -->
 <!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
 <!-- v13.23: FIX — Agent Price List signature now shows the same signature image as contracts/quotations (was an empty line). Editor checkbox "Show signature image" (a.hideSig) turns it off. Other doc types unchanged. -->
@@ -529,7 +533,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.25</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.26</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">

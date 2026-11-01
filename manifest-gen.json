@@ -2,7 +2,7 @@
   "id": "sen-gen",
   "name": "Sen 合同生成器",
   "short_name": "Sen 报价",
-  "start_url": "index.html",
+  "start_url": "generator.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
