@@ -2608,6 +2608,21 @@ function getDepositFor(total) {
   return total * ((state.depositPct || 30) / 100);
 }
 
+// v13.27: 1 USD in `curr` — the same source as the floor hint (daily FX_RATES, else the rough table). USD → 1; unknown → 0.
+function usdRateFor(curr) {
+  if (!curr || curr === 'USD') return 1;
+  const USD2CUR = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };
+  return (FX_RATES && Number(FX_RATES[curr])) || USD2CUR[curr] || 0;
+}
+// v13.27: non-USD contract whose net unit price is still the raw USD Machine DB refPrice (picked before v13.27, or currency switched after picking)
+function refPriceUnconverted(m) {
+  if (!m || m.machineType === 'parts' || !state.currency || state.currency === 'USD') return false;
+  const ref = Number(m.refPrice) || 0, rate = usdRateFor(state.currency);
+  if (!(ref > 0) || !(rate > 0) || rate === 1) return false;
+  const sp = calcPriceForMachine(m).sellPrice, uq = m.unitQty || 1;
+  return Math.abs((uq > 0 ? sp / uq : sp) - ref) <= 0.5;
+}
+
 function calcPrice() {
   // Show/hide unit price row for parts machines
   const isParts = M().machineType === 'parts';
@@ -2661,8 +2676,19 @@ function calcPrice() {
           if (netUnit < floorCur - 0.5 && Math.abs(netUnit - _ref) > 0.5) {
             html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ Below floor price</span><span style="color:#c0392b;font-size:11px">Net/unit ${fmt(netUnit)}</span></div>`;
           }
+          // v13.27: non-USD contract still carrying the raw USD Machine DB number (the check above skips it on purpose) → say so
+          if (refPriceUnconverted(m)) {
+            html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ Price is the USD Machine DB price, not ${esc(curr)}</span><span style="color:#c0392b;font-size:11px">≈ ${fmt(_ref * usdRateFor(curr))}</span></div>`;
+          }
         }
       }
+      // v13.27: Machine DB ref price is USD — show the conversion used for a non-USD contract
+      if (_ref > 0 && !isParts && curr !== 'USD' && usdRateFor(curr) > 0) {
+        html += `<div class="pc-row" style="font-size:10px;color:#888"><span>Machine DB ref USD ${_ref.toLocaleString('en-MY')} @ ${usdRateFor(curr)}</span><span>${fmt(_ref * usdRateFor(curr))}</span></div>`;
+      }
+      // v13.27: Come With values that are not one clear amount count as 0 — make that visible
+      { const _cwBad = cwValIssues([m]);
+        if (_cwBad.length) html += `<div class="pc-row" style="background:#fff3e0;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#e65100;font-weight:700">⚠ Come With value not understood — counted as 0</span><span style="color:#e65100;font-size:11px">${_cwBad.map(x => esc(x.val)).join(' | ')}</span></div>`; }
       resultDiv.innerHTML = html;
     } else {
       resultDiv.style.display = 'none';
@@ -6253,9 +6279,12 @@ function loadMachineFromDB(idx) {
   machine.desc         = m.desc || '';
   machine.qty          = m.qty || '1 Unit';
   machine.unitQty      = 1;
-  machine.unitPrice    = m.refPrice || 0;
-  machine.sellPrice    = m.refPrice || 0;
-  machine._finalPrice  = m.refPrice || 0;
+  // v13.27: Machine DB refPrice is USD — a non-USD contract gets it converted (USD path unchanged). refPrice/floorPrice below stay USD.
+  const _rate = usdRateFor(state.currency);
+  const _refCur = (state.currency && state.currency !== 'USD' && _rate > 0 && Number(m.refPrice) > 0) ? Math.round(Number(m.refPrice) * _rate) : (m.refPrice || 0);
+  machine.unitPrice    = _refCur;
+  machine.sellPrice    = _refCur;
+  machine._finalPrice  = _refCur;
   machine.refPrice     = Number(m.refPrice) || 0;   // v11.0: 留存机型库参考售价，用于「最低售价」底价(ref×0.9)显示
   machine.floorPrice   = Number(m.floorPrice) || 0; // v11.1: 留存From Machine DB底价(USD,若后端有该列)
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
@@ -6308,8 +6337,8 @@ function loadMachineFromDB(idx) {
     setF('f-serial-no', '');
     setF('f-mfg-year', machine.mfgYear);
     setF('f-refurb-year', '');
-    setF('f-unit-price', m.refPrice || '');
-    setF('f-sell-price', m.refPrice || '');
+    setF('f-unit-price', _refCur || '');   // v13.27: converted for non-USD
+    setF('f-sell-price', _refCur || '');
     setF('f-discount-pct', '');
     setF('f-discount-amt', '');
 
