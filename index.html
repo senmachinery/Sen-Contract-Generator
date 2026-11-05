@@ -2452,10 +2452,10 @@ function calcPriceForMachine(m) {
   }
   // For machines with itemized cwItems, sellPrice = unitPrice + cwItems total
   const cwTotal = (m.cwItems||[]).filter(i=>i&&typeof i==='object').reduce((s,i) => {
-    const v = parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0; return s+v;
+    const v = parseCwVal(i.val); return s+v;   // v13.27: shared parser (keeps a minus; ambiguous text = 0 + warning)
   }, 0);
   const uQty2 = m.unitQty || 1;
-  const hasItemizedCw = cwTotal > 0 && (m.unitPrice||0) > 0;
+  const hasItemizedCw = cwTotal !== 0 && (m.unitPrice||0) > 0;   // v13.27: was > 0 (identical for non-negative items)
   // gross always = unitPrice × qty (+ cwItems if itemized); never use sellPrice as gross
   const baseGross = (m.unitPrice||0) > 0 ? (m.unitPrice||0) * uQty2 : (m.sellPrice||0);
   const gross = hasItemizedCw ? (baseGross + cwTotal) : baseGross;
@@ -3698,7 +3698,7 @@ function buildContractHTML() {
           unitPriceHtml = ''; // buildComeWith handles pricing; discount shown separately
         } else {
           // If cwItems have prices, show unitPrice separately; buildComeWith handles breakdown + total
-          const cwTotal2 = (m.cwItems||[]).reduce((s,i)=>{const v=parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0;return s+v;},0);
+          const cwTotal2 = (m.cwItems||[]).reduce((s,i)=>{const v=parseCwVal(i&&i.val);return s+v;},0);   // v13.27
           const hasItemizedCw2 = cwTotal2 > 0 && (m.unitPrice||0) > 0;
           unitPriceHtml = ''; // buildComeWith always handles pricing now
         }
@@ -4200,9 +4200,31 @@ function buildSpecRows(m) {
 }
 
 function parseCwVal(val) {
-  if (!val) return 0;
-  const s = String(val).replace(/[^0-9.]/g, '');
-  return parseFloat(s) || 0;
+  const n = parseMoney(val);   // v13.27: was replace(/[^0-9.]/g,'') → "-500" became 500, "2 x 1,000" became 21000
+  return isNaN(n) ? 0 : n;
+}
+// v13.27: money text → number. Thousands commas, @, currency codes/symbols and words ("each", "FOC") are ignored;
+// a minus at the very start or right before the number is kept; no digits → 0 (as before);
+// more than one number ("2 x 1,000", "500 (2 units)") → NaN = ambiguous (counted as 0, flagged by cwValIssues).
+function parseMoney(v) {
+  if (v == null) return 0;
+  const s = String(v).replace(/[\u2212\u2013]/g, '-').replace(/(\d)[ \u00a0](?=\d{3}(?!\d))/g, '$1');   // space as thousands separator: "12 500"
+  const toks = s.match(/\d[\d,]*(?:\.\d+)?|\.\d+/g);
+  if (!toks) return 0;
+  if (toks.length > 1) return NaN;
+  const n = parseFloat(toks[0].replace(/,/g, ''));
+  if (isNaN(n)) return NaN;
+  const pre = s.slice(0, s.indexOf(toks[0]));
+  return (/^\s*@?\s*-/.test(pre) || /-\s*$/.test(pre)) ? -n : n;
+}
+// v13.27: Come With values that could not be read as one amount (used by the price panel + pre-export check)
+function cwValIssues(ms) {
+  const out = [];
+  (ms || state.machines || []).forEach((m, mi) => {
+    if (!m || m.machineType === 'parts' || m.inPackage) return;
+    (m.cwItems || []).forEach(i => { if (i && typeof i === 'object' && isNaN(parseMoney(i.val))) out.push({ mi: mi, desc: String(i.desc || ''), val: String(i.val) }); });
+  });
+  return out;
 }
 
 function buildComeWith(m) {
@@ -4250,7 +4272,7 @@ function buildComeWith(m) {
     items.forEach(item => {
       const itemAmt = parseCwVal(item.val);
       const label = esc(item.qty) ? esc(item.qty)+' '+renderRich(item.desc) : renderRich(item.desc);
-      if (itemAmt > 0) {
+      if (itemAmt !== 0) {   // v13.27: was > 0 — a negative item (e.g. -500) now shows its amount
         inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;margin-left:4mm;margin-bottom:0.5mm;align-items:baseline">
           <span>- ${label}</span>
           <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(itemAmt)}</span></div>`;
