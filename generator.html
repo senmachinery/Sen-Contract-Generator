@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator C v1.3 (base v13.26)</title>
+<title>Sen Labels — Contract Generator C v1.4 (base v13.27)</title>
+<!-- v13.27: FIX (audit 2026-11-05) — (1) print/export no longer silently re-saves a contract that was only opened (?preview, or loaded and not edited); a save that keeps the loaded status uses the record row's CURRENT status (CRM changes); CRM-only statuses kept in the select; a Drive-missing reduced snapshot cannot be saved back under its number. (2) editing the contract no. of a loaded contract saves a NEW record (original row untouched). (3) Save & Verified only when this save's _savedAt stamp is read back (saveState now awaited). (6) Machine DB USD ref price converted for non-USD contracts + warning when a non-USD price is still the USD number. (7) Come With amounts: shared parseMoney (keeps minus, flags "2 x 1,000" as not understood = 0 + warning). Normal contracts render identically. -->
 <!-- v13.26: CHANGE — this page now forwards to generator.html (the C-design Generator, same URL params). Open index.html?classic=1 to keep using this classic page. Nothing else changed. -->
 <!-- v13.25: ADD — Installment: changing Instalment 1 auto-splits the remaining balance over the later instalments (same rounding as Calculate, last absorbs remainder, schedule total unchanged). Checkbox "Auto-balance…" (default on, UI-only, not saved); untick = old behaviour. Rendering/saved contracts unchanged. -->
 <!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
@@ -760,7 +761,7 @@ body.gx .modal .btn-primary{background:var(--ink)}
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.3 · base v13.26</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.4 · base v13.27</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2679,10 +2680,10 @@ function calcPriceForMachine(m) {
   }
   // For machines with itemized cwItems, sellPrice = unitPrice + cwItems total
   const cwTotal = (m.cwItems||[]).filter(i=>i&&typeof i==='object').reduce((s,i) => {
-    const v = parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0; return s+v;
+    const v = parseCwVal(i.val); return s+v;   // v13.27: shared parser (keeps a minus; ambiguous text = 0 + warning)
   }, 0);
   const uQty2 = m.unitQty || 1;
-  const hasItemizedCw = cwTotal > 0 && (m.unitPrice||0) > 0;
+  const hasItemizedCw = cwTotal !== 0 && (m.unitPrice||0) > 0;   // v13.27: was > 0 (identical for non-negative items)
   // gross always = unitPrice × qty (+ cwItems if itemized); never use sellPrice as gross
   const baseGross = (m.unitPrice||0) > 0 ? (m.unitPrice||0) * uQty2 : (m.sellPrice||0);
   const gross = hasItemizedCw ? (baseGross + cwTotal) : baseGross;
@@ -2835,6 +2836,21 @@ function getDepositFor(total) {
   return total * ((state.depositPct || 30) / 100);
 }
 
+// v13.27: 1 USD in `curr` — the same source as the floor hint (daily FX_RATES, else the rough table). USD → 1; unknown → 0.
+function usdRateFor(curr) {
+  if (!curr || curr === 'USD') return 1;
+  const USD2CUR = { USD:1, MYR:4.7, SGD:1.35, EUR:0.92, RMB:7.25, CNY:7.25, IDR:16000 };
+  return (FX_RATES && Number(FX_RATES[curr])) || USD2CUR[curr] || 0;
+}
+// v13.27: non-USD contract whose net unit price is still the raw USD Machine DB refPrice (picked before v13.27, or currency switched after picking)
+function refPriceUnconverted(m) {
+  if (!m || m.machineType === 'parts' || !state.currency || state.currency === 'USD') return false;
+  const ref = Number(m.refPrice) || 0, rate = usdRateFor(state.currency);
+  if (!(ref > 0) || !(rate > 0) || rate === 1) return false;
+  const sp = calcPriceForMachine(m).sellPrice, uq = m.unitQty || 1;
+  return Math.abs((uq > 0 ? sp / uq : sp) - ref) <= 0.5;
+}
+
 function calcPrice() {
   // Show/hide unit price row for parts machines
   const isParts = M().machineType === 'parts';
@@ -2888,8 +2904,19 @@ function calcPrice() {
           if (netUnit < floorCur - 0.5 && Math.abs(netUnit - _ref) > 0.5) {
             html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ Below floor price</span><span style="color:#c0392b;font-size:11px">Net/unit ${fmt(netUnit)}</span></div>`;
           }
+          // v13.27: non-USD contract still carrying the raw USD Machine DB number (the check above skips it on purpose) → say so
+          if (refPriceUnconverted(m)) {
+            html += `<div class="pc-row" style="background:#fdecea;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#c0392b;font-weight:700">⚠ Price is the USD Machine DB price, not ${esc(curr)}</span><span style="color:#c0392b;font-size:11px">≈ ${fmt(_ref * usdRateFor(curr))}</span></div>`;
+          }
         }
       }
+      // v13.27: Machine DB ref price is USD — show the conversion used for a non-USD contract
+      if (_ref > 0 && !isParts && curr !== 'USD' && usdRateFor(curr) > 0) {
+        html += `<div class="pc-row" style="font-size:10px;color:#888"><span>Machine DB ref USD ${_ref.toLocaleString('en-MY')} @ ${usdRateFor(curr)}</span><span>${fmt(_ref * usdRateFor(curr))}</span></div>`;
+      }
+      // v13.27: Come With values that are not one clear amount count as 0 — make that visible
+      { const _cwBad = cwValIssues([m]);
+        if (_cwBad.length) html += `<div class="pc-row" style="background:#fff3e0;border-radius:4px;padding:4px 6px;margin-top:3px"><span style="color:#e65100;font-weight:700">⚠ Come With value not understood — counted as 0</span><span style="color:#e65100;font-size:11px">${_cwBad.map(x => esc(x.val)).join(' | ')}</span></div>`; }
       resultDiv.innerHTML = html;
     } else {
       resultDiv.style.display = 'none';
@@ -3925,7 +3952,7 @@ function buildContractHTML() {
           unitPriceHtml = ''; // buildComeWith handles pricing; discount shown separately
         } else {
           // If cwItems have prices, show unitPrice separately; buildComeWith handles breakdown + total
-          const cwTotal2 = (m.cwItems||[]).reduce((s,i)=>{const v=parseFloat(String(i.val||'').replace(/[^0-9.]/g,''))||0;return s+v;},0);
+          const cwTotal2 = (m.cwItems||[]).reduce((s,i)=>{const v=parseCwVal(i&&i.val);return s+v;},0);   // v13.27
           const hasItemizedCw2 = cwTotal2 > 0 && (m.unitPrice||0) > 0;
           unitPriceHtml = ''; // buildComeWith always handles pricing now
         }
@@ -4427,9 +4454,31 @@ function buildSpecRows(m) {
 }
 
 function parseCwVal(val) {
-  if (!val) return 0;
-  const s = String(val).replace(/[^0-9.]/g, '');
-  return parseFloat(s) || 0;
+  const n = parseMoney(val);   // v13.27: was replace(/[^0-9.]/g,'') → "-500" became 500, "2 x 1,000" became 21000
+  return isNaN(n) ? 0 : n;
+}
+// v13.27: money text → number. Thousands commas, @, currency codes/symbols and words ("each", "FOC") are ignored;
+// a minus at the very start or right before the number is kept; no digits → 0 (as before);
+// more than one number ("2 x 1,000", "500 (2 units)") → NaN = ambiguous (counted as 0, flagged by cwValIssues).
+function parseMoney(v) {
+  if (v == null) return 0;
+  const s = String(v).replace(/[\u2212\u2013]/g, '-').replace(/(\d)[ \u00a0](?=\d{3}(?!\d))/g, '$1');   // space as thousands separator: "12 500"
+  const toks = s.match(/\d[\d,]*(?:\.\d+)?|\.\d+/g);
+  if (!toks) return 0;
+  if (toks.length > 1) return NaN;
+  const n = parseFloat(toks[0].replace(/,/g, ''));
+  if (isNaN(n)) return NaN;
+  const pre = s.slice(0, s.indexOf(toks[0]));
+  return (/^\s*@?\s*-/.test(pre) || /-\s*$/.test(pre)) ? -n : n;
+}
+// v13.27: Come With values that could not be read as one amount (used by the price panel + pre-export check)
+function cwValIssues(ms) {
+  const out = [];
+  (ms || state.machines || []).forEach((m, mi) => {
+    if (!m || m.machineType === 'parts' || m.inPackage) return;
+    (m.cwItems || []).forEach(i => { if (i && typeof i === 'object' && isNaN(parseMoney(i.val))) out.push({ mi: mi, desc: String(i.desc || ''), val: String(i.val) }); });
+  });
+  return out;
 }
 
 function buildComeWith(m) {
@@ -4477,7 +4526,7 @@ function buildComeWith(m) {
     items.forEach(item => {
       const itemAmt = parseCwVal(item.val);
       const label = esc(item.qty) ? esc(item.qty)+' '+renderRich(item.desc) : renderRich(item.desc);
-      if (itemAmt > 0) {
+      if (itemAmt !== 0) {   // v13.27: was > 0 — a negative item (e.g. -500) now shows its amount
         inner += `<div style="display:grid;grid-template-columns:1fr auto;gap:4mm;font-size:10pt;margin-left:4mm;margin-bottom:0.5mm;align-items:baseline">
           <span>- ${label}</span>
           <span style="text-align:right;white-space:nowrap;min-width:90px">${fmt(itemAmt)}</span></div>`;
@@ -5068,10 +5117,40 @@ async function stripImagesForSave(stateObj) {
   return s;
 }
 
+// v13.27: bookkeeping for a contract opened from the Library / CRM / a JSON file (all null for a new contract = old behaviour).
+// _loadedFp = state fingerprint right after the load settled; a silent save (print / export) is skipped while it still matches.
+let _loadedFp = null, _loadedContractNo = null, _loadedStatus = null, _loadedDriveMissing = false, _previewOpened = false;
+function _stateFp() { try { return JSON.stringify(state); } catch (e) { return null; } }
+function _markLoaded() {
+  _loadedContractNo = state.contractNo || ''; _loadedStatus = state.status || ''; _loadedFp = null;
+  _loadedDriveMissing = !!state._driveMissing; delete state._driveMissing;
+  if (_loadedDriveMissing) alert('⚠ ' + (state.contractNo || 'This contract') + ': its full data file is missing in Drive, so only a reduced snapshot (titles, no specs/prices/photos) was loaded.\n\nSaving under this number is blocked so the real record is not overwritten with the snapshot.');
+  setTimeout(() => { try { saveCurrentMachineToState(); } catch (e) {} _loadedFp = _stateFp(); }, 400);   // after the form + async renders settle
+}
+// v13.27: a status the record row has but the select lacks (e.g. "Closed (Won)" set by the CRM) — add it, otherwise the select blanks it and a save writes "Quotation Sent"
+function _ensureStatusOption(v) {
+  const el = document.getElementById('f-status');
+  if (!el || !v || !el.options) return;
+  for (let i = 0; i < el.options.length; i++) if (el.options[i].value === v) return;
+  const o = document.createElement('option'); o.value = v; o.textContent = v; el.appendChild(o);
+}
+
 async function saveToSheets(silent=false) {
   saveCurrentMachineToState();
   if (state.docType === 'Agent Price List' && !aplActive()) { if (!silent) alert('This Agent Price List is empty — click "+ Start Agent Price List" in the form first.'); return; }   // v13.19
   if (!gsUrl) { if (!silent) alert('No Google Sheets URL configured. Go to Settings.'); return; }
+  // v13.27: never write a reduced Drive-missing snapshot back over the real record
+  if (_loadedDriveMissing && state.contractNo === _loadedContractNo) {
+    if (!silent) alert('Save blocked: this contract was loaded from a reduced snapshot (its full data file is missing in Drive). Saving would overwrite the real record with the snapshot.\n\nTo keep a rebuilt copy, give it a new contract number (or use +B / Duplicate) and save that.');
+    showSaveStamp('⚠ Save blocked — reduced snapshot (Drive file missing)', true);
+    return;
+  }
+  // v13.27: a print/export of a contract that was only opened (preview, or loaded and not edited) must not re-save it —
+  // that overwrote the CRM status/notes with the stale loaded copy
+  if (silent && (_previewOpened || (_loadedFp !== null && _stateFp() === _loadedFp))) return;
+  // v13.27: number edited after loading → save as a NEW record (keeping recordId made the backend overwrite the original row in place)
+  let _renumberedFrom = '';
+  if (_loadedContractNo !== null && state.recordId && state.contractNo !== _loadedContractNo) { _renumberedFrom = _loadedContractNo; state.recordId = ''; }
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
   try {
@@ -5079,6 +5158,20 @@ async function saveToSheets(silent=false) {
     const totalAmt = _isApl ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
     const machineTitle = _isApl ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
     if (_isApl) { state.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
+    // v13.27: status not touched since loading → keep the record row's CURRENT status (CRM status changes only update the row,
+    // so the loaded copy can be stale). Read failure → old behaviour (send the form's status).
+    if (!_isApl && state.recordId && _loadedContractNo !== null && state.contractNo === _loadedContractNo && (state.status || '') === _loadedStatus) {
+      try {
+        const _lr = await fetch(gsUrl + '?action=list&q=' + encodeURIComponent(state.contractNo));
+        const _lj = await _lr.json();
+        const _row = (_lj.records || []).find(r => String(r.contractNo || '').trim() === String(state.contractNo).trim());
+        if (_row && _row.status && _row.status !== state.status) {
+          state.status = String(_row.status); _loadedStatus = state.status;
+          _ensureStatusOption(state.status);
+          const _fs = document.getElementById('f-status'); if (_fs) _fs.value = state.status;
+        }
+      } catch (e) { /* keep the form's status */ }
+    }
     if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
       contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
@@ -5103,13 +5196,17 @@ async function saveToSheets(silent=false) {
         const f = document.getElementById('f-contract-no'); if (f) f.value = finalNo;
         _autoNoValue = null;
         updatePreview();
-        if (!silent) showSaveStamp('⚠️ This number is taken; auto-changed to ' + finalNo + '(first-come; original not overwritten)', true);
+        if (!silent) showSaveStamp('⚠️ Saved under ' + finalNo + ' — the number you entered was already used by another record, so it was changed automatically', true);   // v13.27: accurate wording
       }
     } catch (e) { /* 读不到就按原号继续，后端锁仍保证不覆盖别人 */ }
+    // v13.27: from now on this number/record is the "loaded" one (a later number edit makes another new record, not an overwrite)
+    _loadedContractNo = finalNo; _loadedStatus = state.status || ''; _loadedDriveMissing = false;
     // 3) 存完整 state（用最终号 + recordId，保持内外一致）
     cleanState.contractNo = finalNo; cleanState.recordId = state.recordId;
-    fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });
+    const _savedAt = new Date().toISOString() + '#' + Math.random().toString(36).slice(2, 8);   // v13.27: fingerprint read back by verifySaved
+    cleanState._savedAt = _savedAt;
+    await fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });   // v13.27: awaited (was fire-and-forget)
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
     if (finalNo && state.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
       const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
@@ -5122,14 +5219,14 @@ async function saveToSheets(silent=false) {
     if (!silent) {
       // ── VERIFY the save actually landed (no-cors can't confirm, so we read it back) ──
       setBtn('🔍 Verifying...', '#888');
-      const verified = await verifySaved(finalNo);
+      const verified = await verifySaved(finalNo, _savedAt);
       if (verified) {
         setBtn('✅ Saved & Verified!', '#2e7d32');
         const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-        showSaveStamp('✅ Saved and confirmed — ' + ts);
+        showSaveStamp('✅ Saved and confirmed — ' + ts + (_renumberedFrom ? (' — saved as a NEW record ' + finalNo + '; ' + _renumberedFrom + ' was not changed') : ''));
       } else {
         setBtn('⚠ Save unconfirmed', '#e67e00');
-        showSaveStamp('⚠ Save not confirmed — please press Save Record again', true);
+        showSaveStamp('⚠ Could not verify save — please check Library (press Save Record again if it is missing)', true);
       }
       setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000);
     }
@@ -5140,14 +5237,14 @@ async function saveToSheets(silent=false) {
 
 // Read the contract back to confirm it really saved. Retries a couple of times
 // because Apps Script may take a moment to commit.
-async function verifySaved(contractNo) {
+async function verifySaved(contractNo, savedAt) {
   if (!contractNo || !gsUrl) return false;
   for (let attempt = 0; attempt < 3; attempt++) {
     await new Promise(r => setTimeout(r, 1200));  // give Apps Script time to write
     try {
       const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
       const data = await resp.json();
-      if (data && data.ok && data.state) return true;  // confirmed: state cache has it
+      if (data && data.ok && data.state && (!savedAt || data.state._savedAt === savedAt)) return true;  // v13.27: confirmed only when THIS save's stamp is read back
     } catch(e) { /* retry */ }
   }
   return false;
@@ -5330,6 +5427,7 @@ function newContract() {
   updateMachineLabels();
   genContractNo();
   if (gsUrl) fetchNextNo({ auto: true });   // v10.91: 新建合同自动取下一个号，免手动点 ↺
+  _loadedFp = null; _loadedContractNo = null; _loadedStatus = null; _loadedDriveMissing = false;   // v13.27: a new contract = nothing loaded
   updatePreview();
   switchTabDirect('basic');
 }
@@ -5396,6 +5494,7 @@ function loadStateJSON(input) {
       const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
       sv('f-admin',        state.admin);
       sv('f-doctype',      state.docType);
+      _ensureStatusOption(state.status);   // v13.27
       sv('f-status',       state.status);
       toggleSignedPDFSection(state.status);
       if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
@@ -5462,6 +5561,7 @@ function loadStateJSON(input) {
       reloadImageThumbs();
       updatePreview();
       switchTabDirect('basic');
+      _markLoaded();   // v13.27
       alert('✅ Contract loaded: ' + (state.contractNo || file.name) + '\n\nYou can now edit and re-export.');
     } catch(err) {
       alert('❌ Failed to load: ' + err.message);
@@ -5501,6 +5601,7 @@ function loadFromPastedJSON() {
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
     sv('f-admin',        state.admin);
     sv('f-doctype',      state.docType);
+    _ensureStatusOption(state.status);   // v13.27
     sv('f-status',       state.status);
     toggleSignedPDFSection(state.status);
     if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
@@ -5558,6 +5659,7 @@ function loadFromPastedJSON() {
     updatePreview();
     switchTabDirect('basic');
     closePasteModal();
+    _markLoaded();   // v13.27
     alert('✅ Contract loaded: ' + (state.contractNo || '(no contract no.)') + '\n\nYou can now edit and re-export.');
   } catch(err) {
     resultEl.innerHTML = '<span class="red">&#10060; Invalid JSON: ' + err.message + '</span>';
@@ -5702,7 +5804,7 @@ async function loadFromLibrary(contractNo, opts) {
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
-    sv('f-admin',state.admin); sv('f-doctype',state.docType); sv('f-status',state.status);
+    sv('f-admin',state.admin); sv('f-doctype',state.docType); _ensureStatusOption(state.status); sv('f-status',state.status);   // v13.27: keep CRM-only statuses
     toggleSignedPDFSection(state.status);
     if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
     sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
@@ -5732,6 +5834,7 @@ async function loadFromLibrary(contractNo, opts) {
     renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
     renderCwItems(); reloadImageThumbs(); updatePreview(); switchTabDirect('basic');
     if (!opts.silent) { closeLibrary(); alert(`✅ Loaded: ${contractNo}`); }
+    _markLoaded();   // v13.27
     if (opts.preview) enterPreviewMode();
   } catch(e) {
     if (opts.silent) { _previewLoadError(contractNo, e.message); return; }
@@ -5743,6 +5846,7 @@ async function loadFromLibrary(contractNo, opts) {
 // v10.71: clean PDF-style preview mode (opened from CRM via ?preview=<contractNo> in a new tab).
 // Hides the editor + toolbar, shows only the rendered contract page, plus a floating Save-PDF / Close bar.
 function enterPreviewMode() {
+  _previewOpened = true;   // v13.27: a preview tab never auto-saves on print
   document.body.classList.add('cp-preview-only');
   if (!document.getElementById('cp-preview-bar')) {
     const bar = document.createElement('div');
@@ -6458,9 +6562,12 @@ function loadMachineFromDB(idx) {
   machine.desc         = m.desc || '';
   machine.qty          = m.qty || '1 Unit';
   machine.unitQty      = 1;
-  machine.unitPrice    = m.refPrice || 0;
-  machine.sellPrice    = m.refPrice || 0;
-  machine._finalPrice  = m.refPrice || 0;
+  // v13.27: Machine DB refPrice is USD — a non-USD contract gets it converted (USD path unchanged). refPrice/floorPrice below stay USD.
+  const _rate = usdRateFor(state.currency);
+  const _refCur = (state.currency && state.currency !== 'USD' && _rate > 0 && Number(m.refPrice) > 0) ? Math.round(Number(m.refPrice) * _rate) : (m.refPrice || 0);
+  machine.unitPrice    = _refCur;
+  machine.sellPrice    = _refCur;
+  machine._finalPrice  = _refCur;
   machine.refPrice     = Number(m.refPrice) || 0;   // v11.0: 留存机型库参考售价，用于「最低售价」底价(ref×0.9)显示
   machine.floorPrice   = Number(m.floorPrice) || 0; // v11.1: 留存From Machine DB底价(USD,若后端有该列)
   machine.extraSpecs   = (m.extraSpecs || []).map(s => ({
@@ -6513,8 +6620,8 @@ function loadMachineFromDB(idx) {
     setF('f-serial-no', '');
     setF('f-mfg-year', machine.mfgYear);
     setF('f-refurb-year', '');
-    setF('f-unit-price', m.refPrice || '');
-    setF('f-sell-price', m.refPrice || '');
+    setF('f-unit-price', _refCur || '');   // v13.27: converted for non-USD
+    setF('f-sell-price', _refCur || '');
     setF('f-discount-pct', '');
     setF('f-discount-amt', '');
 
@@ -8818,6 +8925,9 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
         else out.push({k:'jp', step:2, t:'Japan customer but "FX-" is on the document', d:'This FX name is generated from the machine type, so the Japan toggle cannot change it. Type a Custom Title with the MAX name in step 2.'});
       }
       (s.machines || []).forEach(function(m, i){ try { if (belowFloor(m)) out.push({k:'floor', step:3, mi:i, t:'Below floor price', d:mTitle(m, i) + ' is priced below the Machine DB floor price.', red:true}); } catch(_){} });
+      // C v1.4: helpers live in index.html v13.27+ (typeof-guarded so an older base still builds and runs)
+      (s.machines || []).forEach(function(m, i){ try { if (typeof refPriceUnconverted === 'function' && refPriceUnconverted(m)) out.push({k:'fx', step:3, mi:i, t:'Price not converted to ' + s.currency, d:mTitle(m, i) + ' still has the USD Machine DB price as a ' + s.currency + ' amount.', red:true}); } catch(_){} });
+      try { if (typeof cwValIssues === 'function') cwValIssues(s.machines).forEach(function(x){ out.push({k:'cw', step:2, mi:x.mi, t:'Come With value not understood', d:mTitle(s.machines[x.mi], x.mi) + ': "' + x.desc.replace(/\[\[\/?[a-z]+\]\]/g,'').slice(0, 60) + '" is counted as 0. Enter one amount (e.g. 1000 or -500).', q:x.val, red:true}); }); } catch(_){}
       var rc = repCanonGx(s.salesRep);
       if (s.salesRep && rc !== s.salesRep) out.push({k:'rep', step:1, focus:'f-sales-rep', t:'Sales Rep name', d:'Prints as "' + s.salesRep + '".', fix:'Use "' + rc + '"', fixFn:function(){ var e=$('f-sales-rep'); e.value = rc; s.salesRep = rc; up(); }});
       return out;

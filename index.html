@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.26</title>
+<title>Sen Labels — Contract Generator v13.27</title>
+<!-- v13.27: FIX (audit 2026-11-05) — (1) print/export no longer silently re-saves a contract that was only opened (?preview, or loaded and not edited); a save that keeps the loaded status uses the record row's CURRENT status (CRM changes); CRM-only statuses kept in the select; a Drive-missing reduced snapshot cannot be saved back under its number. (2) editing the contract no. of a loaded contract saves a NEW record (original row untouched). (3) Save & Verified only when this save's _savedAt stamp is read back (saveState now awaited). (6) Machine DB USD ref price converted for non-USD contracts + warning when a non-USD price is still the USD number. (7) Come With amounts: shared parseMoney (keeps minus, flags "2 x 1,000" as not understood = 0 + warning). Normal contracts render identically. -->
 <!-- v13.26: CHANGE — this page now forwards to generator.html (the C-design Generator, same URL params). Open index.html?classic=1 to keep using this classic page. Nothing else changed. -->
 <!-- v13.25: ADD — Installment: changing Instalment 1 auto-splits the remaining balance over the later instalments (same rounding as Calculate, last absorbs remainder, schedule total unchanged). Checkbox "Auto-balance…" (default on, UI-only, not saved); untick = old behaviour. Rendering/saved contracts unchanged. -->
 <!-- v13.24: ADD — Agent Price List: optional caption under every model photo (a.labels.photoCaption, e.g. "Photo for reference only"); empty by default so existing lists render unchanged. Other doc types unchanged. -->
@@ -533,7 +534,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.26</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.27</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
