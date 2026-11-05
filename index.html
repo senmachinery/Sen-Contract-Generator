@@ -4889,10 +4889,40 @@ async function stripImagesForSave(stateObj) {
   return s;
 }
 
+// v13.27: bookkeeping for a contract opened from the Library / CRM / a JSON file (all null for a new contract = old behaviour).
+// _loadedFp = state fingerprint right after the load settled; a silent save (print / export) is skipped while it still matches.
+let _loadedFp = null, _loadedContractNo = null, _loadedStatus = null, _loadedDriveMissing = false, _previewOpened = false;
+function _stateFp() { try { return JSON.stringify(state); } catch (e) { return null; } }
+function _markLoaded() {
+  _loadedContractNo = state.contractNo || ''; _loadedStatus = state.status || ''; _loadedFp = null;
+  _loadedDriveMissing = !!state._driveMissing; delete state._driveMissing;
+  if (_loadedDriveMissing) alert('⚠ ' + (state.contractNo || 'This contract') + ': its full data file is missing in Drive, so only a reduced snapshot (titles, no specs/prices/photos) was loaded.\n\nSaving under this number is blocked so the real record is not overwritten with the snapshot.');
+  setTimeout(() => { try { saveCurrentMachineToState(); } catch (e) {} _loadedFp = _stateFp(); }, 400);   // after the form + async renders settle
+}
+// v13.27: a status the record row has but the select lacks (e.g. "Closed (Won)" set by the CRM) — add it, otherwise the select blanks it and a save writes "Quotation Sent"
+function _ensureStatusOption(v) {
+  const el = document.getElementById('f-status');
+  if (!el || !v || !el.options) return;
+  for (let i = 0; i < el.options.length; i++) if (el.options[i].value === v) return;
+  const o = document.createElement('option'); o.value = v; o.textContent = v; el.appendChild(o);
+}
+
 async function saveToSheets(silent=false) {
   saveCurrentMachineToState();
   if (state.docType === 'Agent Price List' && !aplActive()) { if (!silent) alert('This Agent Price List is empty — click "+ Start Agent Price List" in the form first.'); return; }   // v13.19
   if (!gsUrl) { if (!silent) alert('No Google Sheets URL configured. Go to Settings.'); return; }
+  // v13.27: never write a reduced Drive-missing snapshot back over the real record
+  if (_loadedDriveMissing && state.contractNo === _loadedContractNo) {
+    if (!silent) alert('Save blocked: this contract was loaded from a reduced snapshot (its full data file is missing in Drive). Saving would overwrite the real record with the snapshot.\n\nTo keep a rebuilt copy, give it a new contract number (or use +B / Duplicate) and save that.');
+    showSaveStamp('⚠ Save blocked — reduced snapshot (Drive file missing)', true);
+    return;
+  }
+  // v13.27: a print/export of a contract that was only opened (preview, or loaded and not edited) must not re-save it —
+  // that overwrote the CRM status/notes with the stale loaded copy
+  if (silent && (_previewOpened || (_loadedFp !== null && _stateFp() === _loadedFp))) return;
+  // v13.27: number edited after loading → save as a NEW record (keeping recordId made the backend overwrite the original row in place)
+  let _renumberedFrom = '';
+  if (_loadedContractNo !== null && state.recordId && state.contractNo !== _loadedContractNo) { _renumberedFrom = _loadedContractNo; state.recordId = ''; }
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
   try {
@@ -4900,6 +4930,20 @@ async function saveToSheets(silent=false) {
     const totalAmt = _isApl ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
     const machineTitle = _isApl ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
     if (_isApl) { state.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
+    // v13.27: status not touched since loading → keep the record row's CURRENT status (CRM status changes only update the row,
+    // so the loaded copy can be stale). Read failure → old behaviour (send the form's status).
+    if (!_isApl && state.recordId && _loadedContractNo !== null && state.contractNo === _loadedContractNo && (state.status || '') === _loadedStatus) {
+      try {
+        const _lr = await fetch(gsUrl + '?action=list&q=' + encodeURIComponent(state.contractNo));
+        const _lj = await _lr.json();
+        const _row = (_lj.records || []).find(r => String(r.contractNo || '').trim() === String(state.contractNo).trim());
+        if (_row && _row.status && _row.status !== state.status) {
+          state.status = String(_row.status); _loadedStatus = state.status;
+          _ensureStatusOption(state.status);
+          const _fs = document.getElementById('f-status'); if (_fs) _fs.value = state.status;
+        }
+      } catch (e) { /* keep the form's status */ }
+    }
     if (!state.recordId) state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);  // v10.66 唯一记录号
     const record = {
       contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
@@ -4924,13 +4968,17 @@ async function saveToSheets(silent=false) {
         const f = document.getElementById('f-contract-no'); if (f) f.value = finalNo;
         _autoNoValue = null;
         updatePreview();
-        if (!silent) showSaveStamp('⚠️ This number is taken; auto-changed to ' + finalNo + '(first-come; original not overwritten)', true);
+        if (!silent) showSaveStamp('⚠️ Saved under ' + finalNo + ' — the number you entered was already used by another record, so it was changed automatically', true);   // v13.27: accurate wording
       }
     } catch (e) { /* 读不到就按原号继续，后端锁仍保证不覆盖别人 */ }
+    // v13.27: from now on this number/record is the "loaded" one (a later number edit makes another new record, not an overwrite)
+    _loadedContractNo = finalNo; _loadedStatus = state.status || ''; _loadedDriveMissing = false;
     // 3) 存完整 state（用最终号 + recordId，保持内外一致）
     cleanState.contractNo = finalNo; cleanState.recordId = state.recordId;
-    fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });
+    const _savedAt = new Date().toISOString() + '#' + Math.random().toString(36).slice(2, 8);   // v13.27: fingerprint read back by verifySaved
+    cleanState._savedAt = _savedAt;
+    await fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });   // v13.27: awaited (was fire-and-forget)
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
     if (finalNo && state.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
       const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
@@ -4943,14 +4991,14 @@ async function saveToSheets(silent=false) {
     if (!silent) {
       // ── VERIFY the save actually landed (no-cors can't confirm, so we read it back) ──
       setBtn('🔍 Verifying...', '#888');
-      const verified = await verifySaved(finalNo);
+      const verified = await verifySaved(finalNo, _savedAt);
       if (verified) {
         setBtn('✅ Saved & Verified!', '#2e7d32');
         const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-        showSaveStamp('✅ Saved and confirmed — ' + ts);
+        showSaveStamp('✅ Saved and confirmed — ' + ts + (_renumberedFrom ? (' — saved as a NEW record ' + finalNo + '; ' + _renumberedFrom + ' was not changed') : ''));
       } else {
         setBtn('⚠ Save unconfirmed', '#e67e00');
-        showSaveStamp('⚠ Save not confirmed — please press Save Record again', true);
+        showSaveStamp('⚠ Could not verify save — please check Library (press Save Record again if it is missing)', true);
       }
       setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000);
     }
@@ -4961,14 +5009,14 @@ async function saveToSheets(silent=false) {
 
 // Read the contract back to confirm it really saved. Retries a couple of times
 // because Apps Script may take a moment to commit.
-async function verifySaved(contractNo) {
+async function verifySaved(contractNo, savedAt) {
   if (!contractNo || !gsUrl) return false;
   for (let attempt = 0; attempt < 3; attempt++) {
     await new Promise(r => setTimeout(r, 1200));  // give Apps Script time to write
     try {
       const resp = await fetch(`${gsUrl}?action=load&contractNo=${encodeURIComponent(contractNo)}`);
       const data = await resp.json();
-      if (data && data.ok && data.state) return true;  // confirmed: state cache has it
+      if (data && data.ok && data.state && (!savedAt || data.state._savedAt === savedAt)) return true;  // v13.27: confirmed only when THIS save's stamp is read back
     } catch(e) { /* retry */ }
   }
   return false;
@@ -5151,6 +5199,7 @@ function newContract() {
   updateMachineLabels();
   genContractNo();
   if (gsUrl) fetchNextNo({ auto: true });   // v10.91: 新建合同自动取下一个号，免手动点 ↺
+  _loadedFp = null; _loadedContractNo = null; _loadedStatus = null; _loadedDriveMissing = false;   // v13.27: a new contract = nothing loaded
   updatePreview();
   switchTabDirect('basic');
 }
@@ -5217,6 +5266,7 @@ function loadStateJSON(input) {
       const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
       sv('f-admin',        state.admin);
       sv('f-doctype',      state.docType);
+      _ensureStatusOption(state.status);   // v13.27
       sv('f-status',       state.status);
       toggleSignedPDFSection(state.status);
       if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
@@ -5283,6 +5333,7 @@ function loadStateJSON(input) {
       reloadImageThumbs();
       updatePreview();
       switchTabDirect('basic');
+      _markLoaded();   // v13.27
       alert('✅ Contract loaded: ' + (state.contractNo || file.name) + '\n\nYou can now edit and re-export.');
     } catch(err) {
       alert('❌ Failed to load: ' + err.message);
@@ -5322,6 +5373,7 @@ function loadFromPastedJSON() {
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
     sv('f-admin',        state.admin);
     sv('f-doctype',      state.docType);
+    _ensureStatusOption(state.status);   // v13.27
     sv('f-status',       state.status);
     toggleSignedPDFSection(state.status);
     if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
@@ -5379,6 +5431,7 @@ function loadFromPastedJSON() {
     updatePreview();
     switchTabDirect('basic');
     closePasteModal();
+    _markLoaded();   // v13.27
     alert('✅ Contract loaded: ' + (state.contractNo || '(no contract no.)') + '\n\nYou can now edit and re-export.');
   } catch(err) {
     resultEl.innerHTML = '<span class="red">&#10060; Invalid JSON: ' + err.message + '</span>';
@@ -5523,7 +5576,7 @@ async function loadFromLibrary(contractNo, opts) {
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
-    sv('f-admin',state.admin); sv('f-doctype',state.docType); sv('f-status',state.status);
+    sv('f-admin',state.admin); sv('f-doctype',state.docType); _ensureStatusOption(state.status); sv('f-status',state.status);   // v13.27: keep CRM-only statuses
     toggleSignedPDFSection(state.status);
     if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
     sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
@@ -5553,6 +5606,7 @@ async function loadFromLibrary(contractNo, opts) {
     renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
     renderCwItems(); reloadImageThumbs(); updatePreview(); switchTabDirect('basic');
     if (!opts.silent) { closeLibrary(); alert(`✅ Loaded: ${contractNo}`); }
+    _markLoaded();   // v13.27
     if (opts.preview) enterPreviewMode();
   } catch(e) {
     if (opts.silent) { _previewLoadError(contractNo, e.message); return; }
@@ -5564,6 +5618,7 @@ async function loadFromLibrary(contractNo, opts) {
 // v10.71: clean PDF-style preview mode (opened from CRM via ?preview=<contractNo> in a new tab).
 // Hides the editor + toolbar, shows only the rendered contract page, plus a floating Save-PDF / Close bar.
 function enterPreviewMode() {
+  _previewOpened = true;   // v13.27: a preview tab never auto-saves on print
   document.body.classList.add('cp-preview-only');
   if (!document.getElementById('cp-preview-bar')) {
     const bar = document.createElement('div');
