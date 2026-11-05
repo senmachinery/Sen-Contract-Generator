@@ -4458,18 +4458,25 @@ function parseCwVal(val) {
   return isNaN(n) ? 0 : n;
 }
 // v13.27: money text → number. Thousands commas, @, currency codes/symbols and words ("each", "FOC") are ignored;
-// a minus at the very start or right before the number is kept; no digits → 0 (as before);
+// negative ONLY when the minus (- or U+2212) is the first non-space char ("-500", "-USD 500", "@-200") or is attached to the
+// number after a space ("USD -1,000"); any other dash right before the number ("RM - 1,500", "USD-500", "Price - 500",
+// en/em dash) → NaN (counted as 0 + warning), never silently negative. No digits → 0 (as before);
 // more than one number ("2 x 1,000", "500 (2 units)") → NaN = ambiguous (counted as 0, flagged by cwValIssues).
 function parseMoney(v) {
   if (v == null) return 0;
-  const s = String(v).replace(/[\u2212\u2013]/g, '-').replace(/(\d)[ \u00a0](?=\d{3}(?!\d))/g, '$1');   // space as thousands separator: "12 500"
+  const s = String(v).replace(/\u2212/g, '-').replace(/(\d)[ \u00a0](?=\d{3}(?!\d))/g, '$1');   // U+2212 = real minus; space as thousands separator: "12 500"
   const toks = s.match(/\d[\d,]*(?:\.\d+)?|\.\d+/g);
   if (!toks) return 0;
   if (toks.length > 1) return NaN;
   const n = parseFloat(toks[0].replace(/,/g, ''));
   if (isNaN(n)) return NaN;
   const pre = s.slice(0, s.indexOf(toks[0]));
-  return (/^\s*@?\s*-/.test(pre) || /-\s*$/.test(pre)) ? -n : n;
+  const DASH = /[-\u2013\u2014\u2012\u2010\u2011]/;
+  const dashes = (pre.match(/[-\u2013\u2014\u2012\u2010\u2011]/g) || []).length;
+  if (/^\s*@?\s*-/.test(pre) && dashes === 1) return -n;                           // "-500", "-USD 500", "@-200", "- 500"
+  if (/(^|[\s@])-$/.test(pre) && dashes === 1) return -n;                           // "USD -1,000" (minus attached to the number)
+  if (DASH.test(pre.replace(/\s+$/, '').slice(-1))) return NaN;                    // separator dash before the number → ambiguous
+  return n;                                                                         // dashes inside words ("Trade-in 500") are ignored, as before
 }
 // v13.27: Come With values that could not be read as one amount (used by the price panel + pre-export check)
 function cwValIssues(ms) {
@@ -5120,6 +5127,12 @@ async function stripImagesForSave(stateObj) {
 // v13.27: bookkeeping for a contract opened from the Library / CRM / a JSON file (all null for a new contract = old behaviour).
 // _loadedFp = state fingerprint right after the load settled; a silent save (print / export) is skipped while it still matches.
 let _loadedFp = null, _loadedContractNo = null, _loadedStatus = null, _loadedDriveMissing = false, _previewOpened = false;
+// v13.27: fetch with a timeout (default 30 s) so Save can't hang on "Saving..."; no AbortController (old Safari) → plain fetch
+function _fetchT(url, opts, ms) {
+  if (typeof AbortController === 'undefined') return fetch(url, opts);
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms || 30000);
+  return fetch(url, Object.assign({}, opts || {}, { signal: ac.signal })).finally(() => clearTimeout(t));
+}
 function _stateFp() { try { return JSON.stringify(state); } catch (e) { return null; } }
 function _markLoaded() {
   _loadedContractNo = state.contractNo || ''; _loadedStatus = state.status || ''; _loadedFp = null;
@@ -5162,7 +5175,7 @@ async function saveToSheets(silent=false) {
     // so the loaded copy can be stale). Read failure → old behaviour (send the form's status).
     if (!_isApl && state.recordId && _loadedContractNo !== null && state.contractNo === _loadedContractNo && (state.status || '') === _loadedStatus) {
       try {
-        const _lr = await fetch(gsUrl + '?action=list&q=' + encodeURIComponent(state.contractNo));
+        const _lr = await _fetchT(gsUrl + '?action=list&q=' + encodeURIComponent(state.contractNo));   // v13.27: 30 s timeout
         const _lj = await _lr.json();
         const _row = (_lj.records || []).find(r => String(r.contractNo || '').trim() === String(state.contractNo).trim());
         if (_row && _row.status && _row.status !== state.status) {
@@ -5205,8 +5218,11 @@ async function saveToSheets(silent=false) {
     cleanState.contractNo = finalNo; cleanState.recordId = state.recordId;
     const _savedAt = new Date().toISOString() + '#' + Math.random().toString(36).slice(2, 8);   // v13.27: fingerprint read back by verifySaved
     cleanState._savedAt = _savedAt;
-    await fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });   // v13.27: awaited (was fire-and-forget)
+    let _stateSendFailed = false;
+    try {
+      await _fetchT(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });   // v13.27: awaited (was fire-and-forget), 30 s timeout
+    } catch (e) { _stateSendFailed = true; }   // timeout / network → reported as "Could not verify save" below
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
     if (finalNo && state.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
       const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
@@ -5219,7 +5235,7 @@ async function saveToSheets(silent=false) {
     if (!silent) {
       // ── VERIFY the save actually landed (no-cors can't confirm, so we read it back) ──
       setBtn('🔍 Verifying...', '#888');
-      const verified = await verifySaved(finalNo, _savedAt);
+      const verified = !_stateSendFailed && await verifySaved(finalNo, _savedAt);
       if (verified) {
         setBtn('✅ Saved & Verified!', '#2e7d32');
         const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
