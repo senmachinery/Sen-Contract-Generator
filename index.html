@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.28</title>
+<title>Sen Labels — Contract Generator v13.29</title>
+<!-- v13.29: SECURITY FIX (audit 2026-11-11) — (1) the ?preview error page escaped neither the contract number from the URL nor the error text (a crafted link could run script and read the saved token); (2) History / Library rows: the contract number inside onclick is now escaped for JS and HTML (was single-quote only); (3) the signed-PDF link only accepts an https URL and is escaped; (4) values that come from a saved contract are escaped where they were not: image addresses (http/https/data:image only), discount label, port in the Come With block, instalment label / date / amount inputs, spec colour buttons (red / blue / green only), optional-item price, parts quantity, and the machine names in the all-machines total box. Normal contract numbers and links render identically. Frontend-only. -->
 <!-- v13.28: FIX — summary table Unit Price column divides by unit qty (2 Units showed the total as the unit price). Qty 1 renders identically. -->
 <!-- v13.27: FIX (audit 2026-11-05) — (1) print/export no longer silently re-saves a contract that was only opened (?preview, or loaded and not edited); a save that keeps the loaded status uses the record row's CURRENT status (CRM changes); CRM-only statuses kept in the select; a Drive-missing reduced snapshot cannot be saved back under its number. (2) editing the contract no. of a loaded contract saves a NEW record (original row untouched). (3) Save & Verified only when this save's _savedAt stamp is read back (saveState now awaited). (6) Machine DB USD ref price converted for non-USD contracts + warning when a non-USD price is still the USD number. (7) Come With amounts: shared parseMoney (keeps minus, flags "2 x 1,000" as not understood = 0 + warning). Normal contracts render identically. -->
 <!-- v13.26: CHANGE — this page now forwards to generator.html (the C-design Generator, same URL params). Open index.html?classic=1 to keep using this classic page. Nothing else changed. -->
@@ -535,7 +536,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.28</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.29</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -2390,11 +2391,11 @@ function renderInstallmentRows() {
   const fmt  = n => formatMoney(n, curr);
   wrap.innerHTML = rows.map((r, i) => `
     <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
-      <input type="text" value="${r.label}" style="flex:2;min-width:110px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
+      <input type="text" value="${esc(r.label)}" style="flex:2;min-width:110px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
         oninput="state.installmentRows[${i}].label=this.value;updatePreview()">
-      <input type="date" value="${r.date||''}" style="flex:1.5;min-width:110px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
+      <input type="date" value="${esc(r.date||'')}" style="flex:1.5;min-width:110px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
         oninput="state.installmentRows[${i}].date=this.value;updatePreview()">
-      <input type="number" value="${r.total}" data-inst-total="${i}" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
+      <input type="number" value="${esc(String(r.total))}" data-inst-total="${i}" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #ccd;border-radius:3px;font-size:11px"
         oninput="${i === 0 ? 'instSetFirst(parseFloat(this.value)||0)' : `state.installmentRows[${i}].total=parseFloat(this.value)||0;_instTarget=instScheduleTotal()`};updatePreview()">
     </div>`).join('');
   _instTarget = instScheduleTotal(); _instTargetRows = state.installmentRows;
@@ -2653,7 +2654,7 @@ function calcPrice() {
       let html = `<div class="pc-row"><span>Selling Price</span><span class="price-tag">${fmt(grossPrice)}</span></div>`;
       if (discountAmt > 0) {
         const discLabel = (m.discountLabel||'') ? ((m.discountPct||0)>0 ? `${m.discountLabel} (${m.discountPct}%)` : m.discountLabel) : ((m.discountPct||0)>0 ? `Special Discount (${m.discountPct}%)` : 'Special Discount');
-        html += `<div class="pc-row red"><span>${discLabel}</span><span class="price-tag">&#8722; ${fmt(discountAmt)}</span></div>`;
+        html += `<div class="pc-row red"><span>${esc(discLabel)}</span><span class="price-tag">&#8722; ${fmt(discountAmt)}</span></div>`;
         html += `<div class="pc-row total"><span>Net Price</span><span class="price-tag" style="font-size:15px">${fmt(sellPrice)}</span></div>`;
       } else {
         html += `<div class="pc-row total"><span>Net Price</span><span class="price-tag" style="font-size:15px">${fmt(sellPrice)}</span></div>`;
@@ -2703,7 +2704,7 @@ function calcPrice() {
     const grand = pkgContractTotal();
     const grandDep = getDepositFor(grand);
     const grandBal = grand - grandDep;
-    let rows = allPrices.map((x,i) => `<div class="at-row"><span>Machine ${i+1} (${x.title})</span><span>${fmt(x.price)}</span></div>`).join('');
+    let rows = allPrices.map((x,i) => `<div class="at-row"><span>Machine ${i+1} (${esc(x.title)})</span><span>${fmt(x.price)}</span></div>`).join('');
     rows += `<div class="at-row at-total"><span>&#931; Grand Total</span><span>${fmt(grand)}</span></div>`;
     rows += `<div class="at-row" style="color:#e67e00"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span>${fmt(grandDep)}</span></div>`;
     rows += `<div class="at-row" style="color:#2e7d32"><span>Balance</span><span>${fmt(grandBal)}</span></div>`;
@@ -3472,7 +3473,7 @@ function reloadImageThumbs() {
     const div = document.createElement('div');
     div.className = 'img-thumb'; div.id = 'img-'+idx;
     const isDrive = src.startsWith('http');
-    div.innerHTML = `<img src="${src}" onerror="this.src='data:image/svg+xml,<svg/>'">`
+    div.innerHTML = `<img src="${safeImg_(src)}" onerror="this.src='data:image/svg+xml,<svg/>'">`
       + `<button class="rm-img" onclick="removeImg(${idx})" title="Remove">&#215;</button>`
       + (isDrive ? `<span style="position:absolute;bottom:2px;left:2px;font-size:9px;background:rgba(26,115,232,0.85);color:#fff;border-radius:2px;padding:0 2px">☁️</span>` : '');
     thumbs.appendChild(div);
@@ -3493,8 +3494,8 @@ function renderSpecRowsUI(arr) {
     const isBoldLabel  = item.boldLabel  || false;
     const isUnderLabel = item.underLabel || false;
     const isUnderValue = item.underValue || false;
-    const isColorLabel = item.colorLabel || '';
-    const isColorValue = item.colorValue || '';
+    const isColorLabel = ['red','blue','green'].includes(item.colorLabel) ? item.colorLabel : '';   // v13.29
+    const isColorValue = ['red','blue','green'].includes(item.colorValue) ? item.colorValue : '';   // v13.29
     row.innerHTML = `<span class="drag-handle" title="Drag to reorder">⠿</span>`
       + `<textarea class="spec-label-input" rows="1" placeholder="Label" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';specRowChanged()">${esc2((item.label||'').replace(/^[~#]+/,''))}</textarea>`
       + `<button class="spec-bold-btn${isBoldLabel?' active':''}" onclick="toggleSpecLabelBold(${idx})" title="Bold label">${isBoldLabel?'<b>B</b>':'B'}</button>`
@@ -3716,7 +3717,7 @@ function buildContractHTML() {
         subtotalAll += netPrice;
         const portStr = ` [${esc(state.port)||'Port TBD'}]`;
         const imgs = (m.images||[]).filter(Boolean);
-        const imgHtml = imgs.length > 0 ? `<div class="cp-img-gallery">${imgs.map(s=>`<img src="${s}">`).join('')}</div>` : '';
+        const imgHtml = imgs.length > 0 ? `<div class="cp-img-gallery">${imgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div>` : '';
         let unitPriceHtml = '';
         const uQty = m.unitQty || 1;
         const uPrice = m.unitPrice || grossPrice;
@@ -3759,7 +3760,7 @@ function buildContractHTML() {
         if (group.title) itemRows += `<tr><td colspan="5" style="font-weight:700;padding:1.5mm 2mm;background:#f4f6fb;font-size:10pt">${groupNum})&nbsp;&nbsp;${esc(group.title)}</td></tr>`;
         if (group.desc)  itemRows += `<tr><td colspan="5" style="padding:0.5mm 2mm 1.5mm 6mm;font-size:9.5pt;color:#222;white-space:pre-wrap">${renderRich(group.desc)}</td></tr>`;
         const grpImgs = (group.images||[]).filter(Boolean);
-        if (grpImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm"><div class="cp-img-gallery">${grpImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
+        if (grpImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm"><div class="cp-img-gallery">${grpImgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div></td></tr>`;
         itemNo = 0;
         (group.items||[]).forEach(item => {
         const lineTotal = (item.qty||0)*(item.unitPrice||0);
@@ -3768,13 +3769,13 @@ function buildContractHTML() {
         itemRows += `<tr>
           <td style="padding:1.5mm 2mm;vertical-align:top;padding-left:8mm">${letter})</td>
           <td style="padding:1.5mm 2mm;white-space:pre-wrap">${renderRich(item.desc||'')}</td>
-          <td style="padding:1.5mm 2mm;text-align:center;white-space:nowrap">${item.qty||0} ${esc(item.unit||'Pcs')} /s @</td>
+          <td style="padding:1.5mm 2mm;text-align:center;white-space:nowrap">${esc(String(item.qty||0))} ${esc(item.unit||'Pcs')} /s @</td>
           <td style="padding:1.5mm 2mm;text-align:right">${fmt(item.unitPrice||0)}</td>
           <td style="padding:1.5mm 2mm;text-align:right"> = &nbsp;${fmt(lineTotal)}</td>
         </tr>`;
         // Item images
         const itemImgs = (item.images||[]).filter(Boolean);
-        if (itemImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm 2mm 2mm 8mm"><div class="cp-img-gallery">${itemImgs.map(s=>`<img src="${s}">`).join('')}</div></td></tr>`;
+        if (itemImgs.length > 0) itemRows += `<tr><td colspan="5" style="padding:2mm 2mm 2mm 8mm"><div class="cp-img-gallery">${itemImgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div></td></tr>`;
       });
       }); // end groups.forEach
       // Per-parts-machine discount (applied once after all groups)
@@ -3783,7 +3784,7 @@ function buildContractHTML() {
       const discAmt = discPct > 0 ? partsSubtotal*(discPct/100) : discFixed;
       if (discAmt > 0) {
         const dLabel = (m.discountLabel||'') ? ((discPct>0) ? `${m.discountLabel} (${discPct}%)` : m.discountLabel) : (discPct > 0 ? `Special Discount (${discPct}%)` : 'Special Discount');
-        itemRows += `<tr><td colspan="4" style="padding:1.5mm 2mm;text-align:right;color:#c0392b">${dLabel}</td><td style="padding:1.5mm 2mm;text-align:right;color:#c0392b">- ${fmt(discAmt)}</td></tr>`;
+        itemRows += `<tr><td colspan="4" style="padding:1.5mm 2mm;text-align:right;color:#c0392b">${esc(dLabel)}</td><td style="padding:1.5mm 2mm;text-align:right;color:#c0392b">- ${fmt(discAmt)}</td></tr>`;
         subtotalAll += (partsSubtotal - discAmt);
       } else {
         subtotalAll += partsSubtotal;
@@ -3903,7 +3904,7 @@ function buildContractHTML() {
     const title = buildMachineTitle(m);
     const imgs = (m.images||[]).filter(Boolean);
     const imgHtml = imgs.length > 0
-      ? `<div class="cp-img-gallery">${imgs.map(s=>`<img src="${s}">`).join('')}</div>` : '';
+      ? `<div class="cp-img-gallery">${imgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div>` : '';
     const portStr = m.machineType === 'parts' ? '' : ` [${esc(state.port)||'Port TBD'}]`;
     let unitPriceHtml = '';
     const uQty = m.unitQty || 1;
@@ -4280,7 +4281,7 @@ function buildComeWith(m) {
   const unitPrice = m.unitPrice || m.sellPrice || 0;
   const uQty = m.unitQty || 1;
   const grandTotal = (unitPrice * uQty) + cwTotal;
-  const portLabel = state.port ? ` [${state.port}]` : '';
+  const portLabel = state.port ? ` [${esc(state.port)}]` : '';
 
   // Always use itemized format with orange box
   let inner = '';
@@ -4356,7 +4357,7 @@ function buildOptionalItems(m) {
     const valStr = item.val ? (item.val.startsWith('@')?item.val:'@'+item.val) : '';
     html += `<div style="display:flex;justify-content:space-between;font-size:10pt;margin-left:20mm">
       <span>- ${esc(item.qty)?esc(item.qty)+' '+renderRich(item.desc):renderRich(item.desc)}</span>
-      <span>${valStr}</span></div>`;
+      <span>${esc(valStr)}</span></div>`;
   });
   html += '</div>';
   return html;
@@ -4706,7 +4707,7 @@ async function uploadSignedPDF() {
         statusEl.textContent = '✅ Uploaded!';
         statusEl.style.color = '#2e7d32';
         const lnk = document.getElementById('signed-pdf-link');
-        if (lnk) lnk.innerHTML = `<a href="${data.url}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`;
+        if (lnk) lnk.innerHTML = `<a href="${safeHref_(data.url)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`;
         saveToSheets(true); // auto save record with new URL
       } else {
         statusEl.textContent = '⚠️ Upload sent - check Drive';
@@ -5287,7 +5288,7 @@ function loadStateJSON(input) {
       _ensureStatusOption(state.status);   // v13.27
       sv('f-status',       state.status);
       toggleSignedPDFSection(state.status);
-      if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
+      if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
       sv('f-contract-no',  state.contractNo);
       sv('f-date',         state.date);
       sv('f-revised',      state.revised);
@@ -5394,7 +5395,7 @@ function loadFromPastedJSON() {
     _ensureStatusOption(state.status);   // v13.27
     sv('f-status',       state.status);
     toggleSignedPDFSection(state.status);
-    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
+    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
     sv('f-contract-no',  state.contractNo);
     sv('f-date',         state.date);
     sv('f-revised',      state.revised);
@@ -5570,7 +5571,9 @@ async function searchLibrary() {
   }
 }
 
-function escAttr(s) { return String(s||'').replace(/'/g,"\\'"); }
+function escAttr(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n\u2028\u2029]+/g,' ').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }   // v13.29: JS-string escape, then HTML-attribute escape (for onclick="f('...')")
+function safeImg_(u) { u = String(u||'').trim(); return /^(https?:\/\/|data:image\/|blob:)/i.test(u) ? esc(u) : ''; }   // v13.29: image src from contract data — http(s)/data:image/blob only, attribute-escaped
+function safeHref_(u) { u = String(u||'').trim(); return /^https:\/\//i.test(u) ? esc(u) : '#'; }   // v13.29: https links only
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 async function loadFromLibrary(contractNo, opts) {
@@ -5596,7 +5599,7 @@ async function loadFromLibrary(contractNo, opts) {
     const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
     sv('f-admin',state.admin); sv('f-doctype',state.docType); _ensureStatusOption(state.status); sv('f-status',state.status);   // v13.27: keep CRM-only statuses
     toggleSignedPDFSection(state.status);
-    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${state.signedPdfUrl}" target="_blank" style="color:#1a73e8">📄 View Signed PDF</a>`; }
+    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
     sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
     sv('f-company',state.company); sv('f-addr',state.addr); sv('f-tel',state.tel);
     sv('f-fax',state.fax||'');
@@ -5652,8 +5655,8 @@ function _previewLoadError(contractNo, msg) {
   document.body.classList.remove('cp-preview-only');
   document.body.innerHTML = '<div style="padding:48px;font-family:system-ui,sans-serif;text-align:center;color:#333">'
     + '<div style="font-size:40px">📄</div>'
-    + '<h2 style="color:#c0392b">Cannot preview contract ' + (contractNo || '') + '</h2>'
-    + '<p style="color:#666;max-width:520px;margin:8px auto">' + (msg || '') + '</p>'
+    + '<h2 style="color:#c0392b">Cannot preview contract ' + esc(contractNo || '') + '</h2>'
+    + '<p style="color:#666;max-width:520px;margin:8px auto">' + esc(msg || '') + '</p>'
     + '<button onclick="window.close()" style="margin-top:12px;padding:8px 16px;border:none;border-radius:6px;background:#555;color:#fff;cursor:pointer">Close</button></div>';
 }
 
