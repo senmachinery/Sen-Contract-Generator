@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('crm-c.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.67</title>
+<title>Sen Labels — CRM v2.68</title>
+<!-- v2.68: FIX (audit 2026-11-11) — (1) a save the backend refused (task tick / delete / edit, inquiry edit / convert / reopen / delete, mark / unmark signed, country sync) no longer shows a success message: these calls now treat an {error} reply as a failure; (2) when customers, tasks or follow-ups fail to load, a red bar says which part is missing (with Retry) instead of quietly showing empty lists, and the country-override sync is skipped while tasks are not loaded (it used to create a duplicate config row); (3) Lifetime Value is shown per currency instead of adding MYR and USD together under a USD label, and the rough RM figure used to rank follow-ups knows more currencies and no longer counts an unknown currency 1:1 as ringgit. Frontend-only. -->
 <!-- v2.67: CHANGE — this page now forwards to crm-c.html (the C-design CRM, same URL params). Open crm.html?classic=1 to keep using this classic page. Nothing else changed. -->
 <!-- v2.66: NEW "3D Factory" tab — interactive Three.js mini factory (loaded from CDN only when the tab is first opened). Click the Office → live business panel (stages, open USD value, recent deals, stuck 30d+); click the Factory → sold-not-shipped machine deals (last 120 days), also shown as small presses with name tags. Data = the CRM's already-loaded contracts/follow-ups (no new API calls); re-reads on every CRM refresh. Nothing else changed. -->
 <!-- v2.65: Funnel — stuck deals skip the no-chase list (localStorage sen_funnel_nochase, per-row hide ✕), long machine titles truncated, Inquiry→Quote % shown as n/a when inquiries are under-logged, section ids for the daily screenshot. -->
@@ -610,7 +611,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.67</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.68</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -971,6 +972,26 @@ function _toRM(amt, currency) {
   const rate = { USD: 4.7, SGD: 3.5, EUR: 5.1, RMB: 0.65, CNY: 0.65, MYR: 1 };
   return amt * (rate[(currency || 'USD').toUpperCase()] || 1);
 }
+// v2.68: for the follow-up ranking figure. Same rough table plus the other currencies Sen quotes in; a currency that is
+// not in the table returns null (it used to be counted 1:1 as ringgit, so an IDR quote looked like millions of RM).
+function _toRMKnown(amt, currency) {
+  amt = (typeof amt === 'string') ? (parseFloat(amt) || 0) : (amt || 0);
+  const rate = { USD: 4.7, SGD: 3.5, EUR: 5.1, RMB: 0.65, CNY: 0.65, MYR: 1, RM: 1,
+                 IDR: 0.00027, JPY: 0.029, PHP: 0.078, THB: 0.13, KRW: 0.0032, INR: 0.053, VND: 0.00018,
+                 AUD: 3.0, GBP: 5.9, HKD: 0.60, TWD: 0.145, BDT: 0.038 };
+  const r = rate[String(currency || 'USD').trim().toUpperCase()];
+  return (r === undefined) ? null : amt * r;
+}
+// v2.68: one amount per currency, e.g. "MYR 450,000 · USD 100,000" (never added together)
+function _addByCur(map, currency, amt) {
+  const k = String(currency || 'USD').trim().toUpperCase() || 'USD';
+  map[k] = (map[k] || 0) + (Number(amt) || 0);
+}
+function _fmtByCur(map) {
+  const e = Object.entries(map || {}).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (!e.length) return fmtMoney(0);
+  return e.map(([cur, v]) => fmtMoney(v, cur)).join(' · ');
+}
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -1149,11 +1170,12 @@ function findCountryMetaTask() {
 }
 
 async function syncCountryOverridesToCloud() {
+  if (!TASKS_STATE.loaded) return;   // v2.68: without the task list the meta row cannot be found and a duplicate would be created; the local copy syncs on the next good load
   const payload = JSON.stringify(COUNTRY_OVERRIDES);
   try {
     const meta = findCountryMetaTask();
     if (meta) {
-      await apiPost('crm_updateTask', { id: meta.id, updates: { notes: payload } });
+      await apiPostStrict('crm_updateTask', { id: meta.id, updates: { notes: payload } });
       meta.notes = payload;
     } else {
       const r = await apiPost('crm_addTask', { task: {
@@ -1287,6 +1309,15 @@ async function apiPost(action, data) {
   return j;
 }
 
+// v2.68: same as apiPost, but a reply that carries {error} (or ok:false) is a failure. The backend answers HTTP 200 with
+// {error:"..."} when it refuses or cannot do a write (lock timeout, "Task not found", an action not allowed for an agent token);
+// callers that did not look at the reply used to show "saved" anyway.
+async function apiPostStrict(action, data) {
+  const j = await apiPost(action, data);
+  if (!j || j.error || j.ok === false) throw new Error((j && j.error) ? String(j.error) : 'Not saved (no reply from the server)');
+  return j;
+}
+
 // ─── Connection & Setup ────────────────────────────────────────
 function loadSavedUrl() {
   STATE.appsScriptUrl = localStorage.getItem(URL_STORAGE_KEY) || '';
@@ -1359,6 +1390,29 @@ async function saveAndTestSettings() {
 }
 
 // ─── Data Loading ──────────────────────────────────────────────
+// v2.68: red bar under the top bar naming what could not be loaded. Empty list = remove the bar.
+const _LOAD_MISSING = new Set();
+// one part on / off without touching the others (loadTasks runs on its own, after refreshData)
+function setLoadPart(name, missing) {
+  if (missing) _LOAD_MISSING.add(name); else _LOAD_MISSING.delete(name);
+  showLoadWarning([..._LOAD_MISSING], true);
+}
+function showLoadWarning(parts, keep) {
+  if (!keep) { _LOAD_MISSING.clear(); (parts || []).forEach(x => _LOAD_MISSING.add(x)); }
+  let bar = document.getElementById('load-warning');
+  if (!parts || !parts.length) { if (bar) bar.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'load-warning';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'background:#c0392b;color:#fff;padding:8px 14px;font-size:13px;font-weight:600;display:flex;gap:12px;align-items:center;flex-wrap:wrap';
+    const tb = document.querySelector('.topbar');
+    if (tb && tb.parentNode) tb.parentNode.insertBefore(bar, tb.nextSibling); else document.body.insertBefore(bar, document.body.firstChild);
+  }
+  bar.innerHTML = '<span>⚠ Could not load: ' + parts.map(escapeHtml).join(', ') + '. Numbers and lists on this page are incomplete.</span>'
+    + '<button type="button" onclick="refreshData()" style="background:#fff;color:#c0392b;border:0;border-radius:4px;padding:4px 12px;font-weight:700;cursor:pointer">Retry</button>';
+}
+
 async function refreshData() {
   if (!STATE.appsScriptUrl) { openSettings(); return; }
   
@@ -1369,13 +1423,20 @@ async function refreshData() {
   try {
     // v2.51: fetch contracts + customerDB + tasks + followups IN PARALLEL (was sequential ~12s → now ~slowest single ~4s, 3x faster)
     let _degraded = false;   // v2.55: 记录是否降级到 history(≤20)，加载完提示用户看到的是部分数据
+    const _missing = [];     // v2.68: parts that failed to load this time (shown in a red bar; they used to become silent empty lists)
     const [_cRes, _custRes, _tRes, _fuRes] = await Promise.all([
       apiGet('crm_getAllContracts').then(r => (r && r.ok) ? r : Promise.reject(0))
         .catch(async () => { _degraded = true; console.warn('crm_getAllContracts unavailable → history (max 20)'); const h = await apiGet('history').catch(() => ({ records: [] })); h.contracts = h.records; return h; }),
-      apiGet('customerDB').catch(e => { console.warn('CustomerDB fetch failed:', e); return { customers: [] }; }),
-      (!TASKS_STATE.loaded ? apiGet('crm_getTasks').catch(e => { console.warn('Task preload failed:', e); return {}; }) : Promise.resolve(null)),
-      apiGet('crm_getFollowups').catch(e => { console.warn('Could not load followups', e); return { followups: [] }; })
+      apiGet('customerDB').then(r => { if (!r || r.error || !Array.isArray(r.customers)) _missing.push('Customer details'); return r; })
+        .catch(e => { console.warn('CustomerDB fetch failed:', e); _missing.push('Customer details'); return { customers: [] }; }),
+      (!TASKS_STATE.loaded ? apiGet('crm_getTasks').then(r => { if (!r || r.error || !Array.isArray(r.tasks)) _missing.push('Tasks & inquiries'); return r; })
+        .catch(e => { console.warn('Task preload failed:', e); _missing.push('Tasks & inquiries'); return {}; }) : Promise.resolve(null)),
+      apiGet('crm_getFollowups').then(r => { if (!r || r.error || !Array.isArray(r.followups)) _missing.push('Follow-ups'); return r; })
+        .catch(e => { console.warn('Could not load followups', e); _missing.push('Follow-ups'); return { followups: [] }; })
     ]);
+    if (_degraded) _missing.unshift('Full contract list');
+    if (!TASKS_STATE.loaded && !_missing.includes('Tasks & inquiries') && !(_tRes && Array.isArray(_tRes.tasks))) _missing.push('Tasks & inquiries');
+    showLoadWarning(_missing);
 
     const allContracts = _cRes.contracts || _cRes.records || [];
 
@@ -1401,7 +1462,9 @@ async function refreshData() {
 
     // Tasks (for synced country overrides)
     if (_tRes && _tRes.tasks) { TASKS_STATE.tasks = _tRes.tasks; TASKS_STATE.loaded = true; }
-    loadCountryOverridesFromTasks();  // merge synced + local overrides into COUNTRY_OVERRIDES
+    // v2.68: only when the task list really loaded. With no tasks the meta row looks "missing" and a duplicate would be created.
+    if (TASKS_STATE.loaded) loadCountryOverridesFromTasks();  // merge synced + local overrides into COUNTRY_OVERRIDES
+    else { COUNTRY_OVERRIDES = getLocalCountryOverrides(); }
     
     STATE.contracts = allContracts.map(r => ({
       contractNo: r.contractNo || '',
@@ -1471,14 +1534,14 @@ async function refreshData() {
       
       // v1.2: Total Spent — include all signed deals
       const signedStatuses = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
-      if (signedStatuses.includes(c.status)) cust.totalConfirmed += c.amount;
+      if (signedStatuses.includes(c.status)) { cust.totalConfirmed += c.amount; _addByCur(cust.confirmedBy || (cust.confirmedBy = {}), c.currency, c.amount); }
       // Strict "Total Spent" = actually paid
-      if (c.status === 'Closed (Paid)' || c.status === 'Delivered') cust.totalSpent += c.amount;
+      if (c.status === 'Closed (Paid)' || c.status === 'Delivered') { cust.totalSpent += c.amount; _addByCur(cust.spentBy || (cust.spentBy = {}), c.currency, c.amount); }
       
       // Active = not closed and not lost
       if (!['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract', 'Price List'].includes(c.status)) cust.activeContracts++;   // v2.61: Price List is not a deal
       // v2.32: 在谈(可催)金额(RM粗折算)，用于催单优先级排序+显示
-      if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) cust.openValueRM += _toRM(c.amount, c.currency);
+      if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) { const _rm = _toRMKnown(c.amount, c.currency); if (_rm !== null) cust.openValueRM += _rm; }   // v2.68: unknown currency is left out, not counted 1:1
 
       // Latest contract by date
       if (!cust.lastDate || c.date > cust.lastDate) {
@@ -1573,6 +1636,8 @@ async function refreshData() {
     
     if (_degraded) {
       showToast(`⚠️ Partial data only (showing ~20 recent contracts). Backend couldn't return the full list — check connection / retry.`, 'error', 6000);
+    } else if (_missing.length) {
+      showToast('⚠️ Loaded, but some parts are missing — see the red bar', 'error', 6000);   // v2.68
     } else {
       showToast(`Loaded ${STATE.customers.length} customers, ${STATE.contracts.length} contracts`, 'success');
     }
@@ -1815,8 +1880,8 @@ function renderCustomerDetail(c, followups) {
       </div>
       <div style="text-align:right">
         <div style="font-size:11px;color:var(--text-muted)">Lifetime Value</div>
-        <div style="font-size:18px;font-weight:700;color:var(--accent)">${fmtMoney(c.totalSpent)}</div>
-        ${c.totalConfirmed > c.totalSpent ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">+${fmtMoney(c.totalConfirmed - c.totalSpent)} in pipeline</div>` : ''}
+        <div style="font-size:18px;font-weight:700;color:var(--accent)">${_fmtByCur(c.spentBy)}</div>
+        ${c.totalConfirmed > c.totalSpent ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">+${_fmtByCur(Object.fromEntries(Object.entries(c.confirmedBy || {}).map(([k, v]) => [k, v - ((c.spentBy || {})[k] || 0)])))} in pipeline</div>` : ''}
       </div>
     </div>
     
@@ -2342,7 +2407,7 @@ async function targetMarkSigned(contractNo){
   const dd = (d||'').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dd)) { showToast('Date must be YYYY-MM-DD', 'error'); return; }
   try {
-    await apiPost('crm_setSigned', { contractNo: contractNo, signedDate: dd, company: c.company, machineModel: (cls.model||'') });
+    await apiPostStrict('crm_setSigned', { contractNo: contractNo, signedDate: dd, company: c.company, machineModel: (cls.model||'') });
     c.signedDate = dd;
     showToast('✓ Marked signed: ' + contractNo, 'success');
     renderTarget();
@@ -2352,7 +2417,7 @@ async function targetUnmark(contractNo){
   if (!confirm('Remove the "signed" mark for ' + contractNo + '?\n(It will drop out of the year count. You can re-mark it anytime.)')) return;
   const c = (STATE.contracts||[]).find(x=>x.contractNo===contractNo);
   try {
-    await apiPost('crm_setSigned', { contractNo: contractNo, signedDate: '' });
+    await apiPostStrict('crm_setSigned', { contractNo: contractNo, signedDate: '' });
     if (c) c.signedDate = '';
     showToast('Unmarked: ' + contractNo, 'success');
     renderTarget();
@@ -2528,9 +2593,14 @@ async function loadTasks() {
       TASKS_STATE.tasks = r.tasks;
       TASKS_STATE.loaded = true;
     }
+    else setLoadPart('Tasks & inquiries', true);   // v2.68
+    if (r && r.tasks) setLoadPart('Tasks & inquiries', false);
   } catch (e) {
     console.error('Failed to load tasks:', e);
-    TASKS_STATE.tasks = [];
+    // v2.68: keep a list that was already loaded (it used to be wiped while "loaded" stayed true, so the next refresh
+    // saw no tasks and re-created the country meta row); with nothing loaded yet, say so instead of showing an empty list
+    if (!TASKS_STATE.loaded) { TASKS_STATE.tasks = []; setLoadPart('Tasks & inquiries', true); }
+    else showToast('Could not refresh tasks — showing the last loaded list', 'error', 5000);
   }
   renderTasks();
   updateTaskCounts();
@@ -2739,7 +2809,7 @@ async function saveNewTask() {
 
 async function toggleTaskDone(id, checked) {
   try {
-    await apiPost('crm_updateTask', { id, updates: { status: checked ? 'done' : 'pending' } });
+    await apiPostStrict('crm_updateTask', { id, updates: { status: checked ? 'done' : 'pending' } });
     // Update locally
     const t = TASKS_STATE.tasks.find(x => x.id === id);
     if (t) {
@@ -2759,7 +2829,7 @@ async function deleteTask(id) {
   try {
     // Apps Script has no crm_deleteTask, so set status to 'deleted'
     // For real delete, we'd need to add to Apps Script. For now, mark as deleted.
-    await apiPost('crm_updateTask', { id, updates: { status: 'deleted' } });
+    await apiPostStrict('crm_updateTask', { id, updates: { status: 'deleted' } });
     TASKS_STATE.tasks = TASKS_STATE.tasks.filter(t => t.id !== id);
     renderTasks();
     updateTaskCounts();
@@ -2825,7 +2895,7 @@ async function saveEditTask(id) {
   // For title/priority/customer/contract, would need extension
   // For now, just update dueDate + notes
   try {
-    await apiPost('crm_updateTask', { id, updates });
+    await apiPostStrict('crm_updateTask', { id, updates });
     const t = TASKS_STATE.tasks.find(x => x.id === id);
     if (t) {
       t.dueDate = updates.dueDate;
@@ -4521,7 +4591,7 @@ async function saveEditInquiry(id) {
   
   try {
     // crm_updateTask supports updating dueDate + notes (+ status). Title needs separate handling.
-    await apiPost('crm_updateTask', { id, updates: {
+    await apiPostStrict('crm_updateTask', { id, updates: {
       dueDate: ($('inq-date').value || inq.dueDate),
       notes: JSON.stringify(inquiryData)
     }});
@@ -4564,7 +4634,7 @@ async function markInquiryConverted(id, convertedToNo) {
   const data = parseInquiryNotes(inq._task.notes);
   data.convertedTo = convertedToNo || data.convertedTo || '';
   try {
-    await apiPost('crm_updateTask', { id, updates: { status: 'done', notes: JSON.stringify(data) }});
+    await apiPostStrict('crm_updateTask', { id, updates: { status: 'done', notes: JSON.stringify(data) }});
     if (inq._task) { inq._task.status = 'done'; inq._task.notes = JSON.stringify(data); }
     showToast('✅ Inquiry marked as converted', 'success');
     rebuildInquiriesFromTasks();
@@ -4578,7 +4648,7 @@ async function reopenInquiry(id) {
   const inq = INQUIRIES_STATE.inquiries.find(i => i.id === id);
   if (!inq) return;
   try {
-    await apiPost('crm_updateTask', { id, updates: { status: 'pending' }});
+    await apiPostStrict('crm_updateTask', { id, updates: { status: 'pending' }});
     if (inq._task) inq._task.status = 'pending';
     showToast('↩ Inquiry reopened', 'success');
     rebuildInquiriesFromTasks();
@@ -4591,7 +4661,7 @@ async function reopenInquiry(id) {
 async function deleteInquiry(id) {
   if (!confirm('Delete this inquiry? This cannot be undone.')) return;
   try {
-    await apiPost('crm_updateTask', { id, updates: { status: 'deleted' }});
+    await apiPostStrict('crm_updateTask', { id, updates: { status: 'deleted' }});
     TASKS_STATE.tasks = TASKS_STATE.tasks.filter(t => t.id !== id);
     rebuildInquiriesFromTasks();
     renderInquiries();
