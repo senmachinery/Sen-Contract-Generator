@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.29</title>
+<title>Sen Labels — Contract Generator v13.30</title>
+<!-- v13.30: FIX (audit 2026-11-11) — (1) today's date now comes from the device's local date, not UTC: before 8 am Malaysia time a new contract, a duplicate, the 3-day follow-up and a date read from an imported PDF were one day early; (2) Save Record refuses a contract number that has no running number yet (ends with "-"), and a print / export does not silently save one; (3) the top-bar auto-save badge reads "Draft saved (this device)" instead of "Saved" (it never meant saved to the cloud). An existing contract renders identically. Frontend-only. -->
 <!-- v13.29: SECURITY FIX (audit 2026-11-11) — (1) the ?preview error page escaped neither the contract number from the URL nor the error text (a crafted link could run script and read the saved token); (2) History / Library rows: the contract number inside onclick is now escaped for JS and HTML (was single-quote only); (3) the signed-PDF link only accepts an https URL and is escaped; (4) values that come from a saved contract are escaped where they were not: image addresses (http/https/data:image only), discount label, port in the Come With block, instalment label / date / amount inputs, spec colour buttons (red / blue / green only), optional-item price, parts quantity, and the machine names in the all-machines total box. Normal contract numbers and links render identically. Frontend-only. -->
 <!-- v13.28: FIX — summary table Unit Price column divides by unit qty (2 Units showed the total as the unit price). Qty 1 renders identically. -->
 <!-- v13.27: FIX (audit 2026-11-05) — (1) print/export no longer silently re-saves a contract that was only opened (?preview, or loaded and not edited); a save that keeps the loaded status uses the record row's CURRENT status (CRM changes); CRM-only statuses kept in the select; a Drive-missing reduced snapshot cannot be saved back under its number. (2) editing the contract no. of a loaded contract saves a NEW record (original row untouched). (3) Save & Verified only when this save's _savedAt stamp is read back (saveState now awaited). (6) Machine DB USD ref price converted for non-USD contracts + warning when a non-USD price is still the USD number. (7) Come With amounts: shared parseMoney (keeps minus, flags "2 x 1,000" as not understood = 0 + warning). Normal contracts render identically. -->
@@ -536,7 +537,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.29</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.30</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1416,7 +1417,7 @@ document.addEventListener('click', function(e) {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISODate_();
   document.getElementById('f-date').value = today;
   state.date = today;
   if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','&#10003; Configured'); }
@@ -4927,6 +4928,11 @@ async function saveToSheets(silent=false) {
   saveCurrentMachineToState();
   if (state.docType === 'Agent Price List' && !aplActive()) { if (!silent) alert('This Agent Price List is empty — click "+ Start Agent Price List" in the form first.'); return; }   // v13.19
   if (!gsUrl) { if (!silent) alert('No Google Sheets URL configured. Go to Settings.'); return; }
+  // v13.30: a number that still ends with "-" (the running number could not be fetched) must not become a record
+  if (!String(state.contractNo || '').trim() || /-\s*$/.test(String(state.contractNo))) {
+    if (!silent) alert('This contract number has no running number yet ("' + (state.contractNo || '') + '").\n\nTap the refresh button next to Contract No. to get the next number, or type the full number, then save again.');
+    return;
+  }
   // v13.27: never write a reduced Drive-missing snapshot back over the real record
   if (_loadedDriveMissing && state.contractNo === _loadedContractNo) {
     if (!silent) alert('Save blocked: this contract was loaded from a reduced snapshot (its full data file is missing in Drive). Saving would overwrite the real record with the snapshot.\n\nTo keep a rebuilt copy, give it a new contract number (or use +B / Duplicate) and save that.');
@@ -5000,7 +5006,7 @@ async function saveToSheets(silent=false) {
     } catch (e) { _stateSendFailed = true; }   // timeout / network → reported as "Could not verify save" below
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
     if (finalNo && state.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
-      const fuDate = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
+      const fuDate = localISODate_(new Date(Date.now() + 3*86400000));
       fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'crm_autoFollowupFromQuote', followup: {
           customer: state.company, contractNo: finalNo, date: state.date,
@@ -5091,7 +5097,7 @@ function loadFromHistory(i) {
   document.getElementById('f-currency').value= r.currency||'USD';
   document.getElementById('f-status').value  = r.status||'Quotation Sent';
   document.getElementById('f-notes').value   = r.notes||'';
-  document.getElementById('f-date').value    = new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').value    = localISODate_();
   const yr = new Date().getFullYear().toString().slice(-2);
   document.getElementById('f-contract-no').value = `SEN/${docPrefix()}/${state.admin}/${yr}-`;
   updatePreview();
@@ -5147,7 +5153,7 @@ function updateGsStatus(level,text) { const el=document.getElementById('gs-statu
 function newContract() {
   if (!confirm('Start a new contract? Current data will be cleared.')) return;
   state = {
-    contractNo:'', recordId:'', date: new Date().toISOString().split('T')[0],
+    contractNo:'', recordId:'', date: localISODate_(),
     admin: document.getElementById('f-admin').value || 'NR',
     company:'', addr:'', tel:'', email:'', attn:'', port:'',
     currency:'USD', rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
@@ -5571,6 +5577,7 @@ async function searchLibrary() {
   }
 }
 
+function localISODate_(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }   // v13.30: YYYY-MM-DD in the device's own time zone (toISOString() is UTC: before 08:00 in Malaysia it is still yesterday)
 function escAttr(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n\u2028\u2029]+/g,' ').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }   // v13.29: JS-string escape, then HTML-attribute escape (for onclick="f('...')")
 function safeImg_(u) { u = String(u||'').trim(); return /^(https?:\/\/|data:image\/|blob:)/i.test(u) ? esc(u) : ''; }   // v13.29: image src from contract data — http(s)/data:image/blob only, attribute-escaped
 function safeHref_(u) { u = String(u||'').trim(); return /^https:\/\//i.test(u) ? esc(u) : '#'; }   // v13.29: https links only
@@ -7047,7 +7054,7 @@ function setAutosaveStatus(state) {
     icon.innerHTML = '&#8987;'; text.textContent = 'Saving...';
     wrap.style.background = '#fff8e1'; wrap.style.color = '#f57f17'; wrap.style.borderColor = '#fff176';
   } else {
-    icon.innerHTML = '&#9989;'; text.textContent = 'Saved';
+    icon.innerHTML = '&#9989;'; text.textContent = 'Draft saved (this device)';
     wrap.style.background = '#e8f5e9'; wrap.style.color = '#2e7d32'; wrap.style.borderColor = '#a5d6a7';
   }
 }
@@ -7145,7 +7152,7 @@ function duplicateAsNew() {
   const dup = JSON.parse(JSON.stringify(state));
   dup.contractNo = '';
   dup.recordId = '';   // v10.66: 复制=新记录，清 recordId 免覆盖原合同
-  dup.date = new Date().toISOString().split('T')[0];
+  dup.date = localISODate_();
   dup.revised = '';
   dup.status = 'Quotation Sent';
   dup.signedPdfUrl = '';
@@ -7608,7 +7615,7 @@ function parsePDFText(text) {
   m = blob.match(/Date\s*[:.]?\s*(\d{1,2}\s+\w+\s+\d{4})/i);
   if (m) {
     const dt = new Date(m[1]);
-    if (!isNaN(dt)) out.date = dt.toISOString().split('T')[0];
+    if (!isNaN(dt)) out.date = localISODate_(dt);   // v13.30: "25 May 2026" parses as local midnight; toISOString() moved it to the 24th
   }
   if (!out.date) {
     m = blob.match(/Date\s*[:.]?\s*(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);

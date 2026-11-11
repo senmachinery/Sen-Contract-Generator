@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="快速询盘">
 <meta name="theme-color" content="#0b5cab">
-<title>Sen 快速新增询盘 v1.2</title>
+<title>Sen 快速新增询盘 v1.3</title>
 <style>
   :root{
     --blue:#0b5cab; --blue-dark:#084a8c; --bg:#eef2f7; --card:#fff;
@@ -67,7 +67,7 @@
 <div class="wrap">
   <header>
     <h1>📝 快速新增询盘</h1>
-    <span class="ver">v1.2 · Sen</span>
+    <span class="ver">v1.3 · Sen</span>
   </header>
   <div id="conn">⏳ 正在连接 CRM…</div>
 
@@ -184,25 +184,33 @@ var URL_KEY = "sen_crm_apps_script_url";
 var $ = function (id) { return document.getElementById(id); };
 var appsUrl = "";
 
-function getUrl() { try { return localStorage.getItem(URL_KEY) || ""; } catch (e) { return ""; } }
+// v1.3: a device that only ever used the Generator has the backend under the Generator's key ('sen_gs_url', same backend)
+function getUrl() { try { return localStorage.getItem(URL_KEY) || localStorage.getItem("sen_gs_url") || ""; } catch (e) { return ""; } }
 function setUrl(u) { try { localStorage.setItem(URL_KEY, u); } catch (e) {} appsUrl = u; }
 
 // ── Backend calls (mirror crm.html apiGet/apiPost exactly) ──────────────────
+// v1.3 (2026-11-11): send the CRM access token (same localStorage key as crm.html, 'sen_api_token'). The backend has
+// required it since June, so this page answered "unauthorized" on every call until now.
+function getTok() { try { return localStorage.getItem("sen_api_token") || ""; } catch (e) { return ""; } }
 function apiGet(action, params) {
-  var qs = new URLSearchParams(Object.assign({ action: action }, params || {})).toString();
+  var all = Object.assign({ action: action }, params || {});
+  var tok = getTok(); if (tok) all.token = tok;
+  var qs = new URLSearchParams(all).toString();
   return fetch(appsUrl + "?" + qs).then(function (r) { return r.json(); });
 }
 function apiPost(action, data) {
+  var body = Object.assign({ action: action }, data);
+  var tok = getTok(); if (tok) body.token = tok;
   return fetch(appsUrl, {
     method: "POST",
     // text/plain avoids a CORS preflight to Apps Script (same as crm.html)
-    body: JSON.stringify(Object.assign({ action: action }, data)),
+    body: JSON.stringify(body),
     headers: { "Content-Type": "text/plain;charset=utf-8" }
   }).then(function (r) { return r.json(); });
 }
 
 // ── Inquiry number: scan existing tasks for max INQ-YY-NNNN, +1 ──────────────
-function todayIso() { return new Date().toISOString().split("T")[0]; }
+function todayIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }   // v1.3: local date (toISOString() is UTC: before 08:00 in Malaysia it is still yesterday)
 function computeNextInquiryNo(tasks) {
   var yy = String(new Date().getFullYear()).slice(-2);
   var maxN = 0;
@@ -366,7 +374,10 @@ $("reconfig").addEventListener("click", function () {
 (function () {
   try {
     var ap = new URLSearchParams(location.search).get("apps");
-    if (ap && /^https:\/\/script\.google\.com\/.*\/exec$/.test(ap)) setUrl(ap);
+    // v1.3: only when this device has no backend saved yet. A link must never be able to REPLACE the saved CRM backend
+    // (crm.html and today.html read the same key and would send the access token to whatever address a link supplied).
+    // ... and never on a device that already holds the access token (the Generator stores it without a CRM address).
+    if (ap && !getUrl() && !getTok() && /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(ap)) setUrl(ap);
   } catch (e) {}
 })();
 

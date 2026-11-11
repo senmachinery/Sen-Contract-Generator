@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM C v1.2</title>
-<!-- C v1.2: crm-c.html = crm.html v2.68 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<title>Sen Labels — CRM C v1.3</title>
+<!-- C v1.3: crm-c.html = crm.html v2.69 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<!-- v2.69: FIX — the default date offered by "Mark signed" and the signed date stamped locally by Close deal now use the device's local date (localISO) instead of UTC; before 8 am Malaysia time they were one day early (on 1 January that put a deal into the previous year's target). Nothing else changed. -->
 <!-- v2.68: FIX (audit 2026-11-11) — (1) a save the backend refused (task tick / delete / edit, inquiry edit / convert / reopen / delete, mark / unmark signed, country sync) no longer shows a success message: these calls now treat an {error} reply as a failure; (2) when customers, tasks or follow-ups fail to load, a red bar says which part is missing (with Retry) instead of quietly showing empty lists, and the country-override sync is skipped while tasks are not loaded (it used to create a duplicate config row); (3) Lifetime Value is shown per currency instead of adding MYR and USD together under a USD label, and the rough RM figure used to rank follow-ups knows more currencies and no longer counts an unknown currency 1:1 as ringgit. Frontend-only. -->
 <!-- v2.67: CHANGE — this page now forwards to crm-c.html (the C-design CRM, same URL params). Open crm.html?classic=1 to keep using this classic page. Nothing else changed. -->
 <!-- v2.66: NEW "3D Factory" tab — interactive Three.js mini factory (loaded from CDN only when the tab is first opened). Click the Office → live business panel (stages, open USD value, recent deals, stuck 30d+); click the Factory → sold-not-shipped machine deals (last 120 days), also shown as small presses with name tags. Data = the CRM's already-loaded contracts/follow-ups (no new API calls); re-reads on every CRM refresh. Nothing else changed. -->
@@ -804,7 +805,7 @@ body.cx #pw-overlay{background:var(--bg)}
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.2 · base v2.68</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.3 · base v2.69</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="generator.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -2595,7 +2596,7 @@ async function targetMarkSigned(contractNo){
   const c = (STATE.contracts||[]).find(x=>x.contractNo===contractNo);
   if (!c) { showToast('Contract not found', 'error'); return; }
   const cls = classifyTargetMachine(c);
-  const d = prompt('Signed / deposit-received date for:\n' + contractNo + '  —  ' + (c.company||'') + '\n(' + (cls.model||'') + ')\n\nEnter date as YYYY-MM-DD:', new Date().toISOString().slice(0,10));
+  const d = prompt('Signed / deposit-received date for:\n' + contractNo + '  —  ' + (c.company||'') + '\n(' + (cls.model||'') + ')\n\nEnter date as YYYY-MM-DD:', localISO());
   if (d === null) return;
   const dd = (d||'').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dd)) { showToast('Date must be YYYY-MM-DD', 'error'); return; }
@@ -5708,7 +5709,7 @@ async function markClosed(contractNo, company, stage) {
     });
     if (!r.ok) throw new Error(r.error || 'Close failed');
     const newStatus = isPaid ? 'Closed (Paid)' : 'Closed (Won)';
-    const _sd = new Date().toISOString().slice(0, 10);   // 本地补签单日→Target tab 台数当场生效(仅新机·已有则不覆盖，与后端 preserve 一致)
+    const _sd = localISO();   // 本地补签单日→Target tab 台数当场生效(仅新机·已有则不覆盖，与后端 preserve 一致)
     const g = (STATE.contracts || []).find(x => x.contractNo === contractNo);
     if (g) { g.status = newStatus; if (isNew && !g.signedDate) g.signedDate = _sd; }
     const cu = (STATE.customers || []).find(x => x.company === company);
