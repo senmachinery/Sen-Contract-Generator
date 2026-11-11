@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM C v1.4</title>
-<!-- C v1.4: crm-c.html = crm.html v2.70 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<title>Sen Labels — CRM C v1.5</title>
+<!-- C v1.5: crm-c.html = crm.html v2.71 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<!-- v2.71: FIX (2026-11-11) — (1) Settings: the browser is asked not to save / auto-fill the Access Token as a login password; (2) when the connection check fails but the full contract list loaded, the top bar shows Connected and the setup banner is hidden (a successful check, and both failing, look as before); (3) "not saved to Customer DB" now says why (the backend's reason, max 120 characters); (4) duplicate rows with the same contract number keep the NEWEST row (later savedAt, else later date) — the backend now sends newest first, so the old "keep the last" kept the oldest; (5) "today", backend timestamps, the Snapshot date line and the current year (Target, YTD, Funnel) use Malaysia's date (Asia/Kuala_Lumpur) on every device, so dates are not one day off abroad; typed and zone-less dates keep the date written; on a Malaysia-time device nothing changes. -->
 <!-- v2.70: FIX (2026-11-11) — (1) the last Chinese texts on screen (Close deal confirm + toast, Target tab supplier line) are English; (2) Settings: the Access Token box is hidden (Show / Hide) and a "Sign out on this device" button removes only the saved token; (3) dates the backend sends as ISO timestamps (contract date / signed date, follow-up date / next follow-up, task due date) are read as the local YYYY-MM-DD, so a follow-up due today is no longer counted overdue; (4) RM and MYR totals are one currency (MYR), a blank currency is USD everywhere; (5) a task tick that fails is un-ticked again, a bulk follow-up with failures says "X saved, Y failed" in red, a new customer the backend did not save is not treated as known; (6) faster first load — the connection check runs alongside the data load, and the task list and follow-ups are no longer fetched a second / third time. -->
 <!-- v2.69: FIX — the default date offered by "Mark signed" and the signed date stamped locally by Close deal now use the device's local date (localISO) instead of UTC; before 8 am Malaysia time they were one day early (on 1 January that put a deal into the previous year's target). Nothing else changed. -->
 <!-- v2.68: FIX (audit 2026-11-11) — (1) a save the backend refused (task tick / delete / edit, inquiry edit / convert / reopen / delete, mark / unmark signed, country sync) no longer shows a success message: these calls now treat an {error} reply as a failure; (2) when customers, tasks or follow-ups fail to load, a red bar says which part is missing (with Retry) instead of quietly showing empty lists, and the country-override sync is skipped while tasks are not loaded (it used to create a duplicate config row); (3) Lifetime Value is shown per currency instead of adding MYR and USD together under a USD label, and the rough RM figure used to rank follow-ups knows more currencies and no longer counts an unknown currency 1:1 as ringgit. Frontend-only. -->
@@ -806,7 +807,7 @@ body.cx #pw-overlay{background:var(--bg)}
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.4 · base v2.70</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.5 · base v2.71</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="generator.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1146,6 +1147,15 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 // ─── Utilities ─────────────────────────────────────────────────
 let _toastTimer = null;   // v2.55
+// v2.71: " (reason)" for a "not saved to Customer DB" message — the backend's reason, one line, at most 120 characters.
+// The messages are set with textContent (showToast / the import result line), so the text is never read as HTML.
+function custFailWhy_(e) {
+  let r = String((e && e.message) || e || '').replace(/\s+/g, ' ').trim();
+  if (!r) return '';
+  if (r.length > 120) r = r.slice(0, 119) + '…';
+  return ' (' + r + ')';
+}
+
 function showToast(msg, type, ms) {
   const t = $('toast');
   t.textContent = msg;
@@ -1300,9 +1310,39 @@ let CUSTOMER_ADDR_BLOB = {};
 let CUSTOMER_CONTACT = {};   // v2.54: custKey(company) → {tel, attn, email}（修 WhatsApp/Call 按钮从不出现的洞）
 // v2.54: 本地时区的 YYYY-MM-DD。修 UTC 洞：toISOString() 是 UTC——马来西亚(UTC+8)凌晨 0:00-8:00
 // 之间"今天"会算成昨天，到期/逾期/Today's Tasks 全错位（Max 正是早晨跑催单）。全站统一用这个。
+// v2.71: the date is now Malaysia's date (Asia/Kuala_Lumpur, the company's calendar) on every device — Max abroad in
+// Indonesia / Thailand / Vietnam (UTC+7) saw "today" and the backend's timestamps one day off near midnight.
+// On a device set to Malaysia time the result is exactly as before. Without Intl (or if it throws) it falls back to the device date.
 function localISO(d) {
   d = d || new Date();
+  const k = klISO_(d); if (k) return k;   // v2.71
+  return deviceISO_(d);
+}
+// v2.71: the pre-v2.71 localISO — the device's own calendar date
+function deviceISO_(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+var _KL_DTF_;   // v2.71: undefined = not built yet, null = Intl / the time zone is not available here
+function klISO_(d) {
+  if (_KL_DTF_ === undefined) {
+    try { _KL_DTF_ = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }); }
+    catch (e) { _KL_DTF_ = null; }
+  }
+  if (!_KL_DTF_) return null;
+  try {
+    const p = {};
+    _KL_DTF_.formatToParts(d).forEach(x => { p[x.type] = x.value; });
+    return (p.year && p.month && p.day) ? p.year + '-' + p.month + '-' + p.day : null;
+  } catch (e) { return null; }   // e.g. an invalid date — the old code path gives the old result
+}
+// v2.71: date of a parsed value. A real moment (a Date, a time with Z / +hh:mm / GMT) and a plain "YYYY-MM-DD" use Malaysia's
+// date (a plain date is the same date on every device then). A time written without a zone or "DD/MM/YYYY" is read by the
+// browser as the device's own clock, so it keeps the device date — what the user typed stays the same date.
+function isoDateOf_(val, d) {
+  if (val instanceof Date) return localISO(d);
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s) || /\d:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}:?\d{2})$/i.test(s) || /\b(?:GMT|UTC)\b/i.test(s)) return localISO(d);
+  return deviceISO_(d);
 }
 // v2.70: the backend sometimes returns a date cell as an ISO timestamp ("2026-11-11T16:00:00.000Z" = 12 Nov in Malaysia),
 // and pages compare dates as "YYYY-MM-DD" strings. Only such timestamps become the local YYYY-MM-DD; a plain YYYY-MM-DD,
@@ -1310,7 +1350,7 @@ function localISO(d) {
 function normDate_(v) {
   if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(v)) return v;
   const d = new Date(v);
-  return isNaN(d) ? v : localISO(d);
+  return isNaN(d) ? v : isoDateOf_(v, d);   // v2.71: Malaysia's date for "...Z" (was the device date)
 }
 function normDates_(o, keys) {
   if (o && typeof o === 'object') keys.forEach(k => { if (typeof o[k] === 'string') o[k] = normDate_(o[k]); });
@@ -1536,11 +1576,24 @@ function saveUrl(url) {
   localStorage.setItem(URL_STORAGE_KEY, url);
 }
 
+// v2.71: the check (crm_ping) and the data load run side by side. When the check fails but the full contract list did load,
+// the backend is reachable — show Connected (no version, the check did not say it) and hide the setup banner instead of
+// "Not connected" next to loaded data. A successful check is shown exactly as before; both failing is shown as before.
+let _CONN_PING_ = null;        // v2.71: null = no answer yet in this round, true / false = last crm_ping result
+let _CONN_DATA_OK_ = false;    // v2.71: the last data load brought the full contract list (not the history fallback)
+function showConnectedByData_() {
+  $('conn-status').innerHTML = '✅ Connected';
+  $('conn-status').style.background = 'rgba(76,175,80,.3)';
+  $('setup-banner').style.display = 'none';
+}
+
 async function testConnection() {
   $('conn-status').innerHTML = '⏳ Connecting...';
+  _CONN_PING_ = null; _CONN_DATA_OK_ = false;   // v2.71: a new round (Save & Test runs the check alone — an older load does not count)
   try {
     const r = await apiGet('crm_ping');
     if (r.ok) {
+      _CONN_PING_ = true;   // v2.71
       $('conn-status').innerHTML = '✅ Connected v' + escapeHtml(r.version);
       $('conn-status').style.background = 'rgba(76,175,80,.3)';
       $('setup-banner').style.display = 'none';
@@ -1549,6 +1602,8 @@ async function testConnection() {
       throw new Error(r.error || 'Connection failed');
     }
   } catch (e) {
+    _CONN_PING_ = false;   // v2.71
+    if (_CONN_DATA_OK_) { showConnectedByData_(); return false; }   // v2.71: the data already loaded — not "Not connected"
     $('conn-status').innerHTML = '❌ Not connected';
     $('conn-status').style.background = 'rgba(244,67,54,.3)';
     $('setup-banner').style.display = 'flex';
@@ -1556,12 +1611,13 @@ async function testConnection() {
   }
 }
 
+// v2.71: the token box asks browsers / password managers not to save or auto-fill it (autocomplete=new-password, data-lpignore, data-1p-ignore); the URL box has autocomplete=off
 function openSettings() {
   $('modal-title').textContent = 'CRM Settings';
   $('modal-body').innerHTML = `
     <div class="form-row">
       <label>Apps Script Web App URL</label>
-      <input type="text" id="settings-url" value="${escapeHtml(STATE.appsScriptUrl)}" placeholder="https://script.google.com/macros/s/.../exec">
+      <input type="text" id="settings-url" value="${escapeHtml(STATE.appsScriptUrl)}" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
         💡 This is the same URL you set in Generator. Copy from Generator Settings.
       </div>
@@ -1569,7 +1625,7 @@ function openSettings() {
     <div class="form-row">
       <label>Access Token</label>
       <div style="display:flex;gap:6px;align-items:center">
-        <input type="password" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Your token (leave blank if none)" autocomplete="off" style="flex:1;min-width:0">
+        <input type="password" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Your token (leave blank if none)" autocomplete="new-password" data-lpignore="true" data-1p-ignore spellcheck="false" autocapitalize="off" style="flex:1;min-width:0">
         <button type="button" class="btn btn-sm btn-outline" id="settings-token-toggle" onclick="toggleTokenVisible_()">Show</button>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
@@ -1640,6 +1696,19 @@ function showLoadWarning(parts, keep) {
     + '<button type="button" onclick="refreshData()" style="background:#fff;color:#c0392b;border:0;border-radius:4px;padding:4px 12px;font-weight:700;cursor:pointer">Retry</button>';
 }
 
+// v2.71: savedAt of each contract row (kept beside the contract object, so the contract objects stay exactly as before)
+const _CONTRACT_SAVED_AT_ = new WeakMap();
+function _keepSavedAt_(r, c) { if (r && r.savedAt) _CONTRACT_SAVED_AT_.set(c, r.savedAt); return c; }
+// v2.71: true when duplicate row c is newer than the kept row k — later savedAt, else later date; otherwise false (keep k)
+function _contractIsNewer_(c, k) {
+  const t = c2 => { const v = _CONTRACT_SAVED_AT_.get(c2); const ms = v ? Date.parse(v) : NaN; return isNaN(ms) ? null : ms; };
+  const a = t(c), b = t(k);
+  if (a !== null && b !== null && a !== b) return a > b;
+  const da = toIsoDate(c.date) || '', db = toIsoDate(k.date) || '';
+  if (da && db && da !== db) return da > db;
+  return true;   // cannot tell: the later row wins, as before v2.71 (the backend keeps sheet order within a day, so the later row is the newer one)
+}
+
 async function refreshData() {
   if (!STATE.appsScriptUrl) { openSettings(); return; }
   
@@ -1647,6 +1716,7 @@ async function refreshData() {
   $('refresh-btn').disabled = true;
   $('refresh-btn').innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> Loading...';
   
+  _CONN_DATA_OK_ = false;   // v2.71: this load has not brought the contract list yet
   try {
     // v2.51: fetch contracts + customerDB + tasks + followups IN PARALLEL (was sequential ~12s → now ~slowest single ~4s, 3x faster)
     let _degraded = false;   // v2.55: 记录是否降级到 history(≤20)，加载完提示用户看到的是部分数据
@@ -1666,6 +1736,8 @@ async function refreshData() {
     showLoadWarning(_missing);
 
     const allContracts = _cRes.contracts || _cRes.records || [];
+    // v2.71: the full contract list loaded, so the backend is reachable — if the check already failed, show Connected now
+    if (!_degraded) { _CONN_DATA_OK_ = true; if (_CONN_PING_ === false) showConnectedByData_(); }
 
     // Build CustomerDB maps (country detection + default rep)
     CUSTOMER_ADDR_BLOB = {};
@@ -1694,7 +1766,7 @@ async function refreshData() {
     if (TASKS_STATE.loaded) loadCountryOverridesFromTasks();  // merge synced + local overrides into COUNTRY_OVERRIDES
     else { COUNTRY_OVERRIDES = getLocalCountryOverrides(); }
     
-    STATE.contracts = allContracts.map(r => ({
+    STATE.contracts = allContracts.map(r => _keepSavedAt_(r, {   // v2.71: remember the row's savedAt for the de-dup below (not a new field on the contract)
       contractNo: r.contractNo || '',
       date: normDate_(r.date || ''),   // v2.70
       company: (r.company || '').trim(),
@@ -1713,16 +1785,20 @@ async function refreshData() {
     // v2.2: Defensive de-dup — if the sheet has duplicate rows with the same contractNo
     // (e.g. saved twice before the Apps Script fix), keep only the LAST one (most recent).
     // This prevents double-counting in Dashboard totals and double cards in Pipeline.
+    // v2.71: the backend (v11.10) now sends the newest row FIRST, so "the last one" was the OLDEST. Keep the newest instead:
+    // the later savedAt wins, then the later date; with neither, the row that came first (the backend's newest) stays.
     (function dedupeContracts() {
       const seen = {};
-      // Walk forward; later rows overwrite earlier ones for the same contractNo
+      // Walk forward; a newer row replaces the kept one for the same contractNo (v2.71)
       STATE.contracts.forEach(c => {
         const key = (c.contractNo || '').trim();
         if (!key) { return; } // keep blank-contractNo rows as-is (handled below)
-        // v2.25: carry a salesRep set on an EARLIER duplicate forward onto the kept (last) row,
+        const k = seen[key];
+        if (!k) { seen[key] = c; return; }
+        // v2.25: carry a salesRep set on the other duplicate onto the kept row,
         // so a contract agent written to a duplicate row doesn't read back as "Not set".
-        if (seen[key] && seen[key].salesRep && !c.salesRep) c.salesRep = seen[key].salesRep;
-        seen[key] = c;
+        if (_contractIsNewer_(c, k)) { if (k.salesRep && !c.salesRep) c.salesRep = k.salesRep; seen[key] = c; }
+        else if (c.salesRep && !k.salesRep) k.salesRep = c.salesRep;
       });
       const blanks = STATE.contracts.filter(c => !(c.contractNo || '').trim());
       const deduped = Object.values(seen).concat(blanks);
@@ -2501,7 +2577,7 @@ const WARM_DAYS_THRESHOLD = 7;
 // (reliable), NOT by contract number or the sheet date field (both unreliable).
 // ═══════════════════════════════════════════════════════════════════════
 const TARGET_PER_YEAR = 12;
-let TARGET_YEAR = new Date().getFullYear();
+let TARGET_YEAR = +localISO().slice(0, 4);   // v2.71: Malaysia's year (was the device year)
 
 // Whitelist — NEW big machines built by 时捷/Ben that count toward the quota.
 // \d? after family = catch "IF1-350" variants · (?!\d) after number = allow "350E/350T" suffix but block "3500".
@@ -2558,7 +2634,7 @@ function renderTarget(){
   candidates.sort((a,b)=> (a.company||'').toLowerCase().localeCompare((b.company||'').toLowerCase()) || String(b.contractNo).localeCompare(String(a.contractNo)));
 
   // 3) Pace
-  const now = new Date(), thisY = now.getFullYear();
+  const now = new Date(), thisY = +localISO().slice(0, 4);   // v2.71: Malaysia's year
   const elapsed = Math.max(0, Math.min(1, (now - new Date(TARGET_YEAR,0,1)) / (new Date(TARGET_YEAR+1,0,1) - new Date(TARGET_YEAR,0,1))));
   const expected = (TARGET_YEAR < thisY) ? TARGET_PER_YEAR : (TARGET_YEAR > thisY ? 0 : elapsed * TARGET_PER_YEAR);
   const diff = X - expected;
@@ -2843,7 +2919,7 @@ async function loadTasks() {
 function toIsoDate(val) {
   const d = parseAnyDate(val);
   if (!d) return null;
-  return localISO(d);
+  return isoDateOf_(val, d);   // v2.71: Malaysia's date for moments; typed / zone-less dates keep the device reading
 }
 
 function updateTaskCounts() {
@@ -3161,8 +3237,8 @@ function getCutoffDate(range) {
   if (range === 'month') { const d = new Date(now); d.setDate(d.getDate() - 30); return localISO(d); }
   if (range === 'quarter') { const d = new Date(now); d.setMonth(d.getMonth() - 3); return localISO(d); }
   if (range === 'half') { const d = new Date(now); d.setMonth(d.getMonth() - 6); return localISO(d); }
-  if (range === 'ytd') { return now.getFullYear() + '-01-01'; }
-  if (range === 'lastyear') { return (now.getFullYear()-1) + '-01-01'; }
+  if (range === 'ytd') { return localISO().slice(0, 4) + '-01-01'; }   // v2.71: Malaysia's year
+  if (range === 'lastyear') { return (+localISO().slice(0, 4) - 1) + '-01-01'; }   // v2.71
   return null; // all-time
 }
 
@@ -3385,7 +3461,7 @@ function renderFunnel() {
   if (!STATE.contracts || STATE.contracts.length === 0) { el.innerHTML = '<div class="empty">No data yet — press Refresh</div>'; return; }
   if (!INQUIRIES_STATE.loaded && TASKS_STATE.loaded) rebuildInquiriesFromTasks();
   const F = FUNNEL_STATE;
-  if (!F.from) F.from = new Date().getFullYear() + '-01-01';
+  if (!F.from) F.from = localISO().slice(0, 4) + '-01-01';   // v2.71: Malaysia's year
   if (!F.to) F.to = localISO();
 
   // ── normalise rows ──
@@ -4344,6 +4420,7 @@ async function batchImportInquiries(arr) {
   if (!confirm(`Import ${valid.length} inquir${valid.length>1?'ies':'y'}?${skipped>0 ? '\n('+skipped+' skipped — missing customer or machine)' : ''}\n\nThis will create them directly in your CRM.`)) return;
   if (resultEl) { resultEl.textContent = `⏳ Importing ${valid.length}...`; resultEl.classList.add('show'); }
   let ok = 0, failed = 0, newCustomers = 0, custFailed = 0;   // v2.70: custFailed
+  let custWhy = '';   // v2.71: the backend's reason for the first new customer that was not saved
   rebuildInquiriesFromTasks();
   for (const obj of valid) {
     const tempNo = nextInquiryNo();
@@ -4377,16 +4454,16 @@ async function batchImportInquiries(arr) {
             }});
             CUSTOMER_DB_NAMES.add(obj.customer.trim().toLowerCase());
             newCustomers++;
-          } catch(e) { console.warn('Batch customer save failed:', e); custFailed++; }   // v2.70: custFailed
+          } catch(e) { console.warn('Batch customer save failed:', e); custFailed++; if (!custWhy) custWhy = custFailWhy_(e); }   // v2.70: custFailed | v2.71: custWhy
         }
       } else failed++;
     } catch(e) { failed++; }
   }
   if (resultEl) {
-    resultEl.textContent = `✅ Imported ${ok}${newCustomers>0 ? ' ('+newCustomers+' new customers saved)' : ''}${failed>0 ? ', '+failed+' failed' : ''}${skipped>0 ? ', '+skipped+' skipped' : ''}${custFailed>0 ? ', '+custFailed+' new customer(s) not saved to Customer DB' : ''}`;   // v2.70: custFailed
+    resultEl.textContent = `✅ Imported ${ok}${newCustomers>0 ? ' ('+newCustomers+' new customers saved)' : ''}${failed>0 ? ', '+failed+' failed' : ''}${skipped>0 ? ', '+skipped+' skipped' : ''}${custFailed>0 ? ', '+custFailed+' new customer(s) not saved to Customer DB' + custWhy : ''}`;   // v2.70: custFailed | v2.71: + custWhy
     resultEl.classList.add('show');
   }
-  if (custFailed) showToast(`✅ Imported ${ok} inquiries · ⚠ ${custFailed} new customer(s) not saved to Customer DB`, 'error', 6000);   // v2.70
+  if (custFailed) showToast(`✅ Imported ${ok} inquiries · ⚠ ${custFailed} new customer(s) not saved to Customer DB${custWhy}`, 'error', 6000);   // v2.70 | v2.71: + custWhy
   else showToast(`✅ Imported ${ok} inquiries`, 'success');
   await loadTasks();
   rebuildInquiriesFromTasks();
@@ -4752,6 +4829,7 @@ async function saveNewInquiry() {
     
     // Only save NEW customers (never overwrite existing)
     let _custFailed = false;   // v2.70
+    let _custWhy = '';         // v2.71: the backend's reason
     if (isNew) {
       try {
         await apiPostStrict('saveCustomer', { customer: {   // v2.70: strict — a refused save is a failure
@@ -4767,10 +4845,10 @@ async function saveNewInquiry() {
         // Register locally so it's recognized as existing from now on
         CUSTOMER_DB_NAMES.add(customer.trim().toLowerCase());
         CUSTOMER_ADDR_BLOB[customer.trim()] = [inquiryData.address, inquiryData.attn, inquiryData.tel].filter(Boolean).join(' ');
-      } catch(e) { console.warn('Customer save failed (inquiry still saved):', e); _custFailed = true; }   // v2.70: _custFailed
+      } catch(e) { console.warn('Customer save failed (inquiry still saved):', e); _custFailed = true; _custWhy = custFailWhy_(e); }   // v2.70: _custFailed | v2.71: _custWhy
     }
     
-    if (_custFailed) showToast('✅ Inquiry saved: ' + tempNo + ' · ⚠ the new customer was not saved to Customer DB', 'error', 6000);   // v2.70
+    if (_custFailed) showToast('✅ Inquiry saved: ' + tempNo + ' · ⚠ the new customer was not saved to Customer DB' + _custWhy, 'error', 6000);   // v2.70 | v2.71: + _custWhy
     else showToast(isNew ? '✅ Inquiry saved + new customer added: ' + tempNo : '✅ Inquiry saved: ' + tempNo, 'success');
     closeModal();
     // Reload tasks → rebuild inquiries
@@ -5020,7 +5098,9 @@ function renderSnapshot() {
   if (greetingEl) greetingEl.textContent = greeting + "!";
   
   if (dateEl) {
-    dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    // v2.71: the date line is Malaysia's date, the same "today" the lists below use (the greeting stays on the device clock)
+    try { dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Kuala_Lumpur' }); }
+    catch (e) { dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
   }
   
   if (!STATE.customers || STATE.customers.length === 0) {
