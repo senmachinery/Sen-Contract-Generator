@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Sen Today v1.2</title>
+<title>Sen Today v1.3</title>
 <meta name="theme-color" content="#111111">
 <link rel="apple-touch-icon" href="icon-crm-180.png">
 <link rel="icon" href="icon-crm-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Sen Today v1.3 (2026-11-11, with CRM v2.73): "today", the year, this month and the six chart months, the 12-month pipeline window, "days since last touch" and the date in the header follow Malaysia time on every device (a plain date such as 2026-11-13 is that day everywhere; it used to be the day before on devices west of UTC). On a device set to Malaysia time nothing changes. The "updated HH:MM" time stays on the device clock. -->
 <!-- Sen Today v1.2 (2026-11-11, with CRM v2.72): (1) "Signed" = the CRM Target tab's count exactly — new target machines MARKED signed this year; the old extra rule (not marked, but a won status and RM200k or more) is gone. (2) contract rows are read the way the CRM reads them: a time stamp becomes Malaysia's date, a duplicate contract number keeps the newest row, "this year" for Signed is Malaysia's year. The Quotes vs won chart keeps the Funnel's rule (unchanged). (3) the ≈USD figures use the same saved daily exchange rate as the CRM (localStorage sen_fx_rm, fetched once a day from open.er-api.com; never fetched → the old fixed table).
      v1.1: CRM links now open crm-c.html (C suite). v1.0 — standalone neo-brutalist home page (direction C). Read-only.
      Uses the SAME backend URL + access token as crm.html (localStorage keys sen_crm_apps_script_url / sen_api_token,
@@ -244,7 +245,11 @@ function localDate(v){
   const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]); }
   const d = new Date(s); if (isNaN(d)) return null;
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // v1.3: a plain YYYY-MM-DD or a time with a zone is Malaysia's calendar date on every device (west of UTC "2026-11-13" used to become
+  // 12 Nov); a time without a zone stays as written. Same result as before on a device set to Malaysia time.
+  const abs = /^\d{4}-\d{2}-\d{2}$/.test(s) || /\d:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}:?\d{2})$/i.test(s) || /\b(?:GMT|UTC)\b/i.test(s);
+  const p = ((abs && klISO_(d)) || deviceISO_(d)).split('-').map(Number);
+  return new Date(p[0], p[1] - 1, p[2]);
 }
 const DAY = 86400000;
 
@@ -252,7 +257,7 @@ function compute(cRes, custRes, fuRes){
   const raw = cRes.contracts || cRes.records || [];
   const custs = (custRes && custRes.customers) || [];
   const fus = (fuRes && fuRes.followups) || [];
-  const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()), Y = today.getFullYear();
+  const _k = klDay_().split('-').map(Number), today = new Date(_k[0], _k[1] - 1, _k[2]), Y = today.getFullYear();   // v1.3: Malaysia's today / year / month (was the device's)
   // normalise + de-dup by contractNo — same as crm.html v2.71 refreshData: the NEWEST row is kept (later savedAt, else later date,
   // else the later row), salesRep carried over; date / signedDate time stamps become Malaysia's date
   const seen = {}, blanks = [], savedAt = new WeakMap();
@@ -295,7 +300,7 @@ function compute(cRes, custRes, fuRes){
   fus.forEach(f => { const d = localDate(f.date); if (!d || d > today) return; const k = ckey(f.customer); if (!lt[k] || d > lt[k]) lt[k] = d; });
 
   // 3) My pipeline — Max's open quotes, last 12 months, latest quote per customer only
-  const cut = new Date(today.getTime() - 365 * DAY), by = {};
+  const cut = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 365), by = {};   // v1.3: 365 calendar days back (same day as before; no daylight-saving hour on other devices)
   C.forEach(c => {
     if (!OPEN.includes(c.status) || !c.d || c.d < cut || rep(c) !== 'Max' || excluded(c.company, nc)) return;
     const k = c.company.toLowerCase(), p = by[k];
@@ -386,7 +391,7 @@ function render(D){
 </section>
 <section class="tiles">${tiles.map((t, i) => `<a class="b tile anim hov" href="crm-c.html" style="background:${TC[i]};animation-delay:${.6 + i * .06}s"><div class="ic"><svg viewBox="0 0 24 24">${IC[t[0]]}</svg></div><b>${t[0]}</b><span>${esc(t[1])}</span></a>`).join('')}</section>`;
   const t = new Date();
-  $('foot').innerHTML = `Live CRM data · updated ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · Signed = new target machines marked signed this year (same as the CRM Target tab) · Pipeline = Max's open quotes, last 12 months, NEHA LABEL / Citra Label excluded · ≈USD at ${esc(fxNote_())} · Sen Today v1.2`;
+  $('foot').innerHTML = `Live CRM data · updated ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · Signed = new target machines marked signed this year (same as the CRM Target tab) · Pipeline = Max's open quotes, last 12 months, NEHA LABEL / Citra Label excluded · ≈USD at ${esc(fxNote_())} · Sen Today v1.3`;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(() => {
     document.querySelectorAll('[data-n]').forEach(el => count(el, reduce));
@@ -420,7 +425,7 @@ async function load(){
     showError(m === 'noconfig' ? 'noconfig' : m === 'unauthorized' ? 'unauthorized' : 'net', m);
   } finally { _loading = false; $('refresh').disabled = false; }
 }
-$('hdate').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase().replace(',', '');
+$('hdate').textContent = (() => { const o = { weekday: 'short', day: '2-digit', month: 'short' }, d = new Date(); try { return d.toLocaleDateString('en-GB', Object.assign({ timeZone: 'Asia/Kuala_Lumpur' }, o)); } catch (e) { return d.toLocaleDateString('en-GB', o); } })().toUpperCase().replace(',', '');   // v1.3: Malaysia's date
 fxInit_();   // v1.2
 load();
 </script></body></html>

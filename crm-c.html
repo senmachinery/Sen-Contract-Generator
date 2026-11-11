@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM C v1.6</title>
-<!-- C v1.6: crm-c.html = crm.html v2.72 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<title>Sen Labels — CRM C v1.7</title>
+<!-- C v1.7: crm-c.html = crm.html v2.73 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<!-- v2.73: FIX (2026-11-11) — (1) the remaining dates follow Malaysia time on every device: printed dates (fmtDate — west of UTC a plain date used to print one day early), "N days ago" for typed dates, the Dashboard's 30-day / 3-month / 6-month periods, the Target pace, the new inquiry number's year, the "due this week" invoice figure, and the date on the inquiry print-out and the follow-up list (copy / WhatsApp / Word). On a device set to Malaysia time everything reads exactly as in v2.72. (2) Dashboard: the "Active Pipeline" card has a tooltip saying it includes confirmed orders still in progress, which are also counted under Won (numbers unchanged). (3) Exchange rate: a page left open past midnight asks for the new day's rate when it is shown again (still one request a day at most, never waited for). Left on the device clock on purpose: the greeting (morning / afternoon / evening) and the 3D tab's "updated HH:MM". -->
 <!-- v2.72: CHANGE (2026-11-11) — (1) the rough RM figures (follow-up ranking, the "RM…" beside a customer, the Funnel's ≈USD) use today's exchange rate instead of the fixed table (USD 4.7 …): one public request a day at most (open.er-api.com, the Generator's source; nothing is sent), saved on this device and shared with today.html; no answer within 3 s / a wrong answer → the last saved rates, never fetched → the old fixed table ("fallback rates"). The page never waits for it. (2) ONE definition of won and lost for every statistic (WON_STATUSES / LOST_STATUSES / isWonDeal_ / isLostDeal_): won = Confirmed, Deposit Received, In Production, Ready to Ship, Awaiting Payment, Delivered, Closed (Paid), Closed (Won), or marked signed while the status is not Lost / Cancelled; lost = Lost, Cancelled — the status comes first, so a deal is never both. On Hold is neither (it no longer lowers the win rate). Changed numbers: Dashboard Won card / Win Rate / Won Revenue by country / machine-family Won, Today tab "Recently Won", the customer's signed amount (a quote marked signed now counts). Unchanged: the Pipeline board's columns, the 12-machine Target count, the Funnel (its own rule, as before). -->
 <!-- v2.71: FIX (2026-11-11) — (1) Settings: the browser is asked not to save / auto-fill the Access Token as a login password; (2) when the connection check fails but the full contract list loaded, the top bar shows Connected and the setup banner is hidden (a successful check, and both failing, look as before); (3) "not saved to Customer DB" now says why (the backend's reason, max 120 characters); (4) duplicate rows with the same contract number keep the NEWEST row (later savedAt, else later date) — the backend now sends newest first, so the old "keep the last" kept the oldest; (5) "today", backend timestamps, the Snapshot date line and the current year (Target, YTD, Funnel) use Malaysia's date (Asia/Kuala_Lumpur) on every device, so dates are not one day off abroad; typed and zone-less dates keep the date written; on a Malaysia-time device nothing changes. -->
 <!-- v2.70: FIX (2026-11-11) — (1) the last Chinese texts on screen (Close deal confirm + toast, Target tab supplier line) are English; (2) Settings: the Access Token box is hidden (Show / Hide) and a "Sign out on this device" button removes only the saved token; (3) dates the backend sends as ISO timestamps (contract date / signed date, follow-up date / next follow-up, task due date) are read as the local YYYY-MM-DD, so a follow-up due today is no longer counted overdue; (4) RM and MYR totals are one currency (MYR), a blank currency is USD everywhere; (5) a task tick that fails is un-ticked again, a bulk follow-up with failures says "X saved, Y failed" in red, a new customer the backend did not save is not treated as known; (6) faster first load — the connection check runs alongside the data load, and the task list and follow-ups are no longer fetched a second / third time. -->
@@ -808,7 +809,7 @@ body.cx #pw-overlay{background:var(--bg)}
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.6 · base v2.72</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.7 · base v2.73</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="generator.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1223,6 +1224,16 @@ async function fxFetch_() {
   try { localStorage.setItem(FX_STORE_KEY, JSON.stringify(o)); } catch (e) {}
   try { fxRecalc_(); } catch (e) { console.warn('fxRecalc_ failed:', e); }
 }
+// v2.73: a page left open past midnight (Malaysia) kept yesterday's rate until it was reloaded. When the page becomes visible again
+// and the saved rate is not today's, ask once more — fxFetch_ itself returns at once when today's rate is already here, so it is
+// still one request a day at most (a failed attempt may be repeated the next time the page is shown; nothing waits for it).
+let _fxBusy_ = false;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || _fxBusy_) return;
+  if (_FX_ && _FX_.day === localISO()) return;
+  _fxBusy_ = true;
+  fxFetch_().then(() => { _fxBusy_ = false; }, () => { _fxBusy_ = false; });
+});
 // the rates arrived after the data was already on screen: redo the rough RM per customer, re-sort, redraw once
 let _CUST_BASE_ = null;   // the customer objects in the order refreshData built them
 function fxRecalc_() {
@@ -1279,6 +1290,13 @@ function fmtDate(iso) {
   if (!iso) return '';
   const d = parseAnyDate(iso);
   if (!d || isNaN(d)) return String(iso);
+  // v2.73: print the calendar date isoDateOf_ gives (Malaysia's date for a moment or a plain YYYY-MM-DD; a typed DD/MM/YYYY as typed).
+  // Before, the device's own date was printed: west of UTC "2026-11-13" came out as 12 Nov 2026.
+  try {
+    const k = isoDateOf_(iso, d).split('-').map(Number);
+    const out = new Date(Date.UTC(k[0], k[1] - 1, k[2])).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    if (out && !/Invalid/i.test(out)) return out;
+  } catch (e) {}
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -1286,7 +1304,7 @@ function daysAgo(iso) {
   if (!iso) return null;
   const d = parseAnyDate(iso);
   if (!d || isNaN(d)) return null;
-  return Math.floor((Date.now() - d.getTime()) / 86400000);
+  return Math.floor((Date.now() - klMs_(iso, d)) / 86400000);   // v2.73: klMs_ (was d.getTime(): a typed DD/MM/YYYY counted from the device's midnight)
 }
 
 // Parse any date format coming from Google Sheets (ISO string, Excel date object, plain string)
@@ -1431,6 +1449,33 @@ function normDate_(v) {
 function normDates_(o, keys) {
   if (o && typeof o === 'object') keys.forEach(k => { if (typeof o[k] === 'string') o[k] = normDate_(o[k]); });
   return o;
+}
+// v2.73: the rest of the page follows Malaysia time too — everything below gives, on any device, exactly what a device set to
+// Malaysia time (UTC+8, no daylight saving) gives; on such a device the results are the same as before.
+const KL_OFFSET_MS_ = 8 * 3600000;
+// the moment a Malaysia-time device reads from `val` (d = parseAnyDate(val)). A Date, a time with Z / +hh:mm / GMT and a plain
+// "YYYY-MM-DD" are the same moment everywhere (same test as isoDateOf_); a time without a zone or "DD/MM/YYYY" is a wall-clock
+// time — read as Malaysia's wall clock instead of the device's.
+function klMs_(val, d) {
+  if (val instanceof Date) return d.getTime();
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s) || /\d:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}:?\d{2})$/i.test(s) || /\b(?:GMT|UTC)\b/i.test(s)) return d.getTime();
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds()) - KL_OFFSET_MS_;
+}
+// 00:00 Malaysia time of Malaysia's today (ms)
+function klMidnightMs_() { const p = localISO().split('-').map(Number); return Date.UTC(p[0], p[1] - 1, p[2]) - KL_OFFSET_MS_; }
+// Malaysia's today moved by whole days / months on the calendar → "YYYY-MM-DD" (same overflow rules as Date.setDate / setMonth)
+function klShiftISO_(days, months) {
+  const p = localISO().split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+  if (months) d.setUTCMonth(d.getUTCMonth() + months);
+  if (days) d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+// "now" written as a date in Malaysia (same wording as toLocaleDateString(locale, opts) on a Malaysia-time device)
+function klDateText_(locale, opts) {
+  const d = new Date();
+  try { return d.toLocaleDateString(locale, Object.assign({ timeZone: 'Asia/Kuala_Lumpur' }, opts || {})); }
+  catch (e) { return d.toLocaleDateString(locale, opts); }
 }
 // v2.54: wa.me 链接需要「国码+号码、无前导0」，而 CustomerDB 的 tel 多存本地格式(如 012-518 7130)。
 // 规则：+开头→去+；00开头→去00；0开头(本地格式)→去0补该客户国家的国码(默认马来西亚60)；其余(已带国码)原样。
@@ -2707,7 +2752,8 @@ function renderTarget(){
 
   // 3) Pace
   const now = new Date(), thisY = +localISO().slice(0, 4);   // v2.71: Malaysia's year
-  const elapsed = Math.max(0, Math.min(1, (now - new Date(TARGET_YEAR,0,1)) / (new Date(TARGET_YEAR+1,0,1) - new Date(TARGET_YEAR,0,1))));
+  const _y0 = Date.UTC(TARGET_YEAR,0,1) - KL_OFFSET_MS_, _y1 = Date.UTC(TARGET_YEAR+1,0,1) - KL_OFFSET_MS_;   // v2.73: the year runs from 1 Jan 00:00 Malaysia time (was the device's 1 Jan)
+  const elapsed = Math.max(0, Math.min(1, (now - _y0) / (_y1 - _y0)));
   const expected = (TARGET_YEAR < thisY) ? TARGET_PER_YEAR : (TARGET_YEAR > thisY ? 0 : elapsed * TARGET_PER_YEAR);
   const diff = X - expected;
   const pct = Math.max(0, Math.min(100, Math.round(X / TARGET_PER_YEAR * 100)));
@@ -3305,10 +3351,10 @@ function setTimeRange(range) {
 }
 
 function getCutoffDate(range) {
-  const now = new Date();
-  if (range === 'month') { const d = new Date(now); d.setDate(d.getDate() - 30); return localISO(d); }
-  if (range === 'quarter') { const d = new Date(now); d.setMonth(d.getMonth() - 3); return localISO(d); }
-  if (range === 'half') { const d = new Date(now); d.setMonth(d.getMonth() - 6); return localISO(d); }
+  // v2.73: counted back on Malaysia's calendar (was the device's calendar, then converted)
+  if (range === 'month') return klShiftISO_(-30, 0);
+  if (range === 'quarter') return klShiftISO_(0, -3);
+  if (range === 'half') return klShiftISO_(0, -6);
   if (range === 'ytd') { return localISO().slice(0, 4) + '-01-01'; }   // v2.71: Malaysia's year
   if (range === 'lastyear') { return (+localISO().slice(0, 4) - 1) + '-01-01'; }   // v2.71
   return null; // all-time
@@ -3434,7 +3480,7 @@ function renderDashboard() {
       </div>
       <div class="stat-card info">
         <div class="stat-value">${active.length}</div>
-        <div class="stat-label">Active Pipeline</div>
+        <div class="stat-label" title="Open quotes plus confirmed orders still in progress (Confirmed → Awaiting Payment). Those confirmed orders are also counted under Won.">Active Pipeline</div>
         <div class="stat-sublabel">${formatMultiCurrency(pipelineByCurr)}</div>
       </div>
       <div class="stat-card success">
@@ -4085,7 +4131,7 @@ function rebuildInquiriesFromTasks() {
 
 // Generate the next temp inquiry number (INQ-YY-NNNN)
 function nextInquiryNo() {
-  const yy = String(new Date().getFullYear()).slice(-2);
+  const yy = localISO().slice(2, 4);   // v2.73: Malaysia's year (was the device's)
   let maxN = 0;
   for (const inq of INQUIRIES_STATE.inquiries) {
     const m = String(inq.tempNo).match(/INQ-\d{2}-(\d+)/);
@@ -4589,7 +4635,7 @@ function printInquiries() {
 
   if (!list.length) { showToast('No inquiries to print', 'error'); return; }
 
-  const today = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const today = klDateText_('en-GB',{day:'numeric',month:'long',year:'numeric'});   // v2.73: Malaysia's date
   const filterLabel = { pending:'Pending', overdue:'Overdue', converted:'Converted', all:'All' }[INQUIRIES_STATE.filter] || 'All';
 
   let rows = '';
@@ -6089,7 +6135,7 @@ function onKanbanDrop(e, groupId) {
 function copyPackContactsToClipboard() {
   const { rows } = gatherPackData(true);
   const lines = [];
-  lines.push('Sen Labels — Follow-up List ' + new Date().toLocaleDateString());
+  lines.push('Sen Labels — Follow-up List ' + klDateText_());   // v2.73: Malaysia's date
   lines.push('='.repeat(50));
   for (const x of rows) {
     const tel = x.customer.tel || '';
@@ -6105,7 +6151,7 @@ function copyPackForWhatsApp() {
   const { rows, periodLabel, scopeLabel } = gatherPackData(true);
   const lines = [];
   lines.push(`*Sen Labels — Follow-up List*`);
-  lines.push(`${scopeLabel} · ${periodLabel} · ${new Date().toLocaleDateString()}`);
+  lines.push(`${scopeLabel} · ${periodLabel} · ${klDateText_()}`);   // v2.73: Malaysia's date
   lines.push('');
   rows.forEach((x, i) => {
     const c = x.customer;
@@ -6148,7 +6194,7 @@ function downloadPackWord() {
 // Build the printable / Word document HTML for the current pack
 function buildPackDocHTML(forWord) {
   const { rows, counts, periodLabel, scopeLabel, today } = gatherPackData(true);
-  const dateStr = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const dateStr = klDateText_('en-GB',{day:'numeric',month:'long',year:'numeric'});   // v2.73: Malaysia's date
 
   const rowsHTML = rows.map((x, idx) => {
     const c = x.customer;
@@ -6243,7 +6289,7 @@ function detectScenario(customer, followups) {
   const hasActiveContract = (customer.activeContracts || 0) > 0;
   // How long since last activity
   const lastDate = customer.lastDate || '';
-  const daysSinceLast = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : 999;
+  const daysSinceLast = lastDate ? Math.floor((Date.now() - klMs_(lastDate, new Date(lastDate))) / 86400000) : 999;   // v2.73: klMs_
   // Has closed a deal before
   const hasClosed = (customer.contracts || []).some(ct => ['Closed (Paid)','Delivered'].includes(ct.status));
 
@@ -6642,7 +6688,7 @@ function updateInvoiceCounts() {
 // v2.33: 发票页顶部"总未收/逾期/本周到期"汇总条（按 RM 粗折算，一眼看谁欠钱）
 function _invSummaryStrip() {
   const inv = INVOICES_STATE.invoices || [];
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const today = klMidnightMs_();   // v2.73: Malaysia's midnight (was the device's)
   let totOut = 0, overdue = 0, dueWk = 0;
   inv.forEach(i => {
     if (i.status === 'Paid') return;
@@ -6652,7 +6698,7 @@ function _invSummaryStrip() {
     if (outRM <= 0) return;
     totOut += outRM;
     if (invIsOverdue(i)) { overdue += outRM; return; }
-    if (i.dueDate) { const d = parseAnyDate(i.dueDate); if (d && !isNaN(d)) { const days = (d - today) / 86400000; if (days >= 0 && days <= 7) dueWk += outRM; } }
+    if (i.dueDate) { const d = parseAnyDate(i.dueDate); if (d && !isNaN(d)) { const days = (klMs_(i.dueDate, d) - today) / 86400000; if (days >= 0 && days <= 7) dueWk += outRM; } }
   });
   if (totOut <= 0) return '';
   const m = n => 'RM' + Math.round(n).toLocaleString();

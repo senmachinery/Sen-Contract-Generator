@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.32</title>
+<title>Sen Labels — Contract Generator v13.33</title>
+<!-- v13.33: FIX (2026-11-11) — (1) one shared routine (fillFormFromState_) now puts a contract into the form on every path: New, Load JSON file, Paste JSON, Library / ?contract / ?preview, Restore auto-saved draft, Duplicate. A restored draft or a duplicate no longer loses the instalment tick box and schedule on the first edit (a restored draft also keeps its balance label, payment-terms text, warranty text, bank details and exchange rates); Paste JSON restores "Buyer bears all bank charges"; opening a contract without instalments after one with instalments closes the instalment panel and clears the old rows. (2) A no-deposit contract whose remarks still mention a deposit shows one small line under the "No deposit (0%)" tick box with a one-click "Use the no-deposit wording" (form only — the paper changes only when the link is clicked). (3) While "No deposit" is ticked the Balance Payment Label box's grey sample text reads "optional — e.g. …" (an empty label prints nothing). (4) Ticking / unticking "No deposit" asks before it recalculates an instalment schedule that was edited by hand (Cancel keeps the instalments). (5) Classic page: Export Word / Export Excel ask once when the contract has an instalment schedule or custom payment rows — those have never been in the Word / Excel files; the files themselves are unchanged. Saved contracts print exactly as in v13.32. -->
 <!-- v13.32: NEW (2026-11-11) — "No deposit (0%)" tick box beside Deposit % (state.depositZero, default off). Ticked: the contract prints no deposit line — "Full Payment" followed by the Balance Payment Label exactly as typed (nothing is added when that box is empty), or Trade-In + "Balance Payment" when there is a trade-in — and Term Of Payment says the same ("Full Payment <label>."); the price card shows Deposit 0; an existing instalment schedule is worked out again on the whole amount (paper row and Term: "Full Amount Payable by Installment"); the default "…along with the required deposit. Once paid, the deposit is non-refundable…" remark is switched to the no-deposit wording; Excel / Word follow. Unticking puts all of it back. The Deposit % and fixed-amount boxes are locked while it is ticked. ALSO FIXED: a contract opened from the Library now gets its instalment tick box / options / rows back in the form (it used to lose the schedule on the first edit and save installmentEnabled:false). Not ticked: everything is exactly as before — including old contracts whose saved deposit % is 0 or blank, which still print 30% as they always did. -->
 <!-- v13.31: (1) xlsx-js-style 1.2.0 and pdf.js 3.11.174 are no longer loaded on every page open — they load only when Export Excel / PDF import is used, from the same pinned URLs with a Subresource Integrity hash (sha384) + crossorigin; pdf.js runs with isEvalSupported:false (CVE-2024-4367 mitigation; its worker is fetched by pdf.js itself and stays version-pinned); (2) Settings: the Access Token field is hidden (Show / Hide button) and the Web App URL is only saved when it is a script.google.com/macros/s/<id>/exec address (or the Workspace /a/macros/<domain>/s/<id>/exec form) — the token injector uses the same strict check; an already saved URL is kept; (3) the last Chinese UI text (image delete confirm + error) is now English; (4) a print / export whose background save fails or cannot be confirmed now shows "Not saved to cloud — use Save Record" next to Save Record (no message on success, none for a preview tab or a loaded-but-unedited contract); (5) the Sheets badge shows a real check mark instead of the literal text "&amp;#10003;". An existing contract renders identically. Frontend-only. -->
 <!-- v13.30: FIX (audit 2026-11-11) — (1) today's date now comes from the device's local date, not UTC: before 8 am Malaysia time a new contract, a duplicate, the 3-day follow-up and a date read from an imported PDF were one day early; (2) Save Record refuses a contract number that has no running number yet (ends with "-"), and a print / export does not silently save one; (3) the top-bar auto-save badge reads "Draft saved (this device)" instead of "Saved" (it never meant saved to the cloud). An existing contract renders identically. Frontend-only. -->
@@ -566,7 +567,7 @@ function loadExtLib_(name) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.32</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.33</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -880,6 +881,7 @@ function loadExtLib_(name) {
         <label>Deposit %</label>
         <input type="number" id="f-deposit-pct" value="30" min="0" max="100" oninput="onDepositPctInput();calcPrice();updatePreview()">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none;font-size:12px;font-weight:400;margin:5px 0 0" title="Zero deposit: the contract prints no deposit line and the whole amount is due before delivery (or as the balance label says). Typing 0 in the box above is NOT the same — an empty or 0 deposit % prints 30%."><input type="checkbox" id="f-deposit-zero" style="width:auto;margin:0" onchange="onDepositZeroToggle(this.checked)"> No deposit (0%)</label>
+        <div id="dz-remark-hint" style="display:none;font-size:11px;line-height:1.35;color:#b26a00;margin-top:4px"></div>
       </div>
       <div class="field-group">
         <label>OR Deposit Amount (fixed)</label>
@@ -2359,6 +2361,12 @@ function toggleInstallmentPanel() {
 }
 
 function generateInstallments() {
+  state.installmentRows = instCalcRows_();   // v13.33: the calculation itself now lives in instCalcRows_ (same code, same result)
+  renderInstallmentRows();
+  updatePreview();
+}
+// v13.33: the schedule the program works out from the form and the contract as they are now (the former body of generateInstallments; returns the rows)
+function instCalcRows_() {
   const count      = parseInt(document.getElementById('f-inst-count').value)  || 3;
   const freqMonths = parseInt(document.getElementById('f-inst-freq').value)   || 12;
   const annualRate = Math.max(0, parseFloat(document.getElementById('f-inst-rate').value) || 0);
@@ -2385,7 +2393,7 @@ function generateInstallments() {
   const last = Math.round((grand - per * (count - 1)) * 100) / 100;
   const perInterest = (count > 0 && annualRate > 0) ? Math.round((totalInterest / count) * 100) / 100 : 0;
 
-  state.installmentRows = [];
+  const rows = [];
   for (let i = 0; i < count; i++) {
     let date = '';
     if (startDate) {
@@ -2402,7 +2410,7 @@ function generateInstallments() {
       date = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
     const amt = (i === count - 1) ? last : per;
-    state.installmentRows.push({
+    rows.push({
       label: `Instalment ${i+1} of ${count}`,
       date,
       principal: Math.round((amt - perInterest) * 100) / 100,
@@ -2410,8 +2418,13 @@ function generateInstallments() {
       total:     amt
     });
   }
-  renderInstallmentRows();
-  updatePreview();
+  return rows;
+}
+// v13.33: true when the rows in the contract are exactly what the program would work out now (label, date, amount) — false = somebody edited them
+function instRowsAsCalc_() {
+  const a = state.installmentRows || [], b = instCalcRows_();
+  if (a.length !== b.length) return false;
+  return a.every((r, i) => r && String(r.label || '') === String(b[i].label || '') && String(r.date || '') === String(b[i].date || '') && Math.abs((Number(r.total) || 0) - (Number(b[i].total) || 0)) < 0.005);
 }
 // v11.8: 切换全额/精确选项时，已有排期就重算，否则只刷新预览
 function instOpt(){ if (state.installmentRows && state.installmentRows.length) generateInstallments(); else updatePreview(); }
@@ -2678,6 +2691,13 @@ function depZeroRemark_(noDep) {
 let _dzSwap = null;   // what ticking did to the remark, for this contract and this payment condition (not saved)
 function onDepositZeroToggle(on) {
   try { saveCurrentMachineToState(); } catch (e) {}   // form → state first (as every print / save does), so the instalment tick box and a just-typed % are known
+  // v13.33: the schedule is recalculated below. If the instalments on the contract are not what the program works out (edited by hand), ask first;
+  // Cancel keeps them as they are (the tick box still changes — the pre-export check "Instalment schedule does not add up" then says so).
+  let keepRows = false;
+  if (state.installmentEnabled && state.installmentRows && state.installmentRows.length) {
+    let asCalc = true; try { asCalc = instRowsAsCalc_(); } catch (e) {}
+    if (!asCalc) keepRows = !confirm('The instalment schedule was edited by hand.\n\nRecalculate it for ' + (on ? 'no deposit' : 'the deposit') + '? Your edited instalments will be replaced.\n\nOK = recalculate\nCancel = keep my instalments (they may no longer add up)');
+  }
   state.depositZero = !!on;
   if (on) {
     _dzSwap = { s: state, pc: state.payCond, did: depZeroRemark_(true) };
@@ -2690,6 +2710,7 @@ function onDepositZeroToggle(on) {
   }
   depZeroSyncUI_();
   calcPrice();
+  if (keepRows) updatePreview(); else   // v13.33
   instOpt();   // an existing instalment schedule is worked out again on the new amount (no rows → just the preview)
 }
 // form <- state: tick the box and lock the two deposit inputs while it is on (state.depositPct / depositAmt keep their values)
@@ -2699,6 +2720,21 @@ function depZeroSyncUI_() {
   if (cb) cb.checked = on;
   if (pct) { if (on) pct.value = 0; pct.disabled = on; }
   if (amt) amt.disabled = on;
+  // v13.33: with no deposit nothing is printed for an empty Balance Payment Label — the grey sample text must not suggest "Before Delivery" is
+  { const bl = document.getElementById('f-balance-label'); if (bl) bl.placeholder = on ? 'optional — e.g. Before Delivery / Within 30 Days After Delivery' : 'Before Delivery'; }
+}
+// v13.33: a no-deposit contract whose remarks still talk about a deposit (e.g. a saved contract opened on the classic page):
+// one small line under the tick box, with a one-click swap when it is the default sentence. Form only — the paper is not touched until the link is clicked.
+function depZeroHint_() {
+  const el = document.getElementById('dz-remark-hint'); if (!el) return;
+  let txt = '';
+  if (depZero_()) txt = (Array.isArray(state.remarkItems) ? state.remarkItems.filter(r => typeof r === 'string').join(' | ') : '') + ' | ' + String(state.remarks || '');
+  const key = /\bdeposit\b/i.test(txt) ? (txt.indexOf(DEP_BIND_) !== -1 ? 'fix' : 'note') : '';
+  if (el.getAttribute('data-k') === key) return;
+  el.setAttribute('data-k', key);
+  el.style.display = key ? 'block' : 'none';
+  el.innerHTML = !key ? '' : '&#9888; "No deposit" is ticked, but a remark still mentions a deposit. '
+    + (key === 'fix' ? '<a href="#" id="dz-remark-fix" style="color:#1a73e8;font-weight:600" onclick="depZeroRemark_(true);updatePreview();return false">Use the no-deposit wording</a>' : 'Please edit that remark.');
 }
 
 // Returns the effective deposit amount for a given total (fixed amount wins over %)
@@ -3777,6 +3813,7 @@ function updatePreview() {
     console.error('updatePreview error:', e);
   }
   try { aplSyncPanel(); } catch (e) {}   // v13.17: show/hide Agent Price List editor
+  try { depZeroHint_(); } catch (e) {}   // v13.33: form-only note under "No deposit (0%)"
   try { syncPriceAdvanced(); } catch (e) {}   // v10.97: 有高级数据则自动展开（隔离 try，绝不影响预览渲染）
 }
 
@@ -5298,6 +5335,7 @@ function newContract() {
     docType:'Sales Contract', status:'Quotation Sent', revised:'',
     remarks:'', activeMachineIdx:0, machines:[newMachine()]
   };
+  fillFormFromState_();   // v13.33: the shared "state -> form" routine first; the lines below (unchanged) then set what a NEW contract needs
   document.getElementById('f-date').value = state.date;
   document.getElementById('f-company').value=''; document.getElementById('f-addr').value='';
   document.getElementById('f-tel').value=''; document.getElementById('f-fax').value=''; document.getElementById('f-email').value='';
@@ -5415,61 +5453,7 @@ function loadStateJSON(input) {
       if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
       if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
       // Re-populate header / contract fields
-      const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
-      sv('f-admin',        state.admin);
-      sv('f-doctype',      state.docType);
-      _ensureStatusOption(state.status);   // v13.27
-      sv('f-status',       state.status);
-      toggleSignedPDFSection(state.status);
-      if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
-      sv('f-contract-no',  state.contractNo);
-      sv('f-date',         state.date);
-      sv('f-revised',      state.revised);
-      sv('f-company',      state.company);
-      sv('f-addr',         state.addr);
-      sv('f-tel',          state.tel);
-      sv('f-fax',          state.fax||'');
-      sv('f-email',        state.email);
-      sv('f-attn',         state.attn);
-      sv('f-port',         state.port);
-      sv('f-currency',     state.currency);
-      sv('f-rate-usd',     state.rateUSD);
-      sv('f-rate-myr',     state.rateMYR);
-      sv('f-rate-sgd',     state.rateSGD);
-      sv('f-rate-idr',     state.rateIDR);
-      sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_();   // v13.32
-      sv('f-pay-cond',     state.payCond);
-      sv('f-tradein-desc', state.tradeinDesc);
-      sv('f-tradein-value',state.tradeinValue);
-      const instOn = document.getElementById('f-installment-on');
-      if (instOn) instOn.checked = state.installmentEnabled || false;
-      { const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false; }
-      if (state.installmentEnabled) toggleInstallmentPanel();
-      sv('f-inst-count', state.installmentCount||3);
-      sv('f-inst-freq',  state.installmentFreqMonths||12);
-      sv('f-inst-rate',  state.installmentRate||0);
-      sv('f-inst-start', state.installmentStartDate||'');
-      if (state.installmentRows && state.installmentRows.length) renderInstallmentRows();
-      sv('f-validity',          state.validity);
-      sv('f-delivery',          state.delivery);
-      sv('f-balance-label',     state.balanceLabel    || '');
-      sv('f-pay-terms-text',    state.payTermsText    || '');
-      sv('f-warranty-override', state.warrantyOverride || '');
-      sv('f-remarks',           state.remarks);
-      // Bank details
-      const bankCb = document.getElementById('f-bank-override');
-      if (bankCb) bankCb.checked = state.bankOverride||false;
-      const bbcCb = document.getElementById('f-buyer-bank-charges');
-      if (bbcCb) bbcCb.checked = (state.buyerBankCharges === true);
-      if (Array.isArray(state.customPayRows)) renderCustomPayRows();
-      const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-      svBank('f-bank-account',     state.bankAccount||'');
-      svBank('f-bank-beneficiary', state.bankBeneficiary||'');
-      svBank('f-bank-name',        state.bankName||'');
-      svBank('f-bank-swift',       state.bankSwift||'');
-      svBank('f-bank-branch',      state.bankBranch||'');
-      sv('f-notes',        state.notes || '');
-      sv('f-sales-rep',    state.salesRep || '');
+      fillFormFromState_();   // v13.33: the shared "state -> form" routine (was a private copy; it left the instalment panel and rows of the previous contract in the form)
       if (!state.remarkItems || state.remarkItems.length === 0) {
         state.remarkItems = [
           'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
@@ -5522,52 +5506,7 @@ function loadFromPastedJSON() {
     normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
-    const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
-    sv('f-admin',        state.admin);
-    sv('f-doctype',      state.docType);
-    _ensureStatusOption(state.status);   // v13.27
-    sv('f-status',       state.status);
-    toggleSignedPDFSection(state.status);
-    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
-    sv('f-contract-no',  state.contractNo);
-    sv('f-date',         state.date);
-    sv('f-revised',      state.revised);
-    sv('f-company',      state.company);
-    sv('f-addr',         state.addr);
-    sv('f-tel',          state.tel);
-    sv('f-fax',          state.fax||'');
-    sv('f-email',        state.email);
-    sv('f-attn',         state.attn);
-    sv('f-port',         state.port);
-    sv('f-currency',     state.currency);
-    sv('f-rate-usd',     state.rateUSD);
-    sv('f-rate-myr',     state.rateMYR);
-    sv('f-rate-sgd',     state.rateSGD);
-    sv('f-rate-idr',     state.rateIDR);
-    sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_();   // v13.32
-    sv('f-pay-cond',     state.payCond);
-    sv('f-tradein-desc', state.tradeinDesc);
-    sv('f-tradein-value',state.tradeinValue);
-    const instOn = document.getElementById('f-installment-on');
-    if (instOn) instOn.checked = state.installmentEnabled || false;
-    { const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false; }
-    if (state.installmentEnabled) toggleInstallmentPanel();
-    sv('f-inst-count', state.installmentCount||3);
-    sv('f-inst-freq',  state.installmentFreqMonths||12);
-    sv('f-inst-rate',  state.installmentRate||0);
-    sv('f-inst-start', state.installmentStartDate||'');
-    if (state.installmentRows && state.installmentRows.length) renderInstallmentRows();
-    sv('f-validity',          state.validity);
-    sv('f-delivery',          state.delivery);
-    sv('f-balance-label',     state.balanceLabel    || '');
-    sv('f-pay-terms-text',    state.payTermsText    || '');
-    sv('f-warranty-override', state.warrantyOverride || '');
-    sv('f-remarks',           state.remarks);
-    {const cb=document.getElementById('f-bank-override');if(cb)cb.checked=state.bankOverride||false;}
-    if (Array.isArray(state.customPayRows)) renderCustomPayRows();
-    ['account','beneficiary','name','swift','branch'].forEach(k=>{const el=document.getElementById('f-bank-'+k);const sk='bank'+k.charAt(0).toUpperCase()+k.slice(1);if(el)el.value=state[sk]||'';});
-    sv('f-notes',        state.notes || '');
-      sv('f-sales-rep',    state.salesRep || '');
+    fillFormFromState_();   // v13.33: the shared "state -> form" routine (was a private copy; it did not restore "Buyer bears all bank charges")
     if (!state.remarkItems || state.remarkItems.length === 0) {
       state.remarkItems = [
         'Delivery lead time is subject to change and may be affected by circumstances beyond our control, including but not limited to acts of war, typhoons, natural disasters, political instability, public holidays, or other force majeure events. Sen Labels Machinery Sdn. Bhd. shall not be held liable for any delays arising from such circumstances.',
@@ -5710,6 +5649,47 @@ function safeImg_(u) { u = String(u||'').trim(); return /^(https?:\/\/|data:imag
 function safeHref_(u) { u = String(u||'').trim(); return /^https:\/\//i.test(u) ? esc(u) : '#'; }   // v13.29: https links only
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// v13.33: ONE "state -> form" routine for every way a contract gets into the form: New, Load JSON file, Paste JSON, Library
+// (also ?contract=…&load=true and ?preview=…), Restore auto-saved draft and Duplicate. Before, each path had its own copy and
+// three of them missed fields — the first edit after such a load read the stale form back into the contract (instalment tick
+// box and rows after a draft restore / Duplicate; "Buyer bears all bank charges" after Paste JSON; balance label, bank
+// details, exchange rates after a draft restore). The body is the v13.32 Library block, unchanged.
+function fillFormFromState_() {
+  const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
+  sv('f-admin',state.admin); sv('f-doctype',state.docType); _ensureStatusOption(state.status); sv('f-status',state.status);   // v13.27: keep CRM-only statuses
+  toggleSignedPDFSection(state.status);
+  if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
+  sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
+  sv('f-company',state.company); sv('f-addr',state.addr); sv('f-tel',state.tel);
+  sv('f-fax',state.fax||'');
+  sv('f-email',state.email); sv('f-attn',state.attn); sv('f-port',state.port);
+  sv('f-currency',state.currency); sv('f-rate-usd',state.rateUSD); sv('f-rate-myr',state.rateMYR);
+  sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct); sv('f-deposit-amt',state.depositAmt||''); depZeroSyncUI_();   // v13.32
+  sv('f-pay-cond',state.payCond); sv('f-tradein-desc',state.tradeinDesc); sv('f-tradein-value',state.tradeinValue);
+  // instalment tick box / options / rows — always, also when the contract has none (the panel closes and old rows leave the form)
+  { const instOn = document.getElementById('f-installment-on'); if (instOn) instOn.checked = state.installmentEnabled || false;
+    const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false;
+    toggleInstallmentPanel();
+    sv('f-inst-count', state.installmentCount||3); sv('f-inst-freq', state.installmentFreqMonths||12); sv('f-inst-rate', state.installmentRate||0); sv('f-inst-start', state.installmentStartDate||'');
+    renderInstallmentRows(); }
+  sv('f-validity',state.validity); sv('f-delivery',state.delivery);
+  sv('f-balance-label',state.balanceLabel||''); sv('f-pay-terms-text',state.payTermsText||'');
+  sv('f-warranty-override',state.warrantyOverride||''); sv('f-remarks',state.remarks);
+    // Bank details
+    const bankCb = document.getElementById('f-bank-override');
+    if (bankCb) bankCb.checked = state.bankOverride||false;
+    const bbcCb = document.getElementById('f-buyer-bank-charges');
+    if (bbcCb) bbcCb.checked = (state.buyerBankCharges === true);
+    if (Array.isArray(state.customPayRows)) renderCustomPayRows();
+    const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+    svBank('f-bank-account',     state.bankAccount||'');
+    svBank('f-bank-beneficiary', state.bankBeneficiary||'');
+    svBank('f-bank-name',        state.bankName||'');
+    svBank('f-bank-swift',       state.bankSwift||'');
+    svBank('f-bank-branch',      state.bankBranch||'');
+  sv('f-notes',state.notes||''); sv('f-sales-rep',state.salesRep||'');
+}
+
 async function loadFromLibrary(contractNo, opts) {
   opts = opts || {};
   if (!gsUrl) { if (opts.silent) _previewLoadError(contractNo, 'Backend URL not configured'); return; }
@@ -5730,40 +5710,7 @@ async function loadFromLibrary(contractNo, opts) {
     normalizeState(state);
     if (!Array.isArray(state.machines) || state.machines.length === 0) state.machines = [newMachine()];
     if (state.activeMachineIdx >= state.machines.length) state.activeMachineIdx = 0;
-    const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
-    sv('f-admin',state.admin); sv('f-doctype',state.docType); _ensureStatusOption(state.status); sv('f-status',state.status);   // v13.27: keep CRM-only statuses
-    toggleSignedPDFSection(state.status);
-    if (state.signedPdfUrl) { const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=`<a href="${safeHref_(state.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
-    sv('f-contract-no',state.contractNo); sv('f-date',state.date); sv('f-revised',state.revised);
-    sv('f-company',state.company); sv('f-addr',state.addr); sv('f-tel',state.tel);
-    sv('f-fax',state.fax||'');
-    sv('f-email',state.email); sv('f-attn',state.attn); sv('f-port',state.port);
-    sv('f-currency',state.currency); sv('f-rate-usd',state.rateUSD); sv('f-rate-myr',state.rateMYR);
-    sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct); sv('f-deposit-amt',state.depositAmt||''); depZeroSyncUI_();   // v13.32
-    sv('f-pay-cond',state.payCond); sv('f-tradein-desc',state.tradeinDesc); sv('f-tradein-value',state.tradeinValue);
-    // v13.32 FIX: the instalment tick box / options / rows were not put back into the form here, so the first edit after a
-    // Library load read "not ticked" from the form, dropped the schedule from the paper and saved installmentEnabled:false.
-    { const instOn = document.getElementById('f-installment-on'); if (instOn) instOn.checked = state.installmentEnabled || false;
-      const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false;
-      toggleInstallmentPanel();
-      sv('f-inst-count', state.installmentCount||3); sv('f-inst-freq', state.installmentFreqMonths||12); sv('f-inst-rate', state.installmentRate||0); sv('f-inst-start', state.installmentStartDate||'');
-      renderInstallmentRows(); }
-    sv('f-validity',state.validity); sv('f-delivery',state.delivery);
-    sv('f-balance-label',state.balanceLabel||''); sv('f-pay-terms-text',state.payTermsText||'');
-    sv('f-warranty-override',state.warrantyOverride||''); sv('f-remarks',state.remarks);
-      // Bank details
-      const bankCb = document.getElementById('f-bank-override');
-      if (bankCb) bankCb.checked = state.bankOverride||false;
-      const bbcCb = document.getElementById('f-buyer-bank-charges');
-      if (bbcCb) bbcCb.checked = (state.buyerBankCharges === true);
-      if (Array.isArray(state.customPayRows)) renderCustomPayRows();
-      const svBank = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-      svBank('f-bank-account',     state.bankAccount||'');
-      svBank('f-bank-beneficiary', state.bankBeneficiary||'');
-      svBank('f-bank-name',        state.bankName||'');
-      svBank('f-bank-swift',       state.bankSwift||'');
-      svBank('f-bank-branch',      state.bankBranch||'');
-    sv('f-notes',state.notes||''); sv('f-sales-rep',state.salesRep||'');
+    fillFormFromState_();   // v13.33: the shared "state -> form" routine (was a private copy of it here)
     setTimeout(() => renderRemarkItems(), 50);
     renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
     renderCwItems(); reloadImageThumbs(); updatePreview(); switchTabDirect('basic');
@@ -6576,11 +6523,25 @@ function loadMachineFromDB(idx) {
 // ============================================================
 // EXCEL EXPORT
 // ============================================================
+// v13.33: the Word and Excel files have never carried the instalment schedule or the custom payment rows (the PDF does). The files are
+// not changed; the classic page now asks once before such an export. On the C page (body.gx) its pre-export check shows the same note instead.
+let _wxAsked_ = false;   // the Excel export runs a second time after its library loads — do not ask twice
+function wxExportOk_(kind) {
+  if (document.body.classList.contains('gx')) return true;
+  const inst = !!(state.installmentEnabled && state.installmentRows && state.installmentRows.length);
+  const rows = Array.isArray(state.customPayRows) && state.customPayRows.some(r => r && r.label);
+  if (!inst && !rows) return true;
+  const what = inst && rows ? 'the instalment schedule and the custom payment rows' : inst ? 'the instalment schedule' : 'the custom payment rows';
+  return confirm('The ' + kind + ' file does not include ' + what + ' — only Print / PDF shows the complete payment terms.\n\nOK = export ' + kind + ' anyway\nCancel = stop');
+}
 function exportToExcel() {
   if (state.docType === 'Agent Price List') { alert('Excel export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17/v13.19
   saveCurrentMachineToState();
+  if (!_wxAsked_ && !wxExportOk_('Excel')) return;   // v13.33
+  _wxAsked_ = false;
   if (typeof XLSX === 'undefined') {   // v13.31: load xlsx-js-style on first use, then run this export again
-    loadExtLib_('xlsx').then(() => exportToExcel_v1331_(), () => alert('Could not load the Excel library. Check your internet connection and try Export Excel again.'));
+    _wxAsked_ = true;   // v13.33: already answered
+    loadExtLib_('xlsx').then(() => exportToExcel_v1331_(), () => { _wxAsked_ = false; alert('Could not load the Excel library. Check your internet connection and try Export Excel again.'); });
     return;
   }
 
@@ -6866,6 +6827,7 @@ function buildSpecRowsWord(m) {
 function exportToWord() {
   if (state.docType === 'Agent Price List') { alert('Word export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17/v13.19
   saveCurrentMachineToState();
+  if (!wxExportOk_('Word')) return;   // v13.33
   const curr  = state.currency;
   const fmt   = n => formatMoney(n, curr);
   const dateStr    = state.date    ? formatDate(state.date)    : '';
@@ -7265,6 +7227,7 @@ function restoreAutosaveDraft() {
   sv('f-doctype', state.docType);   // v13.20: the loop above looks up state['doctype'] (wrong case) — restore the real Doc Type
   sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_(); sv('f-pay-cond', state.payCond);   // v13.32
   sv('f-tradein-desc', state.tradeinDesc); sv('f-tradein-value', state.tradeinValue);
+  fillFormFromState_();   // v13.33: everything the lines above miss (instalment tick box / options / rows, balance label, payment-terms text, warranty, bank details, exchange rates, custom payment rows, sales rep) — the draft now comes back as it was saved
   renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
   renderCwItems(); renderRemarkItems(); updatePreview();
   setAutosaveStatus('saved');
@@ -7313,6 +7276,7 @@ function duplicateAsNew() {
   state = dup;
   normalizeState(state);
   // Refill form
+  fillFormFromState_();   // v13.33: the shared "state -> form" routine (instalment tick box / options / rows and every other field follow the copy)
   const sv = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
   sv('f-contract-no', ''); sv('f-date', state.date); sv('f-revised', '');
   sv('f-status', 'Quotation Sent');
