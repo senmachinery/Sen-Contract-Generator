@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.30</title>
+<title>Sen Labels — Contract Generator v13.31</title>
+<!-- v13.31: (1) xlsx-js-style 1.2.0 and pdf.js 3.11.174 are no longer loaded on every page open — they load only when Export Excel / PDF import is used, from the same pinned URLs with a Subresource Integrity hash (sha384) + crossorigin; pdf.js runs with isEvalSupported:false (CVE-2024-4367 mitigation; its worker is fetched by pdf.js itself and stays version-pinned); (2) Settings: the Access Token field is hidden (Show / Hide button) and the Web App URL is only saved when it is a script.google.com/macros/s/<id>/exec address (or the Workspace /a/macros/<domain>/s/<id>/exec form) — the token injector uses the same strict check; an already saved URL is kept; (3) the last Chinese UI text (image delete confirm + error) is now English; (4) a print / export whose background save fails or cannot be confirmed now shows "Not saved to cloud — use Save Record" next to Save Record (no message on success, none for a preview tab or a loaded-but-unedited contract); (5) the Sheets badge shows a real check mark instead of the literal text "&amp;#10003;". An existing contract renders identically. Frontend-only. -->
 <!-- v13.30: FIX (audit 2026-11-11) — (1) today's date now comes from the device's local date, not UTC: before 8 am Malaysia time a new contract, a duplicate, the 3-day follow-up and a date read from an imported PDF were one day early; (2) Save Record refuses a contract number that has no running number yet (ends with "-"), and a print / export does not silently save one; (3) the top-bar auto-save badge reads "Draft saved (this device)" instead of "Saved" (it never meant saved to the cloud). An existing contract renders identically. Frontend-only. -->
 <!-- v13.29: SECURITY FIX (audit 2026-11-11) — (1) the ?preview error page escaped neither the contract number from the URL nor the error text (a crafted link could run script and read the saved token); (2) History / Library rows: the contract number inside onclick is now escaped for JS and HTML (was single-quote only); (3) the signed-PDF link only accepts an https URL and is escaped; (4) values that come from a saved contract are escaped where they were not: image addresses (http/https/data:image only), discount label, port in the Come With block, instalment label / date / amount inputs, spec colour buttons (red / blue / green only), optional-item price, parts quantity, and the machine names in the all-machines total box. Normal contract numbers and links render identically. Frontend-only. -->
 <!-- v13.28: FIX — summary table Unit Price column divides by unit qty (2 Units showed the total as the unit price). Qty 1 renders identically. -->
@@ -456,7 +457,7 @@ body{font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;}
 .apl-ed-grid th,.apl-ed-grid td{border:1px solid #c9d3e0;padding:3px 5px;min-width:34px}
 .apl-ed-grid th{background:#eef3f9}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<!-- v13.31: xlsx-js-style is loaded on demand by loadExtLib_('xlsx') (Export Excel) -->
 <script>
 // ============================================================
 // MOBILE PREVIEW TOGGLE
@@ -482,11 +483,38 @@ function mobileTab(tab) {
 }
 
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-  if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
+// v13.31: third-party libraries are loaded only when needed (Export Excel / PDF import), from the same pinned
+// URLs, with Subresource Integrity — a changed file on the CDN is refused by the browser instead of run.
+const EXT_LIBS_ = {
+  xlsx:  { src: 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js', sri: 'sha384-OUW9euuUyxyHcAhTqbhI+Iyb8LMssXt/cpz0yXhs9UWG2/R/uaWdakx/4cfww7Vb',
+           ready: () => typeof XLSX !== 'undefined' },
+  pdfjs: { src: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', sri: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e',
+           ready: () => typeof pdfjsLib !== 'undefined',
+           init: () => { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } }   // worker is fetched by pdf.js itself (no SRI possible) — version stays pinned
+};
+const _extLibLoading_ = {};
+// v13.31: on touch devices the first Excel export would otherwise start its download after an async library load, outside the
+// tap that asked for it (iOS may refuse that). Fetch the library quietly once the page is idle; desktops still load it on demand.
+window.addEventListener('load', function () {
+  if (!(navigator.maxTouchPoints > 0)) return;
+  const go = function () { try { loadExtLib_('xlsx').catch(function () {}); } catch (e) {} };
+  if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 10000 }); else setTimeout(go, 5000);
+});
+function loadExtLib_(name) {
+  const lib = EXT_LIBS_[name];
+  const done = () => { if (lib.init) lib.init(); };
+  if (lib.ready()) { done(); return Promise.resolve(); }
+  if (_extLibLoading_[name]) return _extLibLoading_[name];
+  return (_extLibLoading_[name] = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    const fail = () => { delete _extLibLoading_[name]; s.remove(); reject(new Error(name + ' could not be loaded')); };
+    s.src = lib.src; s.integrity = lib.sri; s.crossOrigin = 'anonymous'; s.referrerPolicy = 'no-referrer';
+    s.onload = () => { if (!lib.ready()) return fail(); try { done(); } catch (e) { return fail(); } resolve(); };
+    s.onerror = fail;
+    document.head.appendChild(s);
+  }));
+}
 </script>
 </head>
 <body>
@@ -537,7 +565,7 @@ function mobileTab(tab) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.30</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.31</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1251,7 +1279,7 @@ function mobileTab(tab) {
     </div>
     <div class="field-group">
       <label>Access Token</label>
-      <input type="text" id="s-api-token" placeholder="Access Token (from your admin) — required">
+      <div style="display:flex;gap:6px;align-items:center"><input type="password" id="s-api-token" autocomplete="off" spellcheck="false" style="flex:1;min-width:0" placeholder="Access Token (from your admin) — required"><button type="button" class="btn btn-outline btn-sm" onclick="toggleTokenShow_(this)">Show</button></div>   <!-- v13.31: hidden by default -->
       <div style="font-size:11px;color:#888;margin-top:4px">🔒 Paste the Access Token your admin gave you (one-time per device).</div>
     </div>
     <div class="field-group">
@@ -1353,7 +1381,15 @@ let gsUrl = localStorage.getItem('sen_gs_url') || '';
   const _fetch = window.fetch.bind(window);
   let _tokPrompted = false;
   function apiToken(){ return localStorage.getItem('sen_api_token') || ''; }
-  function isBackend(u){ return typeof u === 'string' && u.indexOf('script.google.com/macros/') !== -1; }
+  // v13.31: the token goes only to the real script.google.com host (was: any URL that merely CONTAINS 'script.google.com/macros/').
+  // Parsed, not pattern-matched, so an address saved long ago with a trailing slash, /u/0/ or /dev keeps working.
+  function isBackend(u){
+    try {
+      const x = new URL(String(u), location.href);
+      return x.protocol === 'https:' && x.hostname === 'script.google.com' && !x.username && !x.password
+        && (x.pathname.indexOf('/macros/') === 0 || x.pathname.indexOf('/a/macros/') === 0);
+    } catch (e) { return false; }
+  }
   function promptToken(){
     if (_tokPrompted) return; _tokPrompted = true;
     const t = prompt('Access Token required to connect.\nPaste the Access Token your admin gave you:', apiToken());
@@ -1384,6 +1420,17 @@ let gsUrl = localStorage.getItem('sen_gs_url') || '';
   };
 })();
 let gsId  = localStorage.getItem('sen_gs_id')  || '';
+// v13.31: the only backend address shape the token may go to — https://script.google.com/macros/s/<id>/exec
+// or the Workspace form https://script.google.com/a/macros/<domain>/s/<id>/exec (a ?query / #hash after it is allowed for requests)
+function senIsBackendUrl_(u) {
+  return typeof u === 'string' && /^https:\/\/script\.google\.com\/(?:macros|a\/macros\/[A-Za-z0-9.-]+)\/s\/[A-Za-z0-9_-]+\/exec(?:[?#]|$)/.test(u);
+}
+function toggleTokenShow_(btn) {   // v13.31: Show / Hide for the Access Token field
+  const el = document.getElementById('s-api-token'); if (!el) return;
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+}
 // v10.91: 记住"自动取号"最后写入的合同号字符串。仅当号还原封不动(未被加载/手改)时，切换文档类型才重新取号(Q/SC 是不同序列)。
 let _autoNoValue = null;
 
@@ -1420,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = localISODate_();
   document.getElementById('f-date').value = today;
   state.date = today;
-  if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','&#10003; Configured'); }
+  if (gsUrl) { document.getElementById('s-gs-url').value = gsUrl; updateGsStatus('ok','\u2713 Configured');   /* v13.31: textContent — a real check mark, not '&#10003;' */ }
   if (gsId)  document.getElementById('s-gs-id').value = gsId;
   { const _t = localStorage.getItem('sen_api_token') || '', _te = document.getElementById('s-api-token'); if (_te) _te.value = _t; }  // v11.4: 回填令牌
   refreshConnectCard();   // v10.96: 没连 Sheets 就显示友好兜底卡
@@ -4931,6 +4978,7 @@ async function saveToSheets(silent=false) {
   // v13.30: a number that still ends with "-" (the running number could not be fetched) must not become a record
   if (!String(state.contractNo || '').trim() || /-\s*$/.test(String(state.contractNo))) {
     if (!silent) alert('This contract number has no running number yet ("' + (state.contractNo || '') + '").\n\nTap the refresh button next to Contract No. to get the next number, or type the full number, then save again.');
+    else if (!(_previewOpened || (_loadedFp !== null && _stateFp() === _loadedFp))) showSaveStamp(SILENT_SAVE_WARN_, true);   // v13.31: print/export did not save — say so
     return;
   }
   // v13.27: never write a reduced Drive-missing snapshot back over the real record
@@ -4999,6 +5047,7 @@ async function saveToSheets(silent=false) {
     cleanState.contractNo = finalNo; cleanState.recordId = state.recordId;
     const _savedAt = new Date().toISOString() + '#' + Math.random().toString(36).slice(2, 8);   // v13.27: fingerprint read back by verifySaved
     cleanState._savedAt = _savedAt;
+    const _saveSeq = ++_saveSeq_;   // v13.31: newest save wins the background check below
     let _stateSendFailed = false;
     try {
       await _fetchT(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
@@ -5026,11 +5075,19 @@ async function saveToSheets(silent=false) {
         showSaveStamp('⚠ Could not verify save — please check Library (press Save Record again if it is missing)', true);
       }
       setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000);
+    } else {
+      // v13.31: a print/export save used to fail without a word — read it back in the background (does not hold up printing); warn only if it did not land
+      const _ok = !_stateSendFailed && await verifySaved(finalNo, _savedAt);
+      if (!_ok && _saveSeq === _saveSeq_) showSaveStamp(SILENT_SAVE_WARN_, true);
+      else if (_ok && _saveSeq === _saveSeq_) { const _st = document.getElementById('save-stamp'); if (_st && _st.textContent === SILENT_SAVE_WARN_) _st.textContent = ''; }
     }
   } catch(e) {
     if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp('❌ Save failed: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
+    else showSaveStamp(SILENT_SAVE_WARN_, true);   // v13.31
   }
 }
+const SILENT_SAVE_WARN_ = '⚠ Not saved to cloud — use Save Record';   // v13.31
+let _saveSeq_ = 0;   // v13.31
 
 // Read the contract back to confirm it really saved. Retries a couple of times
 // because Apps Script may take a moment to commit.
@@ -5123,6 +5180,11 @@ function dismissConnectCard() {
 function openSettings()  { document.getElementById('settings-modal').classList.add('show'); }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
 function saveSettings() {
+  { const _u = document.getElementById('s-gs-url').value.trim();   // v13.31: refuse anything but a Google Apps Script web-app address (nothing is saved, the old values stay)
+    if (_u && _u !== (localStorage.getItem('sen_gs_url') || '') && (!senIsBackendUrl_(_u) || /[?#]/.test(_u))) {
+      document.getElementById('test-result').innerHTML = '<span class="red">Not saved: the Web App URL must look like https://script.google.com/macros/s/.../exec</span>';
+      return;
+    } }
   gsUrl = document.getElementById('s-gs-url').value.trim();
   gsId  = document.getElementById('s-gs-id').value.trim();
   localStorage.setItem('sen_gs_url',gsUrl);
@@ -5134,7 +5196,7 @@ function saveSettings() {
   res.innerHTML='<span class="spinner"></span> Testing...';
   fetch(gsUrl+'?action=test').then(r=>r.json()).then(d=>{
     res.innerHTML=`<span class="green">&#10003; Connected! ${d.sheetName||'OK'}</span>`;
-    updateGsStatus('ok','&#10003; Connected');
+    updateGsStatus('ok','\u2713 Connected');   // v13.31: real check mark
     // v12.9: after connecting, populate data-driven fields so the app isn't half-empty until a manual reload
     try { loadSalesReps(); } catch(e){}
     try { setupCompanyAutocomplete(); } catch(e){}
@@ -5142,7 +5204,7 @@ function saveSettings() {
     try { const _cn=document.getElementById('f-contract-no'); if (_cn && (!_cn.value || _cn.value.trim().endsWith('-'))) fetchNextNo({auto:true}); } catch(e){}
   }).catch(()=>{
     res.innerHTML='<span style="color:#e65100">&#9888; Saved. Test failed &#8212; check deploy settings.</span>';
-    updateGsStatus('warn','&#9888; Saved (test failed)');
+    updateGsStatus('warn','\u26A0 Saved (test failed)');   // v13.31: real warning sign
   });
 }
 function updateGsStatus(level,text) { const el=document.getElementById('gs-status'); el.className='gs-'+level; el.textContent=text; }
@@ -5997,7 +6059,7 @@ function renderIpGrid() {
 // v13.7: delete a duplicate image from the Drive machine-images folder (moves to Drive Trash, recoverable ~30 days)
 async function deleteImageFromPicker(id, name) {
   if (!id) return;
-  if (!confirm('删除这张图？\n\n「' + (name || '') + '」\n\n会移到 Google Drive 回收站（30 天内可恢复，不是永久删）。\n⚠️ 如果这张图已用在某张合同里，那张合同的图会变空。')) return;
+  if (!confirm('Delete this image?\n\n"' + (name || '') + '"\n\nIt will be moved to the Google Drive trash (can be restored within 30 days, not deleted permanently).\n⚠️ If this image is used in a contract, that contract\'s image will be blank.')) return;   // v13.31: English
   const statusEl = document.getElementById('imagepicker-status');
   const prev = statusEl ? statusEl.textContent : '';
   if (statusEl) statusEl.textContent = 'Deleting...';
@@ -6016,7 +6078,7 @@ async function deleteImageFromPicker(id, name) {
     }
     renderIpGrid();
   } catch (e) {
-    alert('删除失败：' + e.message);
+    alert('Delete failed: ' + e.message);   // v13.31: English
     if (statusEl) statusEl.textContent = prev;
   }
 }
@@ -6445,7 +6507,10 @@ function loadMachineFromDB(idx) {
 function exportToExcel() {
   if (state.docType === 'Agent Price List') { alert('Excel export is not available for Agent Price List — please use Print / PDF.'); return; }   // v13.17/v13.19
   saveCurrentMachineToState();
-  if (typeof XLSX === 'undefined') { alert('xlsx-js-style not loaded. Check internet connection.'); return; }
+  if (typeof XLSX === 'undefined') {   // v13.31: load xlsx-js-style on first use, then run this export again
+    loadExtLib_('xlsx').then(() => exportToExcel_v1331_(), () => alert('Could not load the Excel library. Check your internet connection and try Export Excel again.'));
+    return;
+  }
 
   const curr = state.currency;
   const fmt  = n => formatMoney(n, curr);
@@ -6648,6 +6713,7 @@ function exportToExcel() {
   const fname = buildExportFilename('xlsx');
   XLSX.writeFile(wb, fname);
 }
+const exportToExcel_v1331_ = exportToExcel;   // v13.31: the unwrapped function for the retry above (the C skin wraps window.exportToExcel with its pre-export check — it must not show twice)
 
 
 function buildSpecRowsWord(m) {
@@ -7518,10 +7584,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // v10.47: PDF AUTO-EXTRACT (text-based PDFs only)
 // ============================================================
 async function extractFromPDF(file) {
-  if (typeof pdfjsLib === 'undefined') {
-    alert('PDF library not loaded. Please refresh the page and try again.');
-    return;
-  }
+  try { await loadExtLib_('pdfjs'); }   // v13.31: pdf.js loads on first use (was loaded on every page open)
+  catch (e) { alert('Could not load the PDF reader. Check your internet connection and try again.'); return; }
   
   // Show progress overlay
   const overlay = document.createElement('div');
@@ -7533,7 +7597,7 @@ async function extractFromPDF(file) {
   
   try {
     const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: buffer, isEvalSupported: false }).promise;   // v13.31: no eval of font code (CVE-2024-4367)
     setProgress(`Reading ${pdf.numPages} page(s)...`);
     
     let fullText = '';
