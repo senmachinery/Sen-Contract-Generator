@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('crm-c.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM v2.69</title>
+<title>Sen Labels — CRM v2.70</title>
+<!-- v2.70: FIX (2026-11-11) — (1) the last Chinese texts on screen (Close deal confirm + toast, Target tab supplier line) are English; (2) Settings: the Access Token box is hidden (Show / Hide) and a "Sign out on this device" button removes only the saved token; (3) dates the backend sends as ISO timestamps (contract date / signed date, follow-up date / next follow-up, task due date) are read as the local YYYY-MM-DD, so a follow-up due today is no longer counted overdue; (4) RM and MYR totals are one currency (MYR), a blank currency is USD everywhere; (5) a task tick that fails is un-ticked again, a bulk follow-up with failures says "X saved, Y failed" in red, a new customer the backend did not save is not treated as known; (6) faster first load — the connection check runs alongside the data load, and the task list and follow-ups are no longer fetched a second / third time. -->
 <!-- v2.69: FIX — the default date offered by "Mark signed" and the signed date stamped locally by Close deal now use the device's local date (localISO) instead of UTC; before 8 am Malaysia time they were one day early (on 1 January that put a deal into the previous year's target). Nothing else changed. -->
 <!-- v2.68: FIX (audit 2026-11-11) — (1) a save the backend refused (task tick / delete / edit, inquiry edit / convert / reopen / delete, mark / unmark signed, country sync) no longer shows a success message: these calls now treat an {error} reply as a failure; (2) when customers, tasks or follow-ups fail to load, a red bar says which part is missing (with Retry) instead of quietly showing empty lists, and the country-override sync is skipped while tasks are not loaded (it used to create a duplicate config row); (3) Lifetime Value is shown per currency instead of adding MYR and USD together under a USD label, and the rough RM figure used to rank follow-ups knows more currencies and no longer counts an unknown currency 1:1 as ringgit. Frontend-only. -->
 <!-- v2.67: CHANGE — this page now forwards to crm-c.html (the C-design CRM, same URL params). Open crm.html?classic=1 to keep using this classic page. Nothing else changed. -->
@@ -612,7 +613,7 @@
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.69</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">v2.70</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="index.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -980,12 +981,13 @@ function _toRMKnown(amt, currency) {
   const rate = { USD: 4.7, SGD: 3.5, EUR: 5.1, RMB: 0.65, CNY: 0.65, MYR: 1, RM: 1,
                  IDR: 0.00027, JPY: 0.029, PHP: 0.078, THB: 0.13, KRW: 0.0032, INR: 0.053, VND: 0.00018,
                  AUD: 3.0, GBP: 5.9, HKD: 0.60, TWD: 0.145, BDT: 0.038 };
-  const r = rate[String(currency || 'USD').trim().toUpperCase()];
+  const r = rate[String(currency || 'USD').trim().toUpperCase() || 'USD'];   // v2.70: a blank currency is USD (same as _addByCur)
   return (r === undefined) ? null : amt * r;
 }
 // v2.68: one amount per currency, e.g. "MYR 450,000 · USD 100,000" (never added together)
 function _addByCur(map, currency, amt) {
-  const k = String(currency || 'USD').trim().toUpperCase() || 'USD';
+  let k = String(currency || 'USD').trim().toUpperCase() || 'USD';
+  if (k === 'RM') k = 'MYR';   // v2.70: RM and MYR are the same money — one total, not two
   map[k] = (map[k] || 0) + (Number(amt) || 0);
 }
 function _fmtByCur(map) {
@@ -1108,6 +1110,18 @@ let CUSTOMER_CONTACT = {};   // v2.54: custKey(company) → {tel, attn, email}�
 function localISO(d) {
   d = d || new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// v2.70: the backend sometimes returns a date cell as an ISO timestamp ("2026-11-11T16:00:00.000Z" = 12 Nov in Malaysia),
+// and pages compare dates as "YYYY-MM-DD" strings. Only such timestamps become the local YYYY-MM-DD; a plain YYYY-MM-DD,
+// an empty value or anything else is returned unchanged.
+function normDate_(v) {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(v)) return v;
+  const d = new Date(v);
+  return isNaN(d) ? v : localISO(d);
+}
+function normDates_(o, keys) {
+  if (o && typeof o === 'object') keys.forEach(k => { if (typeof o[k] === 'string') o[k] = normDate_(o[k]); });
+  return o;
 }
 // v2.54: wa.me 链接需要「国码+号码、无前导0」，而 CustomerDB 的 tel 多存本地格式(如 012-518 7130)。
 // 规则：+开头→去+；00开头→去00；0开头(本地格式)→去0补该客户国家的国码(默认马来西亚60)；其余(已带国码)原样。
@@ -1361,10 +1375,14 @@ function openSettings() {
     </div>
     <div class="form-row">
       <label>Access Token</label>
-      <input type="text" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Your token (leave blank if none)">
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="password" id="settings-token" value="${escapeHtml(getApiToken())}" placeholder="Your token (leave blank if none)" autocomplete="off" style="flex:1;min-width:0">
+        <button type="button" class="btn btn-sm btn-outline" id="settings-token-toggle" onclick="toggleTokenVisible_()">Show</button>
+      </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
         🔒 Paste the Access Token you were given by your admin (one-time per device).
       </div>
+      <button type="button" class="btn btn-sm btn-outline" onclick="signOutThisDevice_()" style="margin-top:8px">Sign out on this device</button>
     </div>
   `;
   $('modal-footer').innerHTML = `
@@ -1372,6 +1390,21 @@ function openSettings() {
     <button class="btn" onclick="saveAndTestSettings()">💾 Save & Test</button>
   `;
   $('modal-overlay').classList.add('show');
+}
+
+// v2.70: Show / Hide the token box (it is a password field now)
+function toggleTokenVisible_() {
+  const el = $('settings-token'), b = $('settings-token-toggle');
+  if (!el) return;
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  if (b) b.textContent = show ? 'Hide' : 'Show';
+}
+// v2.70: forget the token on this device only (backend address and all other local data stay), then reload — the page asks for the token again
+function signOutThisDevice_() {
+  if (!confirm('Sign out on this device?\n\nThis removes the saved Access Token from this browser. The backend address and other data on this device are kept.\nThe Generator on this device will ask for the token again too.')) return;
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  location.reload();
 }
 
 async function saveAndTestSettings() {
@@ -1462,6 +1495,7 @@ async function refreshData() {
     }
 
     // Tasks (for synced country overrides)
+    if (_tRes && Array.isArray(_tRes.tasks)) _tRes.tasks.forEach(t => normDates_(t, ['dueDate']));   // v2.70
     if (_tRes && _tRes.tasks) { TASKS_STATE.tasks = _tRes.tasks; TASKS_STATE.loaded = true; }
     // v2.68: only when the task list really loaded. With no tasks the meta row looks "missing" and a duplicate would be created.
     if (TASKS_STATE.loaded) loadCountryOverridesFromTasks();  // merge synced + local overrides into COUNTRY_OVERRIDES
@@ -1469,7 +1503,7 @@ async function refreshData() {
     
     STATE.contracts = allContracts.map(r => ({
       contractNo: r.contractNo || '',
-      date: r.date || '',
+      date: normDate_(r.date || ''),   // v2.70
       company: (r.company || '').trim(),
       machine: r.machineTitle || r.machine || '',
       currency: r.currency || 'USD',
@@ -1477,7 +1511,7 @@ async function refreshData() {
       status: r.status || 'Quotation Sent',
       salesRep: (function(s){ s = (s || '').trim(); return /^https?:|drive\.google/i.test(s) ? '' : s; })(r.salesRep),  // v2.29: drop garbage URL values
       country: getCustomerCountry((r.company || '').trim()),
-      signedDate: r.signedDate || ''   // v3.0: 12台/年目标——后端「已签单」标记(空=没标)
+      signedDate: normDate_(r.signedDate || '')   // v2.70: normDate_ | v3.0: 12台/年目标——后端「已签单」标记(空=没标)
     })).filter(c => c.company);  // Filter out empty company names
     // v2.6: build contractNo → rep map (only contracts that actually have a rep set)
     CONTRACT_REP = {};
@@ -1506,6 +1540,7 @@ async function refreshData() {
     
     // Follow-ups (pre-fetched in parallel above)
     let allFollowups = (_fuRes && _fuRes.followups) || [];
+    if (Array.isArray(allFollowups)) allFollowups.forEach(f => normDates_(f, ['date', 'nextFollowupDate']));   // v2.70
     STATE.allFollowups = allFollowups;
     // v2.55: 每次刷新用最新数据**完全重建**每客户跟进缓存（原来 preloadAllFollowups 只补空缺 → 点 Refresh 后
     // 已缓存客户仍显示旧跟进：别的设备已 snooze 的单还赖在催单列表）。
@@ -1617,15 +1652,17 @@ async function refreshData() {
     renderPipeline();
     
     // v1.5: Load tasks in background (for tab count badge)
-    loadTasks().catch(e => console.warn('Tasks load failed:', e));
+    // v2.70: when this load already brought the task list, render it (it used to be fetched twice more right here)
+    const _tasksReady = (_tRes && _tRes.tasks) ? Promise.resolve().then(() => { renderTasks(); updateTaskCounts(); }) : loadTasks();
+    _tasksReady.catch(e => console.warn('Tasks load failed:', e));
     // v1.6: Load reps in background (for tab count badge)
     loadReps().catch(e => console.warn('Reps load failed:', e));
     // v1.6: Pre-load ALL followups so Pack tab works without clicking each customer
-    preloadAllFollowups().catch(e => console.warn('Followups preload failed:', e));
+    if (_missing.includes('Follow-ups')) preloadAllFollowups().catch(e => console.warn('Followups preload failed:', e));   // v2.70: only as a retry — the list above is the same call
     // v1.7: Phase 6 — Load CRM settings (cold threshold, aging days etc)
     loadCrmSettings().catch(e => console.warn('Settings load failed:', e));
     // v1.8: Phase 7 — rebuild inquiries from tasks (after tasks load) for badge count
-    loadTasks().then(() => { rebuildInquiriesFromTasks(); updateInquiryCounts(); }).catch(e => console.warn('Inquiry preload failed:', e));
+    _tasksReady.then(() => { rebuildInquiriesFromTasks(); updateInquiryCounts(); }).catch(e => console.warn('Inquiry preload failed:', e));   // v2.70: same list, no second fetch
     
     // Handle URL parameter ?customer=xxx
     const urlParams = new URLSearchParams(window.location.search);
@@ -1794,6 +1831,7 @@ async function selectCustomer(companyName) {
   try {
     const r = await apiGet('crm_getFollowups', { customer: companyName });
     followups = r.followups || [];
+    if (Array.isArray(followups)) followups.forEach(f => normDates_(f, ['date', 'nextFollowupDate']));   // v2.70
   } catch (e) {
     console.error('Failed to load followups', e);
   }
@@ -2363,7 +2401,7 @@ function renderTarget(){
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div>
         <div style="font-size:20px;font-weight:700">🎯 ${TARGET_PER_YEAR} New Machines / Year</div>
-        <div style="font-size:12px;color:var(--text-muted)">时捷/Ben supply agreement §11 — quota of ${TARGET_PER_YEAR} new presses/year (used machines don't count).</div>
+        <div style="font-size:12px;color:var(--text-muted)">Shijie / Ben supply agreement §11 — quota of ${TARGET_PER_YEAR} new presses/year (used machines don't count).</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <button onclick="targetSetYear(-1)" class="btn btn-sm btn-outline">◀</button>
@@ -2590,6 +2628,7 @@ let TASKS_STATE = { tasks: [], filter: 'pending', loaded: false };
 async function loadTasks() {
   try {
     const r = await apiGet('crm_getTasks');
+    if (r && Array.isArray(r.tasks)) r.tasks.forEach(t => normDates_(t, ['dueDate']));   // v2.70
     if (r && r.tasks) {
       TASKS_STATE.tasks = r.tasks;
       TASKS_STATE.loaded = true;
@@ -2822,6 +2861,7 @@ async function toggleTaskDone(id, checked) {
     showToast(checked ? '✅ Task completed' : '↩ Reopened', 'success');
   } catch (e) {
     showToast('Failed: ' + e.message, 'error');
+    try { renderTasks(); } catch (_e) {}   // v2.70: put the tick box back to what is saved (it stayed ticked)
   }
 }
 
@@ -4110,7 +4150,7 @@ async function batchImportInquiries(arr) {
   }
   if (!confirm(`Import ${valid.length} inquir${valid.length>1?'ies':'y'}?${skipped>0 ? '\n('+skipped+' skipped — missing customer or machine)' : ''}\n\nThis will create them directly in your CRM.`)) return;
   if (resultEl) { resultEl.textContent = `⏳ Importing ${valid.length}...`; resultEl.classList.add('show'); }
-  let ok = 0, failed = 0, newCustomers = 0;
+  let ok = 0, failed = 0, newCustomers = 0, custFailed = 0;   // v2.70: custFailed
   rebuildInquiriesFromTasks();
   for (const obj of valid) {
     const tempNo = nextInquiryNo();
@@ -4137,23 +4177,24 @@ async function batchImportInquiries(arr) {
         // v2.1: auto-save NEW customers to DB (never overwrite existing)
         if (!isExistingCustomer(obj.customer)) {
           try {
-            await apiPost('saveCustomer', { customer: {
+            await apiPostStrict('saveCustomer', { customer: {   // v2.70: strict — a refused save is a failure
               company: obj.customer, attn: obj.attn||'', tel: obj.tel||'',
               email: obj.email||'', address: obj.address||'', port: '', fax: '',
               notes: 'Added via inquiry ' + tempNo
             }});
             CUSTOMER_DB_NAMES.add(obj.customer.trim().toLowerCase());
             newCustomers++;
-          } catch(e) { console.warn('Batch customer save failed:', e); }
+          } catch(e) { console.warn('Batch customer save failed:', e); custFailed++; }   // v2.70: custFailed
         }
       } else failed++;
     } catch(e) { failed++; }
   }
   if (resultEl) {
-    resultEl.textContent = `✅ Imported ${ok}${newCustomers>0 ? ' ('+newCustomers+' new customers saved)' : ''}${failed>0 ? ', '+failed+' failed' : ''}${skipped>0 ? ', '+skipped+' skipped' : ''}`;
+    resultEl.textContent = `✅ Imported ${ok}${newCustomers>0 ? ' ('+newCustomers+' new customers saved)' : ''}${failed>0 ? ', '+failed+' failed' : ''}${skipped>0 ? ', '+skipped+' skipped' : ''}${custFailed>0 ? ', '+custFailed+' new customer(s) not saved to Customer DB' : ''}`;   // v2.70: custFailed
     resultEl.classList.add('show');
   }
-  showToast(`✅ Imported ${ok} inquiries`, 'success');
+  if (custFailed) showToast(`✅ Imported ${ok} inquiries · ⚠ ${custFailed} new customer(s) not saved to Customer DB`, 'error', 6000);   // v2.70
+  else showToast(`✅ Imported ${ok} inquiries`, 'success');
   await loadTasks();
   rebuildInquiriesFromTasks();
   renderInquiries();
@@ -4517,9 +4558,10 @@ async function saveNewInquiry() {
     if (!r || !r.ok) { showToast('Failed to save inquiry', 'error'); return; }
     
     // Only save NEW customers (never overwrite existing)
+    let _custFailed = false;   // v2.70
     if (isNew) {
       try {
-        await apiPost('saveCustomer', { customer: {
+        await apiPostStrict('saveCustomer', { customer: {   // v2.70: strict — a refused save is a failure
           company: customer,
           attn: inquiryData.attn,
           tel: inquiryData.tel,
@@ -4532,10 +4574,11 @@ async function saveNewInquiry() {
         // Register locally so it's recognized as existing from now on
         CUSTOMER_DB_NAMES.add(customer.trim().toLowerCase());
         CUSTOMER_ADDR_BLOB[customer.trim()] = [inquiryData.address, inquiryData.attn, inquiryData.tel].filter(Boolean).join(' ');
-      } catch(e) { console.warn('Customer save failed (inquiry still saved):', e); }
+      } catch(e) { console.warn('Customer save failed (inquiry still saved):', e); _custFailed = true; }   // v2.70: _custFailed
     }
     
-    showToast(isNew ? '✅ Inquiry saved + new customer added: ' + tempNo : '✅ Inquiry saved: ' + tempNo, 'success');
+    if (_custFailed) showToast('✅ Inquiry saved: ' + tempNo + ' · ⚠ the new customer was not saved to Customer DB', 'error', 6000);   // v2.70
+    else showToast(isNew ? '✅ Inquiry saved + new customer added: ' + tempNo : '✅ Inquiry saved: ' + tempNo, 'success');
     closeModal();
     // Reload tasks → rebuild inquiries
     await loadTasks();
@@ -5063,6 +5106,7 @@ async function preloadAllFollowups() {
   // Get all followups in one call (no customer filter)
   try {
     const r = await apiGet('crm_getFollowups');
+    if (r && Array.isArray(r.followups)) r.followups.forEach(f => normDates_(f, ['date', 'nextFollowupDate']));   // v2.70
     if (r && r.followups) {
       const grouped = {};
       r.followups.forEach(f => {
@@ -5378,6 +5422,7 @@ async function packQuickFollowup(company, kind) {
     try {
       const fr = await apiGet('crm_getFollowups', { customer: company });
       STATE.followups[company] = fr.followups || [];
+      if (Array.isArray(STATE.followups[company])) STATE.followups[company].forEach(f => normDates_(f, ['date', 'nextFollowupDate']));   // v2.70
     } catch (e) { /* non-fatal: card refreshes on next full sync */ }
     showToast(`✅ Logged — next follow-up ${fmtDate(nextDate)}`, 'success');
     renderPack();
@@ -5452,7 +5497,7 @@ function _tabActive(id) { const el = document.getElementById(id); return !!(el &
 
 // Refresh whatever views are currently visible after a status / follow-up change.
 async function refreshAfterChange(company) {
-  if (company) { try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; } catch (e) {} }
+  if (company) { try { const fr = await apiGet('crm_getFollowups', { customer: company }); STATE.followups[company] = fr.followups || []; if (Array.isArray(STATE.followups[company])) STATE.followups[company].forEach(f => normDates_(f, ['date', 'nextFollowupDate'])); } catch (e) {} }   // v2.70: normDates_
   const cust = company ? (STATE.customers || []).find(x => x.company === company) : null;
   if (cust) {
     const terminal = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Price List'];   // v2.61
@@ -5504,9 +5549,10 @@ async function markClosed(contractNo, company, stage) {
           || {};
   const cls = classifyTargetMachine(ct);   // 复用现有新机判定(含排除 二手/Vorey/非目标机)
   const isNew = !!cls.eligible;
-  const label = isPaid ? '收全款成交 (Closed / Paid)' : '签单 / 收订金 (Signed / Won)';
-  let msg = `Mark「${label}」?\n${contractNo}\n\n` +
-            (isNew ? `新机 ${cls.model} → 计入 12 台目标` : `机型「${(ct.machine || '').slice(0, 40)}」= 二手/非目标机 → 不计 12 台目标`);
+  // v2.70: confirm text in English (was Chinese)
+  const label = isPaid ? 'Full payment received (Closed / Paid)' : 'Signed / deposit received (Signed / Won)';
+  let msg = `Mark "${label}"?\n${contractNo}\n\n` +
+            (isNew ? `New machine ${cls.model} → counts toward the 12-machine target` : `Machine "${(ct.machine || '').slice(0, 40)}" = used / not a target model → does not count toward the 12-machine target`);
   if (!confirm(msg)) return;
   showToast('⏳ Closing…', '');
   try {
@@ -5521,7 +5567,7 @@ async function markClosed(contractNo, company, stage) {
     if (g) { g.status = newStatus; if (isNew && !g.signedDate) g.signedDate = _sd; }
     const cu = (STATE.customers || []).find(x => x.company === company);
     if (cu) { const cc = (cu.contracts || []).find(x => x.contractNo === contractNo); if (cc) { cc.status = newStatus; if (isNew && !cc.signedDate) cc.signedDate = _sd; } }
-    showToast(`✅ ${isPaid ? '成交' : '签单'} · ${r.followupRemindersCleared || 0} 提醒/${r.tasksClosed || 0} 任务已清`, 'success');
+    showToast(`✅ ${isPaid ? 'Closed / Paid' : 'Signed'} · ${r.followupRemindersCleared || 0} reminders / ${r.tasksClosed || 0} tasks cleared`, 'success');   // v2.70: English
     await maybeMarkSiblingsLost_(contractNo, company);
     await refreshAfterChange(company);
     try { renderTarget(); } catch (_e) {}
@@ -5669,7 +5715,8 @@ async function batchSetNextFollowup(days) {
       else fail++;
     } catch (e) { fail++; }
   }
-  showToast(`✅ Done ${ok}${fail ? (' · ' + fail + ' failed') : ''} — next follow-up ${fmtDate(nextDate)}`, 'success');
+  if (fail) showToast(`⚠ ${ok} saved, ${fail} failed — next follow-up ${fmtDate(nextDate)}`, 'error', 6000);   // v2.70: was a green "Done" even with failures
+  else showToast(`✅ Done ${ok}${fail ? (' · ' + fail + ' failed') : ''} — next follow-up ${fmtDate(nextDate)}`, 'success');
   renderPack();
 }
 
@@ -6199,8 +6246,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Connection test
   if (STATE.appsScriptUrl) {
-    const ok = await testConnection();
-    if (ok) { await refreshData(); try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(e){} }
+    // v2.70: the connection check no longer holds the data back — both start together; a failed check still shows "Not connected" + the setup banner
+    const [ok] = await Promise.all([testConnection(), refreshData()]);
+    if (ok) { try { if (_tabActive('tab-snapshot')) renderSnapshot(); } catch(e){} }
   } else {
     $('setup-banner').style.display = 'flex';
     $('conn-status').innerHTML = '⚠ Not configured';
