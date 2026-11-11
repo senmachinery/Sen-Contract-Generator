@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Sen Today v1.1</title>
+<title>Sen Today v1.2</title>
 <meta name="theme-color" content="#111111">
 <link rel="apple-touch-icon" href="icon-crm-180.png">
 <link rel="icon" href="icon-crm-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<!-- Sen Today v1.1: CRM links now open crm-c.html (C suite). v1.0 — standalone neo-brutalist home page (direction C). Read-only.
+<!-- Sen Today v1.2 (2026-11-11, with CRM v2.72): (1) "Signed" = the CRM Target tab's count exactly — new target machines MARKED signed this year; the old extra rule (not marked, but a won status and RM200k or more) is gone. (2) contract rows are read the way the CRM reads them: a time stamp becomes Malaysia's date, a duplicate contract number keeps the newest row, "this year" for Signed is Malaysia's year. The Quotes vs won chart keeps the Funnel's rule (unchanged). (3) the ≈USD figures use the same saved daily exchange rate as the CRM (localStorage sen_fx_rm, fetched once a day from open.er-api.com; never fetched → the old fixed table).
+     v1.1: CRM links now open crm-c.html (C suite). v1.0 — standalone neo-brutalist home page (direction C). Read-only.
      Uses the SAME backend URL + access token as crm.html (localStorage keys sen_crm_apps_script_url / sen_api_token,
      same origin on GitHub Pages). Calls only crm_getAllContracts, customerDB, crm_getFollowups. -->
 <style>
@@ -166,9 +167,54 @@ function targetModel(t){
   return null;
 }
 const OPEN = ['Quotation Sent', 'Following Up', 'Negotiating'];
-const WON = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)', 'Closed (Won)'];
-const RM_RATE = { USD:4.7, SGD:3.5, EUR:5.1, RMB:0.65, CNY:0.65, MYR:1, RM:1, IDR:0.0003 };  // crm.html _toRM rates + IDR
-function toUSD(amt, cur){ cur = String(cur || 'USD').trim().toUpperCase(); return (cur in RM_RATE) ? amt * RM_RATE[cur] / 4.7 : null; }
+const WON = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)', 'Closed (Won)'];   // the Funnel's list (crm.html FNL_WON)
+// v1.2: dates as crm.html v2.71 reads them — a time stamp with a zone ("2026-12-31T16:00:00.000Z") is Malaysia's date (1 Jan); anything else is left as it is
+function klISO_(d){ try { const p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d).forEach(x => { p[x.type] = x.value; }); return (p.year && p.month && p.day) ? p.year + '-' + p.month + '-' + p.day : null; } catch(e){ return null; } }
+function deviceISO_(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function normDate_(v){
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(v)) return v;
+  const d = new Date(v); if (isNaN(d)) return v;
+  const zoned = /\d:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}:?\d{2})$/i.test(v.trim()) || /\b(?:GMT|UTC)\b/i.test(v);
+  return zoned ? (klISO_(d) || deviceISO_(d)) : deviceISO_(d);
+}
+const RM_RATE = { USD:4.7, SGD:3.5, EUR:5.1, RMB:0.65, CNY:0.65, MYR:1, RM:1, IDR:0.0003 };  // crm.html _toRM rates + IDR — used when no live rate was ever saved
+// v1.2: the same saved daily rates as crm.html v2.72 (same key, same checks, same fetch) so both pages show the same numbers
+const FX_STORE_KEY = 'sen_fx_rm';
+let _FX_ = null;   // { day: 'YYYY-MM-DD' (Malaysia date of the fetch), rates: { USD: 1, MYR: 4.06, … } (1 USD = X) }; null = RM_RATE
+function klDay_(){ const d = new Date(); return klISO_(d) || deviceISO_(d); }
+function fxValid_(o){ const m = o && o.rates && Number(o.rates.MYR); return !!(o && /^\d{4}-\d{2}-\d{2}$/.test(String(o.day)) && isFinite(m) && m > 2 && m < 10); }
+function fxPick_(cur, builtin){
+  if (!_FX_) return builtin;
+  cur = (cur === 'RM') ? 'MYR' : (cur === 'RMB') ? 'CNY' : cur;
+  const u = Number(_FX_.rates[cur]);
+  const live = (isFinite(u) && u > 0) ? Number(_FX_.rates.MYR) / u : 0;
+  return (live > builtin / 2 && live < builtin * 2) ? live : builtin;
+}
+function fxNote_(){
+  if (!_FX_) return 'fallback rates (USD 4.70)';
+  return (_FX_.day === klDay_() ? "today's rate" : 'last saved rate') + ' (USD ' + fxPick_('USD', 4.7).toFixed(2) + ' · ' + _FX_.day + ')';
+}
+function fxInit_(){
+  try { const o = JSON.parse(lsGet(FX_STORE_KEY) || 'null'); if (fxValid_(o)) _FX_ = o; } catch(e){}
+  fxFetch_();   // not awaited — the page never waits for the rate
+}
+async function fxFetch_(){
+  const day = klDay_();
+  if (_FX_ && _FX_.day === day) return;
+  let d = null;
+  try {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 3000);
+    try { const r = await fetch('https://open.er-api.com/v6/latest/USD', { signal: ac.signal }); d = await r.json(); }
+    finally { clearTimeout(tm); }
+  } catch(e){ return; }
+  const o = { day: day, rates: d && d.rates };
+  if (!fxValid_(o)) return;
+  _FX_ = o;
+  try { localStorage.setItem(FX_STORE_KEY, JSON.stringify(o)); } catch(e){}
+  try { if (_raw) { window.__today = compute(_raw[0], _raw[1], _raw[2]); render(window.__today); } } catch(e){}   // data already on screen → redo once
+}
+let _raw = null;   // the last loaded backend answers
+function toUSD(amt, cur){ cur = String(cur || 'USD').trim().toUpperCase(); return (cur in RM_RATE) ? amt * fxPick_(cur, RM_RATE[cur]) / fxPick_('USD', 4.7) : null; }
 const REP_ALIASES = { 'max':'Max', 'max (you)':'Max', 'mr. goh':'Max', 'mr goh':'Max', 'max goh':'Max' };
 const repCanon = s => { const k = String(s || '').trim().toLowerCase(); return REP_ALIASES[k] || String(s || '').trim(); };
 // No-chase: vault _系统/不催名单.md (hardcoded) + Citra Label (boss handles) + crm.html Funnel hidden list on this browser
@@ -207,17 +253,27 @@ function compute(cRes, custRes, fuRes){
   const custs = (custRes && custRes.customers) || [];
   const fus = (fuRes && fuRes.followups) || [];
   const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()), Y = today.getFullYear();
-  // normalise + de-dup by contractNo (last row wins, carry salesRep) — same as crm.html refreshData
-  const seen = {}, blanks = [];
+  // normalise + de-dup by contractNo — same as crm.html v2.71 refreshData: the NEWEST row is kept (later savedAt, else later date,
+  // else the later row), salesRep carried over; date / signedDate time stamps become Malaysia's date
+  const seen = {}, blanks = [], savedAt = new WeakMap();
+  const newer = (c, k) => {
+    const t = x => { const ms = savedAt.has(x) ? Date.parse(savedAt.get(x)) : NaN; return isNaN(ms) ? null : ms; };
+    const a = t(c), b = t(k); if (a !== null && b !== null && a !== b) return a > b;
+    const da = localDate(c.date), db = localDate(k.date); if (da && db && +da !== +db) return da > db;
+    return true;
+  };
   raw.forEach(r => {
-    const c = { contractNo: r.contractNo || '', date: r.date || '', company: (r.company || '').trim(), machine: r.machineTitle || r.machine || '',
+    const c = { contractNo: r.contractNo || '', date: normDate_(r.date || ''), company: (r.company || '').trim(), machine: r.machineTitle || r.machine || '',
       currency: r.currency || 'USD', amount: parseFloat(r.amount) || 0, status: r.status || 'Quotation Sent',
-      salesRep: (s => { s = (s || '').trim(); return /^https?:|drive\.google/i.test(s) ? '' : s; })(r.salesRep), signedDate: r.signedDate || '' };
+      salesRep: (s => { s = (s || '').trim(); return /^https?:|drive\.google/i.test(s) ? '' : s; })(r.salesRep), signedDate: normDate_(r.signedDate || '') };
+    if (r.savedAt) savedAt.set(c, r.savedAt);
     if (!c.company) return;
     const k = c.contractNo.trim();
     if (!k) { blanks.push(c); return; }
-    if (seen[k] && seen[k].salesRep && !c.salesRep) c.salesRep = seen[k].salesRep;
-    seen[k] = c;
+    const p = seen[k];
+    if (!p) { seen[k] = c; return; }
+    if (newer(c, p)) { if (p.salesRep && !c.salesRep) c.salesRep = p.salesRep; seen[k] = c; }
+    else if (c.salesRep && !p.salesRep) p.salesRep = c.salesRep;
   });
   const C = Object.values(seen).concat(blanks);
   C.forEach(c => { c.d = localDate(c.date); });
@@ -226,15 +282,12 @@ function compute(cRes, custRes, fuRes){
   const rep = c => repCanon(c.salesRep || defRep[c.company.toLowerCase()] || '');
   const nc = noChaseSet();
 
-  // 1) Signed this year — new target machines: marked signed (Target tab), else won status + ≥ RM200k (signedDate is empty today)
-  const signed = [], keys = new Set();
+  // 1) Signed this year — exactly the CRM Target tab's count: new target machines MARKED signed this year, one per mark.
+  //    v1.2: the extra rule "not marked, but a won status and ≥ RM200k" is gone (it made this page disagree with the Target tab).
+  const signed = [], YKL = +klDay_().slice(0, 4);   // Malaysia's year, as the Target tab
   C.forEach(c => {
     const m = targetModel(c.machine); if (!m) return;
-    if (c.signedDate) { const y = String(c.signedDate).match(/(\d{4})/); if (y && +y[1] === Y) signed.push({ co: c.company, m }); return; }
-    const u = toUSD(c.amount, c.currency) || 0;
-    if (WON.includes(c.status) && c.d && c.d.getFullYear() === Y && u * 4.7 >= 200000) {
-      const k = c.company.toLowerCase() + '|' + m; if (!keys.has(k)) { keys.add(k); signed.push({ co: c.company, m }); }
-    }
+    if (c.signedDate) { const y = String(c.signedDate).match(/(\d{4})/); if (y && +y[1] === YKL) signed.push({ co: c.company, m }); }
   });
 
   // 2) Last touch per customer = latest logged follow-up (not in the future)
@@ -333,7 +386,7 @@ function render(D){
 </section>
 <section class="tiles">${tiles.map((t, i) => `<a class="b tile anim hov" href="crm-c.html" style="background:${TC[i]};animation-delay:${.6 + i * .06}s"><div class="ic"><svg viewBox="0 0 24 24">${IC[t[0]]}</svg></div><b>${t[0]}</b><span>${esc(t[1])}</span></a>`).join('')}</section>`;
   const t = new Date();
-  $('foot').innerHTML = `Live CRM data · updated ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · Signed = new target machines (marked signed, or won ≥ RM200k this year) · Pipeline = Max's open quotes, last 12 months, NEHA LABEL / Citra Label excluded · Sen Today v1.0`;
+  $('foot').innerHTML = `Live CRM data · updated ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · Signed = new target machines marked signed this year (same as the CRM Target tab) · Pipeline = Max's open quotes, last 12 months, NEHA LABEL / Citra Label excluded · ≈USD at ${esc(fxNote_())} · Sen Today v1.2`;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(() => {
     document.querySelectorAll('[data-n]').forEach(el => count(el, reduce));
@@ -359,6 +412,7 @@ async function load(){
       apiGet('crm_getFollowups').catch(() => ({ followups: [] }))
     ]);
     if (!c || !(c.contracts || c.records)) throw new Error((c && c.error) || 'Bad response from CRM backend');
+    _raw = [c, cu, fu];
     window.__today = compute(c, cu, fu);
     render(window.__today);
   } catch (e) {
@@ -367,5 +421,6 @@ async function load(){
   } finally { _loading = false; $('refresh').disabled = false; }
 }
 $('hdate').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase().replace(',', '');
+fxInit_();   // v1.2
 load();
 </script></body></html>

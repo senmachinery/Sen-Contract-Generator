@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator C v1.8 (base v13.31)</title>
+<title>Sen Labels — Contract Generator C v1.9 (base v13.32)</title>
+<!-- v13.32: NEW (2026-11-11) — "No deposit (0%)" tick box beside Deposit % (state.depositZero, default off). Ticked: the contract prints no deposit line — "Full Payment" followed by the Balance Payment Label exactly as typed (nothing is added when that box is empty), or Trade-In + "Balance Payment" when there is a trade-in — and Term Of Payment says the same ("Full Payment <label>."); the price card shows Deposit 0; an existing instalment schedule is worked out again on the whole amount (paper row and Term: "Full Amount Payable by Installment"); the default "…along with the required deposit. Once paid, the deposit is non-refundable…" remark is switched to the no-deposit wording; Excel / Word follow. Unticking puts all of it back. The Deposit % and fixed-amount boxes are locked while it is ticked. ALSO FIXED: a contract opened from the Library now gets its instalment tick box / options / rows back in the form (it used to lose the schedule on the first edit and save installmentEnabled:false). Not ticked: everything is exactly as before — including old contracts whose saved deposit % is 0 or blank, which still print 30% as they always did. -->
 <!-- v13.31: (1) xlsx-js-style 1.2.0 and pdf.js 3.11.174 are no longer loaded on every page open — they load only when Export Excel / PDF import is used, from the same pinned URLs with a Subresource Integrity hash (sha384) + crossorigin; pdf.js runs with isEvalSupported:false (CVE-2024-4367 mitigation; its worker is fetched by pdf.js itself and stays version-pinned); (2) Settings: the Access Token field is hidden (Show / Hide button) and the Web App URL is only saved when it is a script.google.com/macros/s/<id>/exec address (or the Workspace /a/macros/<domain>/s/<id>/exec form) — the token injector uses the same strict check; an already saved URL is kept; (3) the last Chinese UI text (image delete confirm + error) is now English; (4) a print / export whose background save fails or cannot be confirmed now shows "Not saved to cloud — use Save Record" next to Save Record (no message on success, none for a preview tab or a loaded-but-unedited contract); (5) the Sheets badge shows a real check mark instead of the literal text "&amp;#10003;". An existing contract renders identically. Frontend-only. -->
 <!-- v13.30: FIX (audit 2026-11-11) — (1) today's date now comes from the device's local date, not UTC: before 8 am Malaysia time a new contract, a duplicate, the 3-day follow-up and a date read from an imported PDF were one day early; (2) Save Record refuses a contract number that has no running number yet (ends with "-"), and a print / export does not silently save one; (3) the top-bar auto-save badge reads "Draft saved (this device)" instead of "Saved" (it never meant saved to the cloud). An existing contract renders identically. Frontend-only. -->
 <!-- v13.29: SECURITY FIX (audit 2026-11-11) — (1) the ?preview error page escaped neither the contract number from the URL nor the error text (a crafted link could run script and read the saved token); (2) History / Library rows: the contract number inside onclick is now escaped for JS and HTML (was single-quote only); (3) the signed-PDF link only accepts an https URL and is escaped; (4) values that come from a saved contract are escaped where they were not: image addresses (http/https/data:image only), discount label, port in the Come With block, instalment label / date / amount inputs, spec colour buttons (red / blue / green only), optional-item price, parts quantity, and the machine names in the all-machines total box. Normal contract numbers and links render identically. Frontend-only. -->
@@ -792,7 +793,7 @@ body.gx .modal .btn-primary{background:var(--ink)}
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.8 · base v13.31</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span class="gx-ver" style="font-size:10px;opacity:.6;font-weight:400">C v1.9 · base v13.32</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -1105,6 +1106,7 @@ body.gx .modal .btn-primary{background:var(--ink)}
       <div class="field-group">
         <label>Deposit %</label>
         <input type="number" id="f-deposit-pct" value="30" min="0" max="100" oninput="onDepositPctInput();calcPrice();updatePreview()">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none;font-size:12px;font-weight:400;margin:5px 0 0" title="Zero deposit: the contract prints no deposit line and the whole amount is due before delivery (or as the balance label says). Typing 0 in the box above is NOT the same — an empty or 0 deposit % prints 30%."><input type="checkbox" id="f-deposit-zero" style="width:auto;margin:0" onchange="onDepositZeroToggle(this.checked)"> No deposit (0%)</label>
       </div>
       <div class="field-group">
         <label>OR Deposit Amount (fixed)</label>
@@ -1574,7 +1576,7 @@ let state = {
   company:'', addr:'', tel:'', email:'', attn:'', port:'',
   currency:'USD',
   rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
-  depositPct:30, depositAmt:0, payCond:'30/70',
+  depositPct:30, depositAmt:0, depositZero:false, payCond:'30/70',
   tradeinDesc:'', tradeinValue:0,
   installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
   installmentFullAmount:false, installmentExactSplit:false,
@@ -2043,7 +2045,7 @@ function saveCurrentMachineToState() {
   state.rateMYR    = n('f-rate-myr') || 0.618;
   state.rateSGD    = n('f-rate-sgd') || 1.35;
   state.rateIDR    = n('f-rate-idr') || 16200;
-  state.depositPct   = n('f-deposit-pct') || 30;
+  if (!depZero_()) state.depositPct   = n('f-deposit-pct') || 30;   // v13.32: while "No deposit" is ticked the locked box shows 0 — keep the earlier %
   state.depositAmt   = n('f-deposit-amt') || 0;
   state.payCond      = g('f-pay-cond');
   state.tradeinDesc  = g('f-tradein-desc');
@@ -2725,7 +2727,7 @@ function calcPriceForMachine(m) {
     }
     const discAmt = (m.discountPct||0) > 0 ? total * (m.discountPct/100) : (m.discountAmt||0);
     const sp = total - discAmt;
-    const dep = sp * ((state.depositPct||30)/100);
+    const dep = sp * (depPct_()/100);   // v13.32: depPct_() = state.depositPct||30, or 0 when "No deposit" is ticked
     return { sellPrice: sp, grossPrice: total, discountAmt: discAmt, costInCurr: 0, actualMargin: 0, deposit: dep, balance: sp - dep };
   }
   // For machines with itemized cwItems, sellPrice = unitPrice + cwItems total
@@ -2739,7 +2741,7 @@ function calcPriceForMachine(m) {
   const gross = hasItemizedCw ? (baseGross + cwTotal) : baseGross;
   const discAmt = (m.discountPct||0) > 0 ? gross * ((m.discountPct||0)/100) : (m.discountAmt||0);
   const sp = Math.max(0, gross - discAmt);
-  const dep = sp * ((state.depositPct||30)/100);
+  const dep = sp * (depPct_()/100);   // v13.32
   return { sellPrice: sp, grossPrice: gross, discountAmt: discAmt, costInCurr: 0, actualMargin: 0, deposit: dep, balance: sp - dep };
 }
 
@@ -2859,6 +2861,7 @@ function onPayCondChange(val) {
     const amtField = document.getElementById('f-deposit-amt');
     if (amtField) { amtField.value = ''; state.depositAmt = 0; }
   }
+  if (depZero_()) depZeroSyncUI_();   // v13.32: "No deposit" stays ticked — the % box goes back to 0 / locked
   updatePreview();
 }
 
@@ -2880,8 +2883,54 @@ function onDepositPctInput() {
   if (pctField) pctField.style.opacity = '1';
 }
 
+// v13.32: "No deposit (0%)". ONLY the tick box sets it (state.depositZero === true). A saved depositPct of 0 / '' / undefined
+// is not zero deposit: those contracts have always printed 30% and keep doing so.
+function depZero_() { return state.depositZero === true; }
+function depPct_() { return depZero_() ? 0 : (state.depositPct || 30); }
+// what follows "Full Payment" / "Balance Payment" on a no-deposit contract: the Balance Payment Label exactly as typed — nothing is added when it is empty
+function depZeroLbl_() { const l = String(state.balanceLabel || '').trim(); return l ? ' ' + l : ''; }
+function depZeroInst_() { return !!(state.installmentEnabled && state.installmentRows && state.installmentRows.length); }
+// the default binding remark asks for a deposit — its no-deposit twin (the C page uses the same pair for "Full payment")
+const DEP_BIND_   = '(quoting our Sales Contract number), along with the required deposit. Once paid, the deposit is non-refundable under all circumstances.';
+const NODEP_BIND_ = '(quoting our Sales Contract number). Once paid, all payments are non-refundable under all circumstances.';
+// swaps that sentence in the remarks (only the untouched default wording matches); true = something changed
+function depZeroRemark_(noDep) {
+  const from = noDep ? DEP_BIND_ : NODEP_BIND_, to = noDep ? NODEP_BIND_ : DEP_BIND_;
+  let changed = false;
+  if (Array.isArray(state.remarkItems)) state.remarkItems = state.remarkItems.map(r => { if (typeof r === 'string' && r.indexOf(from) !== -1) { changed = true; return r.split(from).join(to); } return r; });
+  if (typeof state.remarks === 'string' && state.remarks.indexOf(from) !== -1) { state.remarks = state.remarks.split(from).join(to); const rm = document.getElementById('f-remarks'); if (rm) rm.value = state.remarks; changed = true; }
+  if (changed) { try { renderRemarkItems(); } catch (e) {} }
+  return changed;
+}
+let _dzSwap = null;   // what ticking did to the remark, for this contract and this payment condition (not saved)
+function onDepositZeroToggle(on) {
+  try { saveCurrentMachineToState(); } catch (e) {}   // form → state first (as every print / save does), so the instalment tick box and a just-typed % are known
+  state.depositZero = !!on;
+  if (on) {
+    _dzSwap = { s: state, pc: state.payCond, did: depZeroRemark_(true) };
+  } else {
+    const pct = document.getElementById('f-deposit-pct'); if (pct && state.depositPct != null) pct.value = state.depositPct;   // back to the % it had
+    // put the deposit wording back when ticking was what removed it; after a reload / a changed condition: back unless the condition is Full payment
+    const back = (_dzSwap && _dzSwap.s === state && _dzSwap.pc === state.payCond) ? _dzSwap.did : (state.payCond !== 'full');
+    if (back) depZeroRemark_(false);
+    _dzSwap = null;
+  }
+  depZeroSyncUI_();
+  calcPrice();
+  instOpt();   // an existing instalment schedule is worked out again on the new amount (no rows → just the preview)
+}
+// form <- state: tick the box and lock the two deposit inputs while it is on (state.depositPct / depositAmt keep their values)
+function depZeroSyncUI_() {
+  const on = depZero_();
+  const cb = document.getElementById('f-deposit-zero'), pct = document.getElementById('f-deposit-pct'), amt = document.getElementById('f-deposit-amt');
+  if (cb) cb.checked = on;
+  if (pct) { if (on) pct.value = 0; pct.disabled = on; }
+  if (amt) amt.disabled = on;
+}
+
 // Returns the effective deposit amount for a given total (fixed amount wins over %)
 function getDepositFor(total) {
+  if (depZero_()) return 0;   // v13.32
   if ((state.depositAmt || 0) > 0) return Math.min(state.depositAmt, total);
   return total * ((state.depositPct || 30) / 100);
 }
@@ -2934,7 +2983,7 @@ function calcPrice() {
       } else {
         html += `<div class="pc-row total"><span>Net Price</span><span class="price-tag" style="font-size:15px">${fmt(sellPrice)}</span></div>`;
       }
-      html += `<div class="pc-row deposit"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span class="price-tag">${fmt(dep)}</span></div>`;
+      html += `<div class="pc-row deposit"><span>Deposit ${depZero_()?'(0% — no deposit)':((state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)')}</span><span class="price-tag">${fmt(dep)}</span></div>`;
       html += `<div class="pc-row balance"><span>Balance</span><span class="price-tag">${fmt(bal)}</span></div>`;
       // v11.0/11.1: 最低售价(底价)提示 —— 仅售价、不碰成本。
       // 底价(USD) = 机型库 floorPrice(若机型库有设)否则 refPrice×0.90；折成当前币种(优先每日实时汇率 FX_RATES，退回粗略表)。
@@ -2981,7 +3030,7 @@ function calcPrice() {
     const grandBal = grand - grandDep;
     let rows = allPrices.map((x,i) => `<div class="at-row"><span>Machine ${i+1} (${esc(x.title)})</span><span>${fmt(x.price)}</span></div>`).join('');
     rows += `<div class="at-row at-total"><span>&#931; Grand Total</span><span>${fmt(grand)}</span></div>`;
-    rows += `<div class="at-row" style="color:#e67e00"><span>Deposit ${(state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)'}</span><span>${fmt(grandDep)}</span></div>`;
+    rows += `<div class="at-row" style="color:#e67e00"><span>Deposit ${depZero_()?'(0% — no deposit)':((state.depositAmt||0)>0?'':'('+(state.depositPct||30)+'%)')}</span><span>${fmt(grandDep)}</span></div>`;
     rows += `<div class="at-row" style="color:#2e7d32"><span>Balance</span><span>${fmt(grandBal)}</span></div>`;
     totBox.style.display = 'block';
     totBox.innerHTML = `<div style="font-weight:700;font-size:11px;color:#1a3a5c;margin-bottom:6px">ALL MACHINES TOTAL</div>${rows}`;
@@ -3926,7 +3975,7 @@ function updatePreview() {
     state.attn       = g('f-attn');
     state.port       = g('f-port');
     state.currency   = g('f-currency') || 'USD';
-    state.depositPct = parseFloat(g('f-deposit-pct')) || 30;
+    if (!depZero_()) state.depositPct = parseFloat(g('f-deposit-pct')) || 30;   // v13.32
     state.payCond      = g('f-pay-cond');
     state.tradeinDesc  = g('f-tradein-desc');
     state.tradeinValue = parseFloat(document.getElementById('f-tradein-value')?.value)||0;
@@ -4072,16 +4121,16 @@ function buildContractHTML() {
     const balLbl = state.balanceLabel || 'Before Delivery';
     const depLbl = (state.depositAmt||0) > 0 ? 'Deposit' : ((state.depositPct||30) + '% Deposit');
     let payRows = '';
-    if (state.installmentEnabled && state.installmentFullAmount && state.installmentRows && state.installmentRows.length) {
+    if (state.installmentEnabled && (state.installmentFullAmount || depZero_()) && state.installmentRows && state.installmentRows.length) {   // v13.32: "No deposit" + instalments = the same single row as full-amount instalments
       payRows = `<tr><td colspan="4"><strong>~ Full Amount Payable by Installment (see schedule below)</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(instScheduleTotal())}</td></tr>`;
     } else if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
       payRows = buildCustomPayRowsHTML(totalAll, fmt);
-    } else if (state.payCond !== 'full') {
+    } else if (state.payCond !== 'full' && !depZero_()) {   // v13.32: "No deposit" → the Full Payment row below
       payRows = `
         <tr><td colspan="4"><strong>~ ${depLbl} Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(dep)}</td></tr>
         <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(bal)}</td></tr>`;
     } else {
-      payRows = `<tr><td colspan="4"><strong>~ Full Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;
+      payRows = `<tr><td colspan="4"><strong>~ Full Payment${depZero_() ? esc(depZeroLbl_()) : ' ' + esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;   // v13.32: "No deposit" prints the label as typed
     }
     const telLine = state.tel||state.fax ? `<div><span class="cp-label">Tel:</span> ${esc(state.tel)||''}${state.fax?` &nbsp;&#124;&nbsp; <span class="cp-label">Fax:</span> ${esc(state.fax)}`:''}` + `</div>` : '';
     const remarksHtml = state.remarks ? `<p style="font-size:9.5pt;color:#555;font-style:italic;margin:2mm 0;white-space:pre-wrap">${renderRich(state.remarks)}</p>` : '';
@@ -4141,7 +4190,7 @@ function buildContractHTML() {
     })()}
   <table class="cp-terms-table">
     <tr><td>Price Validity</td><td>: ${esc(state.validity)}</td></tr>
-    <tr><td>Term Of Payment</td><td>: ${esc(state.payTermsText) || buildPayCondText()}</td></tr>
+    <tr><td>Term Of Payment</td><td>: ${esc(state.payTermsText) || (depZero_() ? esc(buildPayCondText()) : buildPayCondText())}</td></tr>
     <tr><td>Date of Delivery</td><td>: ${esc(state.delivery)}</td></tr>
     <tr><td>Warranty</td><td>: ${esc(state.warrantyOverride) || ('One (1) Year from date of acceptance / delivery.')}</td></tr>
   </table>
@@ -4247,10 +4296,19 @@ function buildContractHTML() {
 
   let payRows = '';
   // Use custom pay rows if defined
-  if (state.installmentEnabled && state.installmentFullAmount && state.installmentRows && state.installmentRows.length) {
+  if (state.installmentEnabled && (state.installmentFullAmount || depZero_()) && state.installmentRows && state.installmentRows.length) {   // v13.32: "No deposit" + instalments = the same single row as full-amount instalments
     payRows = `<tr><td colspan="4"><strong>~ Full Amount Payable by Installment (see schedule below)</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(instScheduleTotal())}</td></tr>`;
   } else if (Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label)) {
     payRows = buildCustomPayRowsHTML(totalPrice, fmt);
+  } else if (depZero_()) {
+    // v13.32: "No deposit (0%)": no deposit line. With a trade-in → deduction, then balance; otherwise one Full Payment row. The label is the Balance Payment Label as typed.
+    if (tradeinAmt > 0) {
+      payRows = `
+    <tr><td colspan="4"><strong>~ Trade-In : ${esc(state.tradeinDesc||'Trade-In Machine')}</strong></td><td style="text-align:right;font-weight:700;color:#7b3f00">- ${fmt(tradeinAmt)}</td></tr>
+    <tr><td colspan="4"><strong>~ Balance Payment${esc(depZeroLbl_())}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(totalPrice - tradeinAmt)}</td></tr>`;
+    } else {
+      payRows = `<tr><td colspan="4"><strong>~ Full Payment${esc(depZeroLbl_())}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalPrice)}</td></tr>`;
+    }
   } else if (state.payCond === 'tradein') {
     // Trade-In Offset: no deposit, just trade-in deduction then balance
     if (tradeinAmt > 0) {
@@ -4343,7 +4401,7 @@ function buildContractHTML() {
 
   <table class="cp-terms-table">
     <tr><td>Price Validity</td><td>: ${esc(state.validity)}</td></tr>
-    <tr><td>Term Of Payment</td><td>: ${esc(state.payTermsText) || buildPayCondText()}</td></tr>
+    <tr><td>Term Of Payment</td><td>: ${esc(state.payTermsText) || (depZero_() ? esc(buildPayCondText()) : buildPayCondText())}</td></tr>
     <tr><td>Date of Delivery</td><td>: ${esc(state.delivery)}</td></tr>
     <tr><td>Warranty</td><td>: ${esc(state.warrantyOverride) || ('One (1) Year from date of acceptance / delivery.')}</td></tr>
   </table>
@@ -4706,6 +4764,12 @@ function buildBankDetails() {
 function buildPayCondText() {
   const p = state.payCond;
   const dep = state.depositPct || 30;
+  // v13.32: "No deposit (0%)" — a "% Deposit" sentence would contradict the payment rows
+  // Custom payment rows speak for themselves (the old sentence stays; the C page's export check points at it).
+  if (depZero_() && (p==='20/80' || p==='30/70' || p==='50/50' || p==='full' || p==='tradein') && !(Array.isArray(state.customPayRows) && state.customPayRows.some(r => r.label))) {
+    if (depZeroInst_()) return 'Full Amount Payable by Installment.';
+    return ((state.tradeinDesc && state.tradeinValue > 0) ? 'Trade-In offset applied. Balance Payment' : 'Full Payment') + depZeroLbl_().replace(/[.\s]+$/, '') + '.';
+  }
   if (p==='20/80') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
   if (p==='30/70') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
   if (p==='50/50') return `${dep}% Deposit Upon Order Confirmed, Balance Before Delivery.`;
@@ -5128,6 +5192,7 @@ function normalizeState(s) {
   // ── Fix missing state fields ──────────────────────────────────────────────
   if (!s.currency)    s.currency    = 'USD';
   if (!s.depositPct)  s.depositPct  = 30;
+  s.depositZero = (s.depositZero === true);   // v13.32: "No deposit (0%)" — off unless the tick box saved it (a saved 0% is NOT zero deposit)
   if (!s.payCond)     s.payCond     = '30/70';
   if (!s.validity)    s.validity    = 'One (1) Month only';
   if (!s.status)      s.status      = 'Quotation Sent';
@@ -5446,7 +5511,7 @@ function newContract() {
     admin: document.getElementById('f-admin').value || 'NR',
     company:'', addr:'', tel:'', email:'', attn:'', port:'',
     currency:'USD', rateUSD:0.1385, rateMYR:0.618, rateSGD:1.35, rateIDR:16200,
-    depositPct:30, depositAmt:0, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
+    depositPct:30, depositAmt:0, depositZero:false, payCond:'30/70', tradeinDesc:'', tradeinValue:0,
     installmentEnabled:false, installmentCount:3, installmentFreqMonths:12,
     installmentFullAmount:false, installmentExactSplit:false,
     installmentRate:0, installmentStartDate:'', installmentRows:[],
@@ -5476,7 +5541,7 @@ function newContract() {
   renderRemarkItems();
   document.getElementById('f-rate-usd').value='0.1385'; document.getElementById('f-rate-myr').value='0.618';
   document.getElementById('f-rate-sgd').value='1.35'; document.getElementById('f-rate-idr').value='16200';
-  document.getElementById('f-deposit-pct').value='30'; document.getElementById('f-delivery').value='To be determined upon confirmation and/or full payment.';
+  document.getElementById('f-deposit-pct').value='30'; depZeroSyncUI_(); document.getElementById('f-delivery').value='To be determined upon confirmation and/or full payment.';
   document.getElementById('f-tradein-desc').value=''; document.getElementById('f-tradein-value').value='';
   // v10.99: 把以前漏清的合同级 DOM 字段也清回默认，避免上一单残留串到新合同
   document.getElementById('f-contract-no').value='';   // 清旧合同号→genContractNo 重填前缀(离线也不残留)、连网时 fetchNextNo 再补序号
@@ -5599,7 +5664,7 @@ function loadStateJSON(input) {
       sv('f-rate-myr',     state.rateMYR);
       sv('f-rate-sgd',     state.rateSGD);
       sv('f-rate-idr',     state.rateIDR);
-      sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||'');
+      sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_();   // v13.32
       sv('f-pay-cond',     state.payCond);
       sv('f-tradein-desc', state.tradeinDesc);
       sv('f-tradein-value',state.tradeinValue);
@@ -5706,7 +5771,7 @@ function loadFromPastedJSON() {
     sv('f-rate-myr',     state.rateMYR);
     sv('f-rate-sgd',     state.rateSGD);
     sv('f-rate-idr',     state.rateIDR);
-    sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||'');
+    sv('f-deposit-pct',  state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_();   // v13.32
     sv('f-pay-cond',     state.payCond);
     sv('f-tradein-desc', state.tradeinDesc);
     sv('f-tradein-value',state.tradeinValue);
@@ -5901,8 +5966,15 @@ async function loadFromLibrary(contractNo, opts) {
     sv('f-fax',state.fax||'');
     sv('f-email',state.email); sv('f-attn',state.attn); sv('f-port',state.port);
     sv('f-currency',state.currency); sv('f-rate-usd',state.rateUSD); sv('f-rate-myr',state.rateMYR);
-    sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct); sv('f-deposit-amt',state.depositAmt||'');
+    sv('f-rate-sgd',state.rateSGD); sv('f-rate-idr',state.rateIDR); sv('f-deposit-pct',state.depositPct); sv('f-deposit-amt',state.depositAmt||''); depZeroSyncUI_();   // v13.32
     sv('f-pay-cond',state.payCond); sv('f-tradein-desc',state.tradeinDesc); sv('f-tradein-value',state.tradeinValue);
+    // v13.32 FIX: the instalment tick box / options / rows were not put back into the form here, so the first edit after a
+    // Library load read "not ticked" from the form, dropped the schedule from the paper and saved installmentEnabled:false.
+    { const instOn = document.getElementById('f-installment-on'); if (instOn) instOn.checked = state.installmentEnabled || false;
+      const f1=document.getElementById('f-inst-full'); if(f1) f1.checked=state.installmentFullAmount||false; const f2=document.getElementById('f-inst-exact'); if(f2) f2.checked=state.installmentExactSplit||false;
+      toggleInstallmentPanel();
+      sv('f-inst-count', state.installmentCount||3); sv('f-inst-freq', state.installmentFreqMonths||12); sv('f-inst-rate', state.installmentRate||0); sv('f-inst-start', state.installmentStartDate||'');
+      renderInstallmentRows(); }
     sv('f-validity',state.validity); sv('f-delivery',state.delivery);
     sv('f-balance-label',state.balanceLabel||''); sv('f-pay-terms-text',state.payTermsText||'');
     sv('f-warranty-override',state.warrantyOverride||''); sv('f-remarks',state.remarks);
@@ -6883,7 +6955,11 @@ function exportToExcel() {
 
   // ── Remark / Payment terms ────────────────────────────────────────────────
   fullRow('REMARK :', ST.secHdr);
-  if (state.payCond!=='full') {
+  if (depZero_()) {   // v13.32: "No deposit (0%)" — no deposit row; the label is the Balance Payment Label as typed
+    if (depZeroInst_()) r([c(''), c('~ Full Amount Payable by Installment'), c(''), c(''), c(fmt(instScheduleTotal()))]);
+    else if (tradeinAmt>0) { r([c(''), c(`~ Trade-In : ${state.tradeinDesc||''}`), c(''), c(''), c('- '+fmt(tradeinAmt))]); r([c(''), c('~ Balance Payment'+depZeroLbl_()), c(''), c(''), c(fmt(bal))]); }
+    else r([c(''), c('~ Full Payment'+depZeroLbl_()), c(''), c(''), c(fmt(total))]);
+  } else if (state.payCond!=='full') {
     r([c(''), c(`~ ${(state.depositAmt||0)>0?'Deposit':((state.depositPct||30)+'% Deposit')} Upon Order Confirmed`), c(''), c(''), c(fmt(dep))]);
     if (tradeinAmt>0) r([c(''), c(`~ Trade-In : ${state.tradeinDesc||''}`), c(''), c(''), c('- '+fmt(tradeinAmt))]);
     r([c(''), c('~ Balance Payment Before Delivery'), c(''), c(''), c(fmt(bal))]);
@@ -7173,7 +7249,16 @@ function exportToWord() {
   // ── 6. REMARK ────────────────────────────────────────────────────
   body += `<p style="${B}font-weight:bold;margin:4pt 0 2pt 0">REMARK :</p>`;
   body += `<table width="100%" cellpadding="2" cellspacing="0" border="0" style="margin-bottom:4pt">`;
-  if (state.payCond !== 'full') {
+  if (depZero_()) {   // v13.32: "No deposit (0%)" — no deposit row; the label is the Balance Payment Label as typed
+    const _dzRow = (lbl, amt, col) => `
+  <tr>
+    <td style="${B}padding:2pt 6pt">${esc(lbl)}</td>
+    <td style="${B}font-weight:bold;${col}text-align:right;padding:2pt 0;white-space:nowrap">${amt}</td>
+  </tr>`;
+    if (depZeroInst_()) body += _dzRow('~ Full Amount Payable by Installment', fmt(instScheduleTotal()), `color:${CG};`);
+    else if (wordTradein > 0) body += _dzRow('~ Trade-In : ' + (state.tradeinDesc||''), '- ' + fmt(wordTradein), 'color:#7b3f00;') + _dzRow('~ Balance Payment' + depZeroLbl_(), fmt(totalBal), `color:${CG};`);
+    else body += _dzRow('~ Full Payment' + depZeroLbl_(), fmt(totalPrice), '');
+  } else if (state.payCond !== 'full') {
     body += `
   <tr>
     <td style="${B}padding:2pt 6pt">~ ${(state.depositAmt||0)>0?'Deposit':((state.depositPct||30)+'% Deposit')} Upon Order Confirmed</td>
@@ -7215,7 +7300,7 @@ function exportToWord() {
   </tr>
   <tr>
     <td style="${B}font-weight:bold;padding:2pt 8pt 2pt 0">Term Of Payment</td>
-    <td style="${B}padding:2pt 4pt">: ${buildPayCondText()}</td>
+    <td style="${B}padding:2pt 4pt">: ${depZero_() ? esc(buildPayCondText()) : buildPayCondText()}</td>
   </tr>
   <tr>
     <td style="${B}font-weight:bold;padding:2pt 8pt 2pt 0">Date of Delivery</td>
@@ -7405,7 +7490,7 @@ function restoreAutosaveDraft() {
     .forEach(k => sv('f-'+k, state[k.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] || state[k] || ''));
   sv('f-contract-no', state.contractNo); sv('f-date', state.date);
   sv('f-doctype', state.docType);   // v13.20: the loop above looks up state['doctype'] (wrong case) — restore the real Doc Type
-  sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); sv('f-pay-cond', state.payCond);
+  sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_(); sv('f-pay-cond', state.payCond);   // v13.32
   sv('f-tradein-desc', state.tradeinDesc); sv('f-tradein-value', state.tradeinValue);
   renderMachineTabs(); updateMachineLabels(); loadMachineIntoForm();
   renderCwItems(); renderRemarkItems(); updatePreview();
@@ -7461,7 +7546,7 @@ function duplicateAsNew() {
   sv('f-company', state.company); sv('f-addr', state.addr);
   sv('f-tel', state.tel); sv('f-fax', state.fax||''); sv('f-email', state.email); sv('f-attn', state.attn);
   sv('f-port', state.port); sv('f-currency', state.currency);
-  sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); sv('f-pay-cond', state.payCond);
+  sv('f-deposit-pct', state.depositPct); sv('f-deposit-amt', state.depositAmt||''); depZeroSyncUI_(); sv('f-pay-cond', state.payCond);   // v13.32
   sv('f-validity', state.validity); sv('f-delivery', state.delivery);
   sv('f-remarks', state.remarks); sv('f-notes', state.notes||'');
   genContractNo(); // try to auto-generate next number
@@ -8835,7 +8920,7 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
     if (paySel) paySel.addEventListener('change', function(){
       var s=S(); if (!s) return;
       s.payCond = paySel.value;
-      setBindingFull(paySel.value === 'full');
+      setBindingFull(paySel.value === 'full' || s.depositZero === true);   // C v1.9: "No deposit" keeps the no-deposit wording under every condition
       up();
     });
     // Deposit % typed by hand -> the condition follows. 20/30/50/100 pick their preset. Any other % keeps a
@@ -8994,10 +9079,36 @@ if (typeof document !== 'undefined' && document.addEventListener) document.addEv
       var instFull = s.installmentEnabled && s.installmentFullAmount;
       if (!custom && !instFull) {
         var pc = s.payCond, dp = Number(s.depositPct), da = Number(s.depositAmt) || 0;
-        if (pc in PRESET_PCT && da > 0) out.push({k:'pay', step:3, focus:'f-deposit-amt', t:'Payment condition vs deposit', d:'Condition says "' + ((paySel && paySel.options[paySel.selectedIndex]) ? paySel.options[paySel.selectedIndex].text : pc) + '" but a fixed deposit amount is set.'});
+        // C v1.9 (index v13.32): "No deposit (0%)" is ticked — the paper has no deposit line and reads the same under every condition, so the % / fixed-amount comparisons below do not apply.
+        if (s.depositZero === true) {}
+        else if (pc in PRESET_PCT && da > 0) out.push({k:'pay', step:3, focus:'f-deposit-amt', t:'Payment condition vs deposit', d:'Condition says "' + ((paySel && paySel.options[paySel.selectedIndex]) ? paySel.options[paySel.selectedIndex].text : pc) + '" but a fixed deposit amount is set.'});
         else if (pc === 'full' && dp !== 100) out.push({k:'pay', step:3, focus:'f-deposit-pct', t:'Payment condition vs deposit %', d:'Condition is Full payment but deposit is ' + dp + '%.'});
         else if (pc in PRESET_PCT && pc !== 'full' && (dp in PCT_PRESET) && PRESET_PCT[pc] !== dp) out.push({k:'pay', step:3, focus:'f-deposit-pct', t:'Payment condition vs deposit %', d:'Condition is ' + pc + ' but deposit is ' + dp + '%.'});
       }
+      // C v1.9: "No deposit (0%)" — wording that still talks about a deposit
+      if (s.depositZero === true) {
+        try {
+          var remTxt = (Array.isArray(s.remarkItems) ? s.remarkItems.filter(function(r){ return typeof r === 'string'; }).join(' | ') : '') + ' | ' + String(s.remarks || '');
+          var mDep = remTxt.match(/[^.|]*\bdeposit\b[^.|]*/i);
+          if (mDep) {
+            var it = {k:'pay', step:4, t:'"No deposit" but a remark mentions a deposit', d:'"No deposit (0%)" is ticked, yet a remark still says:', q:mDep[0].replace(/\[\[\/?[a-z]+\]\]/g,'').trim().slice(0, 160)};
+            if (remTxt.indexOf(BIND_DEP) !== -1) { it.fix = 'Use the no-deposit wording'; it.fixFn = function(){ setBindingFull(true); up(); }; }
+            out.push(it);
+          }
+          var termTxt = (typeof buildPayCondText === 'function') ? buildPayCondText() : '';
+          if (custom && !String(s.payTermsText || '').trim() && /deposit/i.test(termTxt)) out.push({k:'pay', step:4, focus:'f-pay-terms-text', t:'"No deposit" with custom payment rows', d:'Your own payment rows are printed, but Term Of Payment still reads "' + termTxt + '". Type the Term Of Payment text yourself, or pick another payment condition.'});
+        } catch(_){}
+      }
+      // C v1.9: the instalment schedule must add up to what is left to pay (read-only check; nothing is changed unless "Recalculate" is pressed)
+      try {
+        var iRows = Array.isArray(s.installmentRows) ? s.installmentRows : [];
+        if (s.installmentEnabled && iRows.length) {
+          var iTot = (typeof pkgAnyActive === 'function' && pkgAnyActive()) ? pkgContractTotal() : (s.machines || []).reduce(function(a, m){ return a + (calcPriceForMachine(m).sellPrice || 0); }, 0);
+          var iDue = iTot - (s.installmentFullAmount ? 0 : getDepositFor(iTot)) - (s.tradeinValue > 0 ? (Number(s.tradeinValue) || 0) : 0);
+          var iSum = iRows.reduce(function(a, r){ return a + (Number(r.total) || 0) - (Number(r.interest) || 0); }, 0);
+          if (Math.abs(iSum - iDue) > 1) out.push({k:'inst', step:3, focus:'f-inst-count', red:true, t:'Instalment schedule does not add up', d:'The instalments add up to ' + formatMoney(iSum, s.currency) + ' (before interest), but ' + formatMoney(iDue, s.currency) + ' is left to pay' + (s.depositZero === true ? ' (no deposit)' : '') + '.', fix:'Recalculate schedule', fixFn:function(){ generateInstallments(); }});
+        }
+      } catch(_){}
       (s.machines || []).forEach(function(m, i){
         if (!m) return;
         var bad = [];

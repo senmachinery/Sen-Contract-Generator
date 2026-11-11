@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — CRM C v1.5</title>
-<!-- C v1.5: crm-c.html = crm.html v2.71 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<title>Sen Labels — CRM C v1.6</title>
+<!-- C v1.6: crm-c.html = crm.html v2.72 + C-calm neo-brutalist skin (built by Tools/crm-redesign/c/build_crm_c.py; visual only). -->
+<!-- v2.72: CHANGE (2026-11-11) — (1) the rough RM figures (follow-up ranking, the "RM…" beside a customer, the Funnel's ≈USD) use today's exchange rate instead of the fixed table (USD 4.7 …): one public request a day at most (open.er-api.com, the Generator's source; nothing is sent), saved on this device and shared with today.html; no answer within 3 s / a wrong answer → the last saved rates, never fetched → the old fixed table ("fallback rates"). The page never waits for it. (2) ONE definition of won and lost for every statistic (WON_STATUSES / LOST_STATUSES / isWonDeal_ / isLostDeal_): won = Confirmed, Deposit Received, In Production, Ready to Ship, Awaiting Payment, Delivered, Closed (Paid), Closed (Won), or marked signed while the status is not Lost / Cancelled; lost = Lost, Cancelled — the status comes first, so a deal is never both. On Hold is neither (it no longer lowers the win rate). Changed numbers: Dashboard Won card / Win Rate / Won Revenue by country / machine-family Won, Today tab "Recently Won", the customer's signed amount (a quote marked signed now counts). Unchanged: the Pipeline board's columns, the 12-machine Target count, the Funnel (its own rule, as before). -->
 <!-- v2.71: FIX (2026-11-11) — (1) Settings: the browser is asked not to save / auto-fill the Access Token as a login password; (2) when the connection check fails but the full contract list loaded, the top bar shows Connected and the setup banner is hidden (a successful check, and both failing, look as before); (3) "not saved to Customer DB" now says why (the backend's reason, max 120 characters); (4) duplicate rows with the same contract number keep the NEWEST row (later savedAt, else later date) — the backend now sends newest first, so the old "keep the last" kept the oldest; (5) "today", backend timestamps, the Snapshot date line and the current year (Target, YTD, Funnel) use Malaysia's date (Asia/Kuala_Lumpur) on every device, so dates are not one day off abroad; typed and zone-less dates keep the date written; on a Malaysia-time device nothing changes. -->
 <!-- v2.70: FIX (2026-11-11) — (1) the last Chinese texts on screen (Close deal confirm + toast, Target tab supplier line) are English; (2) Settings: the Access Token box is hidden (Show / Hide) and a "Sign out on this device" button removes only the saved token; (3) dates the backend sends as ISO timestamps (contract date / signed date, follow-up date / next follow-up, task due date) are read as the local YYYY-MM-DD, so a follow-up due today is no longer counted overdue; (4) RM and MYR totals are one currency (MYR), a blank currency is USD everywhere; (5) a task tick that fails is un-ticked again, a bulk follow-up with failures says "X saved, Y failed" in red, a new customer the backend did not save is not treated as known; (6) faster first load — the connection check runs alongside the data load, and the task list and follow-ups are no longer fetched a second / third time. -->
 <!-- v2.69: FIX — the default date offered by "Mark signed" and the signed date stamped locally by Close deal now use the device's local date (localISO) instead of UTC; before 8 am Malaysia time they were one day early (on 1 January that put a deal into the previous year's target). Nothing else changed. -->
@@ -807,7 +808,7 @@ body.cx #pw-overlay{background:var(--bg)}
 <script>window.checkPW = function(){};</script>
 
 <div class="topbar">
-  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.5 · base v2.71</span></h1>
+  <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"/></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels CRM <span class="version">C v1.6 · base v2.72</span></h1>
   <div class="topbar-right">
     <span id="conn-status" class="topbar-btn" onclick="openSettings()" style="cursor:pointer" title="Open Settings (URL / Access Token)">Connecting…</span>
     <a href="generator.html" class="topbar-btn primary"><svg class="ic"><use href="#i-doc"/></svg> Open Generator</a>
@@ -1171,11 +1172,85 @@ function fmtMoney(amt, currency) {
   return currency + ' ' + (amt || 0).toLocaleString('en-US', {maximumFractionDigits: 2});
 }
 
+// v2.72: ONE definition of "won" and "lost" for every statistic in the CRM (today.html carries the same lists).
+// Won = one of these statuses, or marked signed while the status is not Lost / Cancelled. Lost = Lost / Cancelled — the status
+// comes first, so a signed deal that was later lost or cancelled counts as lost. Everything else (On Hold,
+// Quotation Sent, Following Up, Negotiating, Price List, Sales Contract …) is neither and stays out of the win rate.
+// Not driven by this (unchanged, their own rules): the Pipeline board's columns (STAGE_GROUPS), the 12-machine Target count (signed mark only) and the Funnel.
+const WON_STATUSES = ['Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment', 'Delivered', 'Closed (Paid)', 'Closed (Won)'];
+const LOST_STATUSES = ['Lost', 'Cancelled'];
+function isWonDeal_(c) { return !!c && (WON_STATUSES.includes(c.status) || (!!c.signedDate && !LOST_STATUSES.includes(c.status))); }
+function isLostDeal_(c) { return !!c && LOST_STATUSES.includes(c.status); }
+
+// v2.72: today's exchange rates for the rough RM figures. One public request per Malaysia day at most (the Generator's
+// source — mid-market rates, nothing is sent), kept in localStorage and shared with today.html. No answer / 3 s time-out /
+// wrong shape → the last saved rates stay; never fetched → the built-in numbers in _toRM / _toRMKnown ("fallback rates").
+const FX_STORE_KEY = 'sen_fx_rm';
+let _FX_ = null;   // { day: 'YYYY-MM-DD' (Malaysia date of the fetch), rates: { USD: 1, MYR: 4.06, … } (1 USD = X) }; null = built-in numbers
+function fxValid_(o) {
+  const m = o && o.rates && Number(o.rates.MYR);
+  return !!(o && /^\d{4}-\d{2}-\d{2}$/.test(String(o.day)) && isFinite(m) && m > 2 && m < 10);   // 1 USD in ringgit — anything else is not a rate table
+}
+// RM for 1 unit of `cur`: the live rate when there is a believable one (within ×2 of the built-in number), else the built-in number
+function fxPick_(cur, builtin) {
+  if (!_FX_) return builtin;
+  cur = (cur === 'RM') ? 'MYR' : (cur === 'RMB') ? 'CNY' : cur;
+  const u = Number(_FX_.rates[cur]);
+  const live = (isFinite(u) && u > 0) ? Number(_FX_.rates.MYR) / u : 0;
+  return (live > builtin / 2 && live < builtin * 2) ? live : builtin;
+}
+// the small print beside a rough RM figure: where the rate comes from and its date
+function fxNote_() {
+  if (!_FX_) return 'Rough RM at fallback rates (USD 4.70)';
+  return 'Rough RM at ' + (_FX_.day === localISO() ? "today's rate" : 'the last saved rate') + ' (USD ' + fxPick_('USD', 4.7).toFixed(2) + ' · ' + _FX_.day + ')';
+}
+function fxInit_() {
+  try { const o = JSON.parse(localStorage.getItem(FX_STORE_KEY) || 'null'); if (fxValid_(o)) _FX_ = o; } catch (e) {}
+  fxFetch_();   // not awaited — the page never waits for the rate
+}
+async function fxFetch_() {
+  const day = localISO();
+  if (_FX_ && _FX_.day === day) return;   // today's rates are already here
+  let d = null;
+  try {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 3000);
+    try { const r = await fetch('https://open.er-api.com/v6/latest/USD', { signal: ac.signal }); d = await r.json(); }
+    finally { clearTimeout(tm); }
+  } catch (e) { return; }   // offline / blocked / slow / not JSON → keep what we have
+  const o = { day: day, rates: d && d.rates };
+  if (!fxValid_(o)) return;
+  _FX_ = o;
+  try { localStorage.setItem(FX_STORE_KEY, JSON.stringify(o)); } catch (e) {}
+  try { fxRecalc_(); } catch (e) { console.warn('fxRecalc_ failed:', e); }
+}
+// the rates arrived after the data was already on screen: redo the rough RM per customer, re-sort, redraw once
+let _CUST_BASE_ = null;   // the customer objects in the order refreshData built them
+function fxRecalc_() {
+  if (!_CUST_BASE_) return;   // data not loaded yet — refreshData will use the new rates by itself
+  _CUST_BASE_.forEach(cust => { cust.openValueRM = 0; (cust.contracts || []).forEach(c => _addOpenRM_(cust, c)); });
+  STATE.customers = _custSorted_(_CUST_BASE_);
+  renderCustomerList();
+  if (_tabActive('tab-snapshot')) renderSnapshot();
+  if (_tabActive('tab-funnel')) renderFunnel();
+}
+// v2.32: 在谈(可催)金额(RM粗折算)，用于催单优先级排序+显示 | v2.68: unknown currency is left out, not counted 1:1
+function _addOpenRM_(cust, c) {
+  if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) { const _rm = _toRMKnown(c.amount, c.currency); if (_rm !== null) cust.openValueRM += _rm; }
+}
+// v2.32: 催单视角排序——逾期优先 → 在谈金额大 → 最近活动(原排序保底)
+function _custSorted_(list) {
+  return list.slice().sort((a,b) =>
+    (Number(b.overdueFollowups > 0) - Number(a.overdueFollowups > 0))
+    || ((b.openValueRM || 0) - (a.openValueRM || 0))
+    || (b.lastDate || '').localeCompare(a.lastDate || ''));
+}
+
 // v2.32: 粗略 RM 折算，仅用于催单列表的"按金额排序 + 显示"(非精确财务，粗排优先级用)
 function _toRM(amt, currency) {
   amt = (typeof amt === 'string') ? (parseFloat(amt) || 0) : (amt || 0);
   const rate = { USD: 4.7, SGD: 3.5, EUR: 5.1, RMB: 0.65, CNY: 0.65, MYR: 1 };
-  return amt * (rate[(currency || 'USD').toUpperCase()] || 1);
+  const k = (currency || 'USD').toUpperCase();
+  return amt * (rate[k] ? fxPick_(k, rate[k]) : 1);   // v2.72: today's rate when there is one (was: rate[k] || 1)
 }
 // v2.68: for the follow-up ranking figure. Same rough table plus the other currencies Sen quotes in; a currency that is
 // not in the table returns null (it used to be counted 1:1 as ringgit, so an IDR quote looked like millions of RM).
@@ -1184,8 +1259,9 @@ function _toRMKnown(amt, currency) {
   const rate = { USD: 4.7, SGD: 3.5, EUR: 5.1, RMB: 0.65, CNY: 0.65, MYR: 1, RM: 1,
                  IDR: 0.00027, JPY: 0.029, PHP: 0.078, THB: 0.13, KRW: 0.0032, INR: 0.053, VND: 0.00018,
                  AUD: 3.0, GBP: 5.9, HKD: 0.60, TWD: 0.145, BDT: 0.038 };
-  const r = rate[String(currency || 'USD').trim().toUpperCase() || 'USD'];   // v2.70: a blank currency is USD (same as _addByCur)
-  return (r === undefined) ? null : amt * r;
+  const k = String(currency || 'USD').trim().toUpperCase() || 'USD';   // v2.70: a blank currency is USD (same as _addByCur)
+  const r = rate[k];
+  return (r === undefined) ? null : amt * fxPick_(k, r);   // v2.72: today's rate when there is one
 }
 // v2.68: one amount per currency, e.g. "MYR 450,000 · USD 100,000" (never added together)
 function _addByCur(map, currency, amt) {
@@ -1633,6 +1709,7 @@ function openSettings() {
       </div>
       <button type="button" class="btn btn-sm btn-outline" onclick="signOutThisDevice_()" style="margin-top:8px">Sign out on this device</button>
     </div>
+    <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(fxNote_())} · source: open.er-api.com, once a day · ranking / rough totals only, contracts keep their own currency.</div>
   `;
   $('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -1837,16 +1914,14 @@ async function refreshData() {
       const cust = custMap[key];
       cust.contracts.push(c);
       
-      // v1.2: Total Spent — include all signed deals
-      const signedStatuses = ['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
-      if (signedStatuses.includes(c.status)) { cust.totalConfirmed += c.amount; _addByCur(cust.confirmedBy || (cust.confirmedBy = {}), c.currency, c.amount); }
+      // v1.2: Total Spent — include all signed deals | v2.72: the shared won definition (a contract marked signed counts too, unless Lost / Cancelled)
+      if (isWonDeal_(c)) { cust.totalConfirmed += c.amount; _addByCur(cust.confirmedBy || (cust.confirmedBy = {}), c.currency, c.amount); }
       // Strict "Total Spent" = actually paid
       if (c.status === 'Closed (Paid)' || c.status === 'Delivered') { cust.totalSpent += c.amount; _addByCur(cust.spentBy || (cust.spentBy = {}), c.currency, c.amount); }
       
       // Active = not closed and not lost
       if (!['Closed (Paid)', 'Closed (Won)', 'Delivered', 'Lost', 'Cancelled', 'Sales Contract', 'Price List'].includes(c.status)) cust.activeContracts++;   // v2.61: Price List is not a deal
-      // v2.32: 在谈(可催)金额(RM粗折算)，用于催单优先级排序+显示
-      if (['Quotation Sent', 'Quotation', 'Following Up'].includes(c.status)) { const _rm = _toRMKnown(c.amount, c.currency); if (_rm !== null) cust.openValueRM += _rm; }   // v2.68: unknown currency is left out, not counted 1:1
+      _addOpenRM_(cust, c);   // v2.72: the same rule, now in one place (fxRecalc_ repeats it when today's rate arrives)
 
       // Latest contract by date
       if (!cust.lastDate || c.date > cust.lastDate) {
@@ -1892,11 +1967,8 @@ async function refreshData() {
         tel: _ct0.tel || '', attn: _ct0.attn || '', email: _ct0.email || ''   // v2.54
       };
     });
-    // v2.32: 催单视角排序——逾期优先 → 在谈金额大 → 最近活动(原排序保底)
-    STATE.customers = Object.values(custMap).sort((a,b) =>
-      (Number(b.overdueFollowups > 0) - Number(a.overdueFollowups > 0))
-      || ((b.openValueRM || 0) - (a.openValueRM || 0))
-      || (b.lastDate || '').localeCompare(a.lastDate || ''));
+    _CUST_BASE_ = Object.values(custMap);
+    STATE.customers = _custSorted_(_CUST_BASE_);   // v2.72: same sort as before, in one place
     
     // Populate country dropdown (sorted by count desc, then name)
     STATE.countries.clear();
@@ -2067,7 +2139,7 @@ function renderCustomerList() {
         ${c.latestStatus ? `<div style="margin-top:3px"><span class="customer-status-pill ${statusClass}">${escapeHtml(c.latestStatus)}</span></div>` : ''}
         ${c.latestMachine ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.latestMachine)}</div>` : ''}
         <div class="customer-item-meta" style="margin-top:3px">
-          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}${c.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(c.openValueRM).toLocaleString()}</b>` : ''}
+          ${c.contracts.length} contract${c.contracts.length !== 1 ? 's' : ''} · ${daysAgoText(c.lastDate)}${c.openValueRM > 0 ? ` · <b style="color:var(--info)" title="${escapeHtml(fxNote_())}">💰RM${Math.round(c.openValueRM).toLocaleString()}</b>` : ''}
         </div>
         ${c.defaultRep
           ? `<div class="cust-rep" onclick="event.stopPropagation();openCustomerRepEditor(${jsArg(c.company)})" title="Account agent — click to change" style="font-size:11px;margin-top:3px;color:var(--info);cursor:pointer">👤 ${escapeHtml(c.defaultRep)}</div>`
@@ -3313,12 +3385,11 @@ function renderDashboard() {
   // Top stats
   const totalContracts = filtered.length;
   const activeStages = ['Quotation Sent', 'Following Up', 'Negotiating', 'Confirmed', 'Deposit Received', 'In Production', 'Ready to Ship', 'Awaiting Payment'];
-  const wonStages = ['Delivered', 'Closed (Paid)', 'Closed (Won)'];
-  const lostStages = ['Lost', 'Cancelled', 'On Hold'];  // v2.31 (H1): On Hold lives in the Lost column (STAGE_GROUPS) — count it so buckets reconcile
+  // v2.72: the shared won / lost definition. Was: won = Delivered / Closed (Paid) / Closed (Won); lost = Lost / Cancelled / On Hold.
   
   const active = filtered.filter(c => activeStages.includes(c.status));
-  const won = filtered.filter(c => wonStages.includes(c.status));
-  const lost = filtered.filter(c => lostStages.includes(c.status));
+  const won = filtered.filter(isWonDeal_);
+  const lost = filtered.filter(isLostDeal_);
   
   // Pipeline value by currency
   const pipelineByCurr = {};
@@ -3368,13 +3439,13 @@ function renderDashboard() {
       </div>
       <div class="stat-card success">
         <div class="stat-value">${won.length}</div>
-        <div class="stat-label">Closed Won</div>
+        <div class="stat-label" title="Confirmed → Delivered / Closed, or marked signed (unless Lost / Cancelled)">Won</div>
         <div class="stat-sublabel">${formatMultiCurrency(wonByCurr)}</div>
       </div>
       <div class="stat-card warning">
         <div class="stat-value">${winRate}%</div>
         <div class="stat-label">Win Rate</div>
-        <div class="stat-sublabel">${won.length} won · ${lost.length} lost · ${totalDecided} decided</div>
+        <div class="stat-sublabel" title="Won ÷ (won + lost). Lost = Lost / Cancelled. On Hold and open quotes are not counted.">${won.length} won · ${lost.length} lost · ${totalDecided} decided</div>
       </div>
     </div>
     ${collectionHtml}
@@ -3502,7 +3573,7 @@ function renderFunnel() {
         <select style="${selS}" onchange="fnlSet('cat',this.value)">${opt(cats, F.cat, 'All categories')}</select>
         <button class="qf-chip" onclick="fnlReset()">Reset (this year)</button>
       </div>
-      <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Values: ≈USD using the CRM's built-in rough rates (the same table as the follow-up list: 1 USD = RM 4.7; SGD 3.5, EUR 5.1, RMB/CNY 0.65 per RM). Not exact — hover a value for the exact per-currency totals. Currencies without a rate are shown separately in amber, never converted.</div>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:8px">Values: ≈USD using ${_FX_ ? (_FX_.day === localISO() ? "today's" : 'the last saved') + ' exchange rates (1 USD = RM ' + fxPick_('USD', 4.7).toFixed(2) + ' · ' + escapeHtml(_FX_.day) + ' · open.er-api.com, the same rates as the follow-up list)' : "the CRM's built-in rough rates (the same table as the follow-up list: 1 USD = RM 4.7; SGD 3.5, EUR 5.1, RMB/CNY 0.65 per RM)"}. Not exact — hover a value for the exact per-currency totals. Currencies without a rate are shown separately in amber, never converted.</div>
     </div>`;
 
   // ── funnel ──
@@ -3634,7 +3705,7 @@ function renderMachineRanking(contracts) {
     const fam = detectMachineFamily(c.machine);
     if (!families[fam]) families[fam] = { name: fam, count: 0, won: 0, wonValue: 0, currencies: {} };
     families[fam].count++;
-    if (['Delivered', 'Closed (Paid)'].includes(c.status)) {
+    if (isWonDeal_(c)) {   // v2.72: shared won definition (was Delivered / Closed (Paid) only)
       families[fam].won++;
       families[fam].wonValue += (c.amount || 0);
       const cur = c.currency || 'USD';
@@ -5140,9 +5211,8 @@ function renderSnapshot() {
     ((toIsoDate(a.followup.nextFollowupDate) || '').localeCompare(toIsoDate(b.followup.nextFollowupDate) || '')));
 
   // 4. Recently won deals (last 7 days)
-  const wonStages = ['Delivered', 'Closed (Paid)', 'Closed (Won)'];
   const recentlyWon = (STATE.contracts || []).filter(c => {
-    if (!wonStages.includes(c.status)) return false;
+    if (!isWonDeal_(c)) return false;   // v2.72: shared won definition (was Delivered / Closed (Paid) / Closed (Won) only)
     const d = toIsoDate(c.date);  // v2.30: contracts carry only `date`
     return d && d >= weekAgo;
   });
@@ -5275,7 +5345,7 @@ function renderSnapshot() {
             return `
               <div class="snapshot-item">
                 <div class="snapshot-item-title">${x.customer.flag} ${escapeHtml(dispName)}</div>
-                <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late${x.customer.openValueRM > 0 ? ` · <b style="color:var(--info)">💰RM${Math.round(x.customer.openValueRM).toLocaleString()}</b>` : ''} · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
+                <div class="snapshot-item-meta">🚨 ${days} day${days!==1?'s':''} late${x.customer.openValueRM > 0 ? ` · <b style="color:var(--info)" title="${escapeHtml(fxNote_())}">💰RM${Math.round(x.customer.openValueRM).toLocaleString()}</b>` : ''} · ${escapeHtml((x.followup.description||'follow-up').substring(0,80))}</div>
                 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
                   <button onclick="waWithScript(${jsArg(x.customer.company)})" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer" title="WhatsApp (with script)">💬 WhatsApp</button>
                   <button onclick="snoozeFollowup(${jsArg(x.customer.company)},3)" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid #d7ccc8;background:#efebe9;color:#5d4037;cursor:pointer" title="Snooze 3 days">⏰ +3d</button>
@@ -6447,6 +6517,7 @@ function closeModal() { $('modal-overlay').classList.remove('show'); }
 // ─── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   loadSavedUrl();
+  fxInit_();   // v2.72: saved rates now, today's rates in the background
   
   // Listeners
   $('crm-search').addEventListener('input', renderCustomerList);
