@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.33</title>
+<title>Sen Labels — Contract Generator v13.34</title>
+<!-- v13.34: (2026-11-16) — (1) the machine photo now prints directly under the machine title (after the sub-title line), before the specification list — it used to print after the Come With block and the machine remark. Same picture size; in print the photo stays on the same page as its title. Applies to every contract, including old ones when they are opened again. (2) Trade-in: the order stays Deposit (on the full total) / Trade-In / Balance. Two paths that used to leave the trade-in off the paper now print it: "Full Payment" with a trade-in prints Trade-In then Balance Payment (total less trade-in; Excel / Word follow), and an order that contains a spare-parts line prints the Trade-In row between the deposit and the balance. Contracts with custom payment rows, and contracts without a trade-in, print the same payment rows as in v13.33. -->
 <!-- v13.33: FIX (2026-11-11) — (1) one shared routine (fillFormFromState_) now puts a contract into the form on every path: New, Load JSON file, Paste JSON, Library / ?contract / ?preview, Restore auto-saved draft, Duplicate. A restored draft or a duplicate no longer loses the instalment tick box and schedule on the first edit (a restored draft also keeps its balance label, payment-terms text, warranty text, bank details and exchange rates); Paste JSON restores "Buyer bears all bank charges"; opening a contract without instalments after one with instalments closes the instalment panel and clears the old rows. (2) A no-deposit contract whose remarks still mention a deposit shows one small line under the "No deposit (0%)" tick box with a one-click "Use the no-deposit wording" (form only — the paper changes only when the link is clicked). (3) While "No deposit" is ticked the Balance Payment Label box's grey sample text reads "optional — e.g. …" (an empty label prints nothing). (4) Ticking / unticking "No deposit" asks before it recalculates an instalment schedule that was edited by hand (Cancel keeps the instalments). (5) Classic page: Export Word / Export Excel ask once when the contract has an instalment schedule or custom payment rows — those have never been in the Word / Excel files; the files themselves are unchanged. Saved contracts print exactly as in v13.32. -->
 <!-- v13.32: NEW (2026-11-11) — "No deposit (0%)" tick box beside Deposit % (state.depositZero, default off). Ticked: the contract prints no deposit line — "Full Payment" followed by the Balance Payment Label exactly as typed (nothing is added when that box is empty), or Trade-In + "Balance Payment" when there is a trade-in — and Term Of Payment says the same ("Full Payment <label>."); the price card shows Deposit 0; an existing instalment schedule is worked out again on the whole amount (paper row and Term: "Full Amount Payable by Installment"); the default "…along with the required deposit. Once paid, the deposit is non-refundable…" remark is switched to the no-deposit wording; Excel / Word follow. Unticking puts all of it back. The Deposit % and fixed-amount boxes are locked while it is ticked. ALSO FIXED: a contract opened from the Library now gets its instalment tick box / options / rows back in the form (it used to lose the schedule on the first edit and save installmentEnabled:false). Not ticked: everything is exactly as before — including old contracts whose saved deposit % is 0 or blank, which still print 30% as they always did. -->
 <!-- v13.31: (1) xlsx-js-style 1.2.0 and pdf.js 3.11.174 are no longer loaded on every page open — they load only when Export Excel / PDF import is used, from the same pinned URLs with a Subresource Integrity hash (sha384) + crossorigin; pdf.js runs with isEvalSupported:false (CVE-2024-4367 mitigation; its worker is fetched by pdf.js itself and stays version-pinned); (2) Settings: the Access Token field is hidden (Show / Hide button) and the Web App URL is only saved when it is a script.google.com/macros/s/<id>/exec address (or the Workspace /a/macros/<domain>/s/<id>/exec form) — the token injector uses the same strict check; an already saved URL is kept; (3) the last Chinese UI text (image delete confirm + error) is now English; (4) a print / export whose background save fails or cannot be confirmed now shows "Not saved to cloud — use Save Record" next to Save Record (no message on success, none for a preview tab or a loaded-but-unedited contract); (5) the Sheets badge shows a real check mark instead of the literal text "&amp;#10003;". An existing contract renders identically. Frontend-only. -->
@@ -314,6 +315,7 @@ body.cp-preview-only #preview-panel{background:#e9ecef!important;width:100%!impo
   .cp-addr{font-size:7.5pt!important;line-height:1.3!important}
   .cp-come-with{margin:1.5mm 0!important;padding:2mm 3mm!important}
   .cp-img-gallery img{max-height:55mm!important}
+  .cp-img-top{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid}   /* v13.34: the photo under a machine title stays with that title */
   #contract-paper{font-size:9.5pt!important}
   /* v10.89: no colored fill after the contract ends — print on white only (saves ink).
      The preview-mode rule (body.cp-preview-only #preview-panel, #e9ecef) has higher
@@ -567,7 +569,7 @@ function loadExtLib_(name) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.33</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.34</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -3851,7 +3853,7 @@ function buildContractHTML() {
         subtotalAll += netPrice;
         const portStr = ` [${esc(state.port)||'Port TBD'}]`;
         const imgs = (m.images||[]).filter(Boolean);
-        const imgHtml = imgs.length > 0 ? `<div class="cp-img-gallery">${imgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div>` : '';
+        const imgHtml = imgs.length > 0 ? `<div class="cp-img-gallery cp-img-top">${imgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div>` : '';
         let unitPriceHtml = '';
         const uQty = m.unitQty || 1;
         const uPrice = m.unitPrice || grossPrice;
@@ -3868,10 +3870,10 @@ function buildContractHTML() {
         machineBlocks += `
   <div class="cp-machine-title"><span class="cp-mnum">${mi+1}</span><span>${buildMachineTitle(m)}</span></div>
   ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${renderRich(m.desc)}</div>` : ''}
+  ${imgHtml}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
   ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${renderRich(m.machineRemarks)}</div>` : ''}
-  ${imgHtml}
   ${unitPriceHtml}`;
         // Add a summary row in the table for this machine
         machineRows += `<tr style="background:#f4f6fb">
@@ -3930,6 +3932,8 @@ function buildContractHTML() {
     const bal = totalAll - dep;
     const balLbl = state.balanceLabel || 'Before Delivery';
     const depLbl = (state.depositAmt||0) > 0 ? 'Deposit' : ((state.depositPct||30) + '% Deposit');
+    const tiRowP = tradeinAmt > 0 ? `<tr><td colspan="4"><strong>~ Trade-In : ${esc(state.tradeinDesc||'Trade-In Machine')}</strong></td><td style="text-align:right;font-weight:700;color:#7b3f00">- ${fmt(tradeinAmt)}</td></tr>
+        ` : '';   // v13.34: Deposit (on the full total) / Trade-In / Balance
     let payRows = '';
     if (state.installmentEnabled && (state.installmentFullAmount || depZero_()) && state.installmentRows && state.installmentRows.length) {   // v13.32: "No deposit" + instalments = the same single row as full-amount instalments
       payRows = `<tr><td colspan="4"><strong>~ Full Amount Payable by Installment (see schedule below)</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(instScheduleTotal())}</td></tr>`;
@@ -3938,7 +3942,9 @@ function buildContractHTML() {
     } else if (state.payCond !== 'full' && !depZero_()) {   // v13.32: "No deposit" → the Full Payment row below
       payRows = `
         <tr><td colspan="4"><strong>~ ${depLbl} Upon Order Confirmed</strong></td><td style="text-align:right;font-weight:700;color:#e67e00">${fmt(dep)}</td></tr>
-        <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(bal)}</td></tr>`;
+        ${tiRowP}<tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(bal - tradeinAmt)}</td></tr>`;
+    } else if (tradeinAmt > 0) {   // v13.34
+      payRows = `${tiRowP}<tr><td colspan="4"><strong>~ Balance Payment${depZero_() ? esc(depZeroLbl_()) : ' ' + esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(totalAll - tradeinAmt)}</td></tr>`;
     } else {
       payRows = `<tr><td colspan="4"><strong>~ Full Payment${depZero_() ? esc(depZeroLbl_()) : ' ' + esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalAll)}</td></tr>`;   // v13.32: "No deposit" prints the label as typed
     }
@@ -4038,7 +4044,7 @@ function buildContractHTML() {
     const title = buildMachineTitle(m);
     const imgs = (m.images||[]).filter(Boolean);
     const imgHtml = imgs.length > 0
-      ? `<div class="cp-img-gallery">${imgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div>` : '';
+      ? `<div class="cp-img-gallery cp-img-top">${imgs.map(s=>`<img src="${safeImg_(s)}">`).join('')}</div>` : '';
     const portStr = m.machineType === 'parts' ? '' : ` [${esc(state.port)||'Port TBD'}]`;
     let unitPriceHtml = '';
     const uQty = m.unitQty || 1;
@@ -4052,10 +4058,10 @@ function buildContractHTML() {
     machineBlocks += `
   <div class="cp-machine-title"><span class="cp-mnum">${i+1}</span><span>${title}</span></div>
   ${m.desc ? `<div style="font-size:10pt;color:#333;margin:-1mm 0 2mm 6mm;white-space:pre-wrap">${renderRich(m.desc)}</div>` : ''}
+  ${imgHtml}
   <table class="cp-spec-table">${buildSpecRows(m)}</table>
   ${buildComeWith(m)}
   ${m.machineRemarks ? `<div style="font-size:9.5pt;color:#444;margin:1mm 0 2mm 2mm;white-space:pre-wrap;line-height:1.5">${renderRich(m.machineRemarks)}</div>` : ''}
-  ${imgHtml}
   ${unitPriceHtml}
   ${buildOptionalItems(m)}`;
     if (i === lastPkgIdx) machineBlocks += `
@@ -4137,6 +4143,11 @@ function buildContractHTML() {
     }
     payRows += `
     <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(totalBal)}</td></tr>`;
+  } else if (tradeinAmt > 0) {
+    // v13.34: Full payment with a trade-in — the trade-in is deducted, then the balance (the trade-in used to be left off the paper)
+    payRows = `
+    <tr><td colspan="4"><strong>~ Trade-In : ${esc(state.tradeinDesc||'Trade-In Machine')}</strong></td><td style="text-align:right;font-weight:700;color:#7b3f00">- ${fmt(tradeinAmt)}</td></tr>
+    <tr><td colspan="4"><strong>~ Balance Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700;color:#2e7d32">${fmt(totalPrice - tradeinAmt)}</td></tr>`;
   } else {
     payRows = `<tr><td colspan="4"><strong>~ Full Payment ${esc(balLbl)}</strong></td><td style="text-align:right;font-weight:700">${fmt(totalPrice)}</td></tr>`;
   }
@@ -6697,6 +6708,9 @@ function exportToExcel() {
     r([c(''), c(`~ ${(state.depositAmt||0)>0?'Deposit':((state.depositPct||30)+'% Deposit')} Upon Order Confirmed`), c(''), c(''), c(fmt(dep))]);
     if (tradeinAmt>0) r([c(''), c(`~ Trade-In : ${state.tradeinDesc||''}`), c(''), c(''), c('- '+fmt(tradeinAmt))]);
     r([c(''), c('~ Balance Payment Before Delivery'), c(''), c(''), c(fmt(bal))]);
+  } else if (tradeinAmt>0) {   // v13.34: Full payment with a trade-in
+    r([c(''), c(`~ Trade-In : ${state.tradeinDesc||''}`), c(''), c(''), c('- '+fmt(tradeinAmt))]);
+    r([c(''), c('~ Balance Payment Before Delivery'), c(''), c(''), c(fmt(total - tradeinAmt))]);
   } else {
     r([c(''), c('~ Full Payment Before Delivery'), c(''), c(''), c(fmt(total))]);
   }
@@ -7008,6 +7022,16 @@ function exportToWord() {
   <tr>
     <td style="${B}padding:2pt 6pt">~ Balance Payment Before Delivery</td>
     <td style="${B}font-weight:bold;color:${CG};text-align:right;padding:2pt 0;white-space:nowrap">${fmt(totalBal)}</td>
+  </tr>`;
+  } else if (wordTradein > 0) {   // v13.34: Full payment with a trade-in
+    body += `
+  <tr>
+    <td style="${B}padding:2pt 6pt">~ Trade-In : ${esc(state.tradeinDesc||'')}</td>
+    <td style="${B}font-weight:bold;color:#7b3f00;text-align:right;padding:2pt 0;white-space:nowrap">- ${fmt(wordTradein)}</td>
+  </tr>
+  <tr>
+    <td style="${B}padding:2pt 6pt">~ Balance Payment Before Delivery</td>
+    <td style="${B}font-weight:bold;color:${CG};text-align:right;padding:2pt 0;white-space:nowrap">${fmt(totalPrice - wordTradein)}</td>
   </tr>`;
   } else {
     body += `
