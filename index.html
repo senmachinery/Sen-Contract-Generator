@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.37</title>
+<title>Sen Labels — Contract Generator v13.38</title>
+<!-- v13.38: (2026-11-23) — two save fixes. (1) Opening another contract (Library, New, Duplicate, +B, paste / open JSON, restore draft) while a save is still running no longer writes the first contract's content into the newly opened one: the running save finishes the contract it was started for, under that contract's own confirmed number, and the page says which contract was saved (or that it may not be saved). (2) A save under a retyped number that fails (network), then the original number typed back and saved, updates the original contract again instead of creating an extra copy. Contract paper, Excel and Word output unchanged. -->
 <!-- v13.37: (2026-11-22) — a restored local draft of an already saved contract now follows the same rules as a contract opened from the Library: a contract number typed over it is saved as a NEW record (the original record is not touched) and the signed-PDF link is not carried over (a PDF uploaded under the new number itself is kept). The draft now records which number its record belongs to; an older draft is checked against the backend on its first save. Contract paper, Excel and Word output unchanged. -->
 <!-- v13.36: (2026-11-21) — two more "one contract leaks into the next" fixes. (1) New Contract also resets the hidden cost / margin / customer-type fields (they kept the previous contract's values and a save wrote them into the new record). (2) A contract number typed over a loaded contract is saved as a NEW record (v13.27) — that new record no longer carries the loaded contract's signed-PDF link (a PDF uploaded under the new number itself is kept). Contract paper, Excel and Word output unchanged. -->
 <!-- v13.35: (2026-11-21) — three "one contract leaks into the next" fixes. (1) New Contract clears the unit price / qty / selling price / discount boxes (they kept the previous contract's values and the first edit wrote them into the new contract) and empties the machine panel before anything is read back (the previous machine's type / condition / title / sub-title were copied into the new contract). (2) Opening a contract that was saved without exchange rates sets the default rates instead of keeping the rates of the contract opened before it. (3) Signed PDF: the "View Signed PDF" link and upload status are cleared when the opened / new contract has no signed PDF; a +B variant no longer carries the original's signed PDF (same as Duplicate); an upload that finishes after another contract was opened is not attached to that other contract. Contract paper, Excel and Word output unchanged. -->
@@ -572,7 +573,7 @@ function loadExtLib_(name) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.37</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.38</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5123,6 +5124,10 @@ async function saveToSheets(silent=false) {
 }
 async function _saveToSheetsRun_(silent) {
   saveCurrentMachineToState();
+  // v13.38: the contract this save is for. Another contract can be opened while the save waits for the backend (New / Library / JSON / Duplicate / draft restore
+  // replace `state`; +B clears its recordId). From the first await on, this save reads and writes only S and the identity it sent (record.contractNo / recordId),
+  // and changes the page (form, loaded number, local draft) only while that contract is still the one on the page.
+  const S = state;
   if (state.docType === 'Agent Price List' && !aplActive()) { if (!silent) alert('This Agent Price List is empty — click "+ Start Agent Price List" in the form first.'); return; }   // v13.19
   if (!gsUrl) { if (!silent) alert('No Google Sheets URL configured. Go to Settings.'); return; }
   // v13.30: a number that still ends with "-" (the running number could not be fetched) must not become a record
@@ -5151,68 +5156,81 @@ async function _saveToSheetsRun_(silent) {
         if (!_j || !_j.ok) throw new Error('lookup');
         if (_j.contractNo) { _no = String(_j.contractNo).trim(); break; }
       }
-      if (state.recordId === _rid) { if (_no) _loadedContractNo = (_no === String(state.contractNo || '').trim()) ? state.contractNo : _no; _draftRid = ''; }   // no row has this recordId → nothing to overwrite
+      if (state === S && state.recordId === _rid) { if (_no) _loadedContractNo = (_no === String(state.contractNo || '').trim()) ? state.contractNo : _no; _draftRid = ''; }   // no row has this recordId → nothing to overwrite
     } catch (e) {
       if (!silent) alert('Not saved: could not check which saved record this restored draft belongs to.\n\nCheck the connection and click Save Record again.');
       else showSaveStamp(SILENT_SAVE_WARN_, true);
       return;
     }
+    if (state !== S) { showSaveStamp('⚠ ' + (S.contractNo || 'The previous contract') + ' was not saved — another contract was opened before the save started', true); return; }   // v13.38: nothing sent yet
   }
   // v13.27: number edited after loading → save as a NEW record (keeping recordId made the backend overwrite the original row in place)
-  let _renumberedFrom = '';
-  if (_loadedContractNo !== null && state.recordId && state.contractNo !== _loadedContractNo) { _renumberedFrom = _loadedContractNo; state.recordId = ''; }
+  let _renumberedFrom = '', _renumberedRid = '', _renumberedLink = '', _mintedRid = '', _sentNo = '', _sentRid = '';   // v13.38: what a renumber-save took off, put back if it fails (see catch)
+  if (_loadedContractNo !== null && state.recordId && state.contractNo !== _loadedContractNo) { _renumberedFrom = _loadedContractNo; _renumberedRid = state.recordId; state.recordId = ''; }
   // v13.36: this save goes to another record than the loaded one — the loaded contract's signed PDF does not go with it (same as +B / Duplicate).
   // Kept only when the link is the PDF uploaded under this very number.
-  if (_loadedContractNo !== null && state.contractNo !== _loadedContractNo && state.signedPdfUrl && !(_signedPdfUp && _signedPdfUp.no === state.contractNo && _signedPdfUp.url === state.signedPdfUrl)) { state.signedPdfUrl = ''; const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=''; const st=document.getElementById('signed-pdf-status'); if(st) st.textContent=''; }
+  if (_loadedContractNo !== null && state.contractNo !== _loadedContractNo && state.signedPdfUrl && !(_signedPdfUp && _signedPdfUp.no === state.contractNo && _signedPdfUp.url === state.signedPdfUrl)) { _renumberedLink = state.signedPdfUrl; state.signedPdfUrl = ''; const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML=''; const st=document.getElementById('signed-pdf-status'); if(st) st.textContent=''; }
   const btn = silent ? null : document.querySelector('[onclick="saveToSheets()"]');
   const setBtn = (txt, bg) => { if(btn){ btn.textContent=txt; btn.style.background=bg||''; } };
   try {
     const _isApl = aplActive();   // v13.20: snapshot before any await
-    const totalAmt = _isApl ? 0 : (pkgAnyActive() ? pkgContractTotal() : state.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
-    const machineTitle = _isApl ? aplTitleForRecord() : state.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
-    if (_isApl) { state.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
+    const totalAmt = _isApl ? 0 : (pkgAnyActive() ? pkgContractTotal() : S.machines.reduce((s,m) => s+(calcPriceForMachine(m).sellPrice||0), 0));
+    const machineTitle = _isApl ? aplTitleForRecord() : S.machines.map(m => m.machineType==='parts' ? partsTitle(m) : (m.customTitle||m.otherModel||m.machineType||'Machine')).join(', ');
+    if (_isApl) { S.status = 'Price List'; const _fs = document.getElementById('f-status'); if (_fs) _fs.value = 'Price List'; }   // v13.18
     // v13.27: status not touched since loading → keep the record row's CURRENT status (CRM status changes only update the row,
     // so the loaded copy can be stale). Read failure → old behaviour (send the form's status).
-    if (!_isApl && state.recordId && _loadedContractNo !== null && state.contractNo === _loadedContractNo && (state.status || '') === _loadedStatus && !(_newRid && _newRid.rid === state.recordId)) {   // v13.37: not while this record's first save is unconfirmed — the number may be another record's
+    if (!_isApl && S.recordId && _loadedContractNo !== null && S.contractNo === _loadedContractNo && (S.status || '') === _loadedStatus && !(_newRid && _newRid.rid === S.recordId)) {   // v13.37: not while this record's first save is unconfirmed — the number may be another record's
+      const _rid0 = S.recordId;   // v13.38
       try {
-        const _lr = await _fetchT(gsUrl + '?action=list&q=' + encodeURIComponent(state.contractNo));   // v13.27: 30 s timeout
+        const _lr = await _fetchT(gsUrl + '?action=list&q=' + encodeURIComponent(S.contractNo));   // v13.27: 30 s timeout
         const _lj = await _lr.json();
-        const _row = (_lj.records || []).find(r => String(r.contractNo || '').trim() === String(state.contractNo).trim());
-        if (_row && _row.status && _row.status !== state.status) {
-          state.status = String(_row.status); _loadedStatus = state.status;
-          _ensureStatusOption(state.status);
-          const _fs = document.getElementById('f-status'); if (_fs) _fs.value = state.status;
+        const _row = (_lj.records || []).find(r => String(r.contractNo || '').trim() === String(S.contractNo).trim());
+        if (_row && _row.status && _row.status !== S.status) {
+          S.status = String(_row.status);
+          if (state === S) { _loadedStatus = S.status; _ensureStatusOption(S.status); const _fs = document.getElementById('f-status'); if (_fs) _fs.value = S.status; }   // v13.38: page only while S is on it
         }
       } catch (e) { /* keep the form's status */ }
+      if (S.recordId !== _rid0) { showSaveStamp('⚠ ' + (S.contractNo || 'The contract') + ' was not saved — it was changed (+B) before the save started', true); return; }   // v13.38: +B cleared the record id meanwhile — nothing sent yet
     }
-    const _ridNew = !state.recordId;   // v13.37
-    if (!state.recordId) { state.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); _newRid = { rid: state.recordId, no: state.contractNo }; }  // v10.66 唯一记录号
+    const _ridNew = !S.recordId;   // v13.37
+    if (!S.recordId) { S.recordId = 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); _newRid = { rid: S.recordId, no: S.contractNo }; _mintedRid = S.recordId; }  // v10.66 唯一记录号
     const record = {
-      contractNo: state.contractNo, recordId: state.recordId, date: state.date, company: state.company || String(state.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
-      machineTitle, currency: state.currency, amount: totalAmt,
-      status: state.status||'Quotation Sent', admin: state.admin||'NR', port: state.port,
-      notes: state.notes||'', signedPdfUrl: state.signedPdfUrl||'', salesRep: state.salesRep||''
+      contractNo: S.contractNo, recordId: S.recordId, date: S.date, company: S.company || String(S.attn||'').replace(/\s*\((?:h\/p|hp|m\/p|tel|phone|mobile|wa|wechat|line|\+?\d)[^)]*\)\s*$/i,'').trim(),
+      machineTitle, currency: S.currency, amount: totalAmt,
+      status: S.status||'Quotation Sent', admin: S.admin||'NR', port: S.port,
+      notes: S.notes||'', signedPdfUrl: S.signedPdfUrl||'', salesRep: S.salesRep||''
     };
     if (!silent) setBtn('💾 Saving...', '#888');
-    const cleanState = await stripImagesForSave(state);
+    const cleanState = await stripImagesForSave(S);
     // 1) 先存合同行（no-cors 只发不读），await 等服务端处理完——让后端锁先把号定下来
     // v13.37: 60 s timeout (the backend waits up to 20 s for its lock, then writes — a healthy save answers in seconds). No answer in time = NOT KNOWN whether
     // the record was written; any other failure is thrown on as before.
-    let _noAnswer = false;
+    let _noAnswer = false, _netErr = null;
+    _sentNo = record.contractNo; _sentRid = record.recordId;   // v13.38: named in the failure message when another contract is open by then
     try {
       await _fetchT(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'save', record }) }, 60000);
-    } catch (e) { if (!e || e.name !== 'AbortError') throw e; _noAnswer = true; }
+    } catch (e) {
+      if (!e || e.name !== 'AbortError') { if (!_renumberedRid) throw e; _netErr = e; }   // v13.38: renumber-save + network error — the row may still have been written (answer lost): the read-back below decides
+      _noAnswer = true;
+    }
+    if (!_netErr) _renumberedRid = '';   // v13.38: the save request got an answer (or timed out) — the new record id may exist in the backend from here on, so it is never put back
     // 2) v10.66 先到先得：读回我这张实际挂的号。撞号时后端已自动改号，前端在此同步
-    let finalNo = state.contractNo;
+    // v13.38: the read-back asks for the recordId THIS save sent, and `_cur()` says whether its contract is still the one on the page. When another contract
+    // was opened meanwhile (or +B cleared the record id), the rest of this save still finishes the contract it was started for, under its own confirmed number —
+    // it never touches the page (form, loaded number, local draft) and never sends one contract's content under another contract's number.
+    const _cur = () => state === S && S.recordId === record.recordId;
+    let finalNo = _cur() ? S.contractNo : record.contractNo;
+    let _noRow = false;   // v13.38: the read-back answered and NO row has this recordId
     try {
-      const dt = (String(state.contractNo).indexOf('/Q/')!==-1) ? 'Q' : 'SC';
-      const jj = await _fetchJ(gsUrl + '?action=myNo&recordId=' + encodeURIComponent(state.recordId) + '&doctype=' + dt);   // v13.37: 30 s timeout
-      if (!jj || !jj.contractNo) throw 0;   // v13.37: no row with this recordId (or no usable answer)
-      if (_noAnswer) { if (_ridNew && state.recordId === record.recordId) _noAnswer = false; else throw 0; }   // v13.37: a row with the recordId this very save made (and the same contract still open) → the save did land, carry on as usual
-      if (jj.contractNo !== state.contractNo) {
+      const dt = (String(finalNo).indexOf('/Q/')!==-1) ? 'Q' : 'SC';
+      const jj = await _fetchJ(gsUrl + '?action=myNo&recordId=' + encodeURIComponent(record.recordId) + '&doctype=' + dt);   // v13.37: 30 s timeout
+      if (!jj || !jj.contractNo) { _noRow = !!(jj && jj.ok); throw 0; }   // v13.37: no row with this recordId (or no usable answer)
+      if (_noAnswer) { if (_ridNew) _noAnswer = false; else throw 0; }   // v13.37: a row with the recordId this very save made → the save did land, carry on as usual
+      if (!_cur()) finalNo = jj.contractNo;   // v13.38: another contract is on the page — nothing on the page changes
+      else if (jj.contractNo !== S.contractNo) {
         finalNo = jj.contractNo;
-        state.contractNo = finalNo;
+        S.contractNo = finalNo;
         const f = document.getElementById('f-contract-no'); if (f) f.value = finalNo;
         _autoNoValue = null;
         updatePreview();
@@ -5220,66 +5238,89 @@ async function _saveToSheetsRun_(silent) {
       }
     } catch (e) { _noAnswer = true; }   // v13.37: the read-back did not confirm which number this recordId holds (timeout / network / not JSON / no row) — when the typed number was
     // already another record's, the backend filed this one under the next number, and saving the state under the typed number would replace that other contract's content
+    // v13.38: renumber-save whose POST failed with a network error: no row with the new id → it was not written → fail as before (the catch puts the original id back);
+    // a row with it → the save did land (answer lost) → carried on above as a normal save; read-back failed too → outcome not known → the "unconfirmed" exit below
+    // (id kept and paired with the number sent, as for a POST that timed out — Save Record again goes to that one record; nothing is put back, so no row without content is left behind).
+    if (_netErr) { if (_noAnswer && _noRow) throw _netErr; _renumberedRid = ''; }
     if (_noAnswer) {
       // v13.37: not known whether / under which number the record was written. Nothing more is sent. If a record was written it has this recordId, so the id is kept
       // and paired with the number THIS save sent (what a restored draft does) — Save Record again then updates / creates that one record instead of adding a second
       // one under the next number, and its read-back gives the real number. The local draft (when this page owns it, same rule as after a confirmed save) is rewritten
       // with that pairing too, so a reload + restore + save also goes to the same record; the draft still holds the edits and nothing here says "saved".
-      if (state.recordId === record.recordId) {
-        if (_newRid && _newRid.rid === state.recordId) { _newRid.no = record.contractNo; _loadedContractNo = record.contractNo; _loadedDriveMissing = false; }
-        try { const _d = autosaveDirty ? null : hasAutosaveDraft(); if (autosaveDirty || (_d && _d.tab === AUTOSAVE_TAB)) { autosaveDirty = true; performAutosave(); } } catch (e) {}
-      }
-      if (!silent) { setBtn('⚠ Save unconfirmed', '#e67e00'); showSaveStamp(SAVE_NO_ANSWER_WARN_, true); setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000); }
-      else showSaveStamp(SILENT_SAVE_WARN_, true);
+      const _same = _cur();   // v13.38: the loaded number and the draft belong to the page — touched only while this contract is still on it
+      if (_newRid && _newRid.rid === record.recordId) { _newRid.no = record.contractNo; if (_same) { _loadedContractNo = record.contractNo; _loadedDriveMissing = false; } }
+      if (_same) try { const _d = autosaveDirty ? null : hasAutosaveDraft(); if (autosaveDirty || (_d && _d.tab === AUTOSAVE_TAB)) { autosaveDirty = true; performAutosave(); } } catch (e) {}
+      // v13.38: another contract on the page — name the contract this save was for. A NEW record (new contract / renumbered copy) may have been filed under another number
+      // than the one typed (that one can belong to another contract), so the typed number is not offered as the thing to open.
+      const _msg = _same ? null : (!_ridNew ? '⚠ ' + record.contractNo + ' may not be saved — another contract was opened during its save. Open ' + record.contractNo + ' from the Library and check it'
+        : '⚠ ' + (_renumberedFrom ? 'The new copy of ' + _renumberedFrom : 'The new contract') + ' (entered as ' + record.contractNo + ') may not be saved — another contract was opened during its save. Check the newest records in the Library');
+      if (!silent) { setBtn('⚠ Save unconfirmed', '#e67e00'); showSaveStamp(_msg || SAVE_NO_ANSWER_WARN_, true); setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000); }
+      else showSaveStamp(_msg || SILENT_SAVE_WARN_, true);
       return;
     }
+    const _same = _cur();   // v13.38
     // v13.27: from now on this number/record is the "loaded" one (a later number edit makes another new record, not an overwrite)
-    _loadedContractNo = finalNo; _loadedStatus = state.status || ''; _loadedDriveMissing = false; _newRid = null;
+    if (_same) { _loadedContractNo = finalNo; _loadedStatus = S.status || ''; _loadedDriveMissing = false; }
+    if (_same || (_newRid && _newRid.rid === record.recordId)) _newRid = null;
     // v13.37: the record row now exists under finalNo with this recordId — rewrite the local draft (same function as the 5 s timer) so a draft written before this save
     // cannot be restored with the old recordId / loaded number / no recordId and saved as a duplicate. Only when there is a draft or unsaved edits; never deleted (it keeps the cost fields a cloud save zeroes).
     // The stored draft is rewritten only when this tab wrote it (AUTOSAVE_TAB) — the draft is one key shared by every open tab, and another tab's unsaved edits may be in it.
-    try { const _d = autosaveDirty ? null : hasAutosaveDraft(); if (autosaveDirty || (_d && _d.tab === AUTOSAVE_TAB)) { autosaveDirty = true; performAutosave(); } } catch (e) {}
+    if (_same) try { const _d = autosaveDirty ? null : hasAutosaveDraft(); if (autosaveDirty || (_d && _d.tab === AUTOSAVE_TAB)) { autosaveDirty = true; performAutosave(); } } catch (e) {}
     // 3) 存完整 state（用最终号 + recordId，保持内外一致）
-    cleanState.contractNo = finalNo; cleanState.recordId = state.recordId;
+    cleanState.contractNo = finalNo; cleanState.recordId = record.recordId;
+    const _src = _same ? S : cleanState;   // v13.38: follow-up reminder fields — the contract's own copy once it is no longer on the page
     const _savedAt = new Date().toISOString() + '#' + Math.random().toString(36).slice(2, 8);   // v13.27: fingerprint read back by verifySaved
     cleanState._savedAt = _savedAt;
     const _saveSeq = ++_saveSeq_;   // v13.31: newest save wins the background check below
     let _stateSendFailed = false;
     try {
       await _fetchT(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: state.recordId }) });   // v13.27: awaited (was fire-and-forget), 30 s timeout
+        body: JSON.stringify({ action:'saveState', contractNo: finalNo, state: cleanState, recordId: record.recordId }) });   // v13.27: awaited (was fire-and-forget), 30 s timeout
     } catch (e) { _stateSendFailed = true; }   // timeout / network → reported as "Could not verify save" below
     // Auto-create a first follow-up reminder 3 days out (Apps Script de-dupes by contractNo)
-    if (finalNo && state.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
+    if (finalNo && _src.company && !_isApl) {   // v13.17: no auto follow-up for an agent price list
       const fuDate = localISODate_(new Date(Date.now() + 3*86400000));
       fetch(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'crm_autoFollowupFromQuote', followup: {
-          customer: state.company, contractNo: finalNo, date: state.date,
-          currency: state.currency, amount: totalAmt, nextFollowupDate: fuDate
+          customer: _src.company, contractNo: finalNo, date: _src.date,
+          currency: _src.currency, amount: totalAmt, nextFollowupDate: fuDate
         } }) });
     }
+    // v13.38: another contract on the page by now → the message names the contract this save was for
+    const _swNo = () => _cur() ? '' : finalNo + (finalNo !== record.contractNo ? ' (entered as ' + record.contractNo + ', which was already used)' : '');
     if (!silent) {
       // ── VERIFY the save actually landed (no-cors can't confirm, so we read it back) ──
       setBtn('🔍 Verifying...', '#888');
       const verified = !_stateSendFailed && await verifySaved(finalNo, _savedAt);
+      const _sw = _swNo();
       if (verified) {
         setBtn('✅ Saved & Verified!', '#2e7d32');
         const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-        showSaveStamp('✅ Saved and confirmed — ' + ts + (_renumberedFrom ? (' — saved as a NEW record ' + finalNo + '; ' + _renumberedFrom + ' was not changed') : ''));
+        showSaveStamp(_sw ? ('✅ ' + _sw + ' saved and confirmed — ' + ts + ' (another contract was opened during its save)') : ('✅ Saved and confirmed — ' + ts + (_renumberedFrom ? (' — saved as a NEW record ' + finalNo + '; ' + _renumberedFrom + ' was not changed') : '')));
       } else {
         setBtn('⚠ Save unconfirmed', '#e67e00');
-        showSaveStamp('⚠ Could not verify save — please check Library (press Save Record again if it is missing)', true);
+        showSaveStamp(_sw ? ('⚠ Could not verify the save of ' + _sw + ' — please check Library') : '⚠ Could not verify save — please check Library (press Save Record again if it is missing)', true);
       }
       setTimeout(()=>{ setBtn('💾 Save Record',''); }, 3000);
     } else {
       // v13.31: a print/export save used to fail without a word — read it back in the background (does not hold up printing); warn only if it did not land
       const _ok = !_stateSendFailed && await verifySaved(finalNo, _savedAt);
-      if (!_ok && _saveSeq === _saveSeq_) showSaveStamp(SILENT_SAVE_WARN_, true);
+      const _sw = _swNo();
+      if (!_ok && _saveSeq === _saveSeq_) showSaveStamp(_sw ? ('⚠ Could not verify the save of ' + _sw + ' — please check Library') : SILENT_SAVE_WARN_, true);
       else if (_ok && _saveSeq === _saveSeq_) { const _st = document.getElementById('save-stamp'); if (_st && _st.textContent === SILENT_SAVE_WARN_) _st.textContent = ''; }
     }
   } catch(e) {
-    if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp('❌ Save failed: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
-    else showSaveStamp(SILENT_SAVE_WARN_, true);   // v13.31
+    const _away = _sentNo && (state !== S || S.recordId !== _sentRid) ? '❌ Save of ' + _sentNo + ' failed: ' + (e && e.message) + ' — another contract is open now' : '';   // v13.38: name the contract that failed
+    // v13.38: a renumber-save that failed before the backend could answer (network error) puts back the record id and the signed-PDF link it took off the
+    // loaded contract — they were kept only on the page. Without this, typing the original number back and saving sent the never-saved new id under the
+    // original number: the backend saw a collision and filed an extra copy under the next number, and the original was not updated.
+    if (_renumberedRid && state === S && S.recordId === _mintedRid) {
+      if (_mintedRid && _newRid && _newRid.rid === _mintedRid) _newRid = null;
+      S.recordId = _renumberedRid;
+      if (_renumberedLink && !S.signedPdfUrl) { S.signedPdfUrl = _renumberedLink; const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML = `<a href="${safeHref_(S.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
+    }
+    if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp(_away || '❌ Save failed: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
+    else showSaveStamp(_away || SILENT_SAVE_WARN_, true);   // v13.31
   }
 }
 const SILENT_SAVE_WARN_ = '⚠ Not saved to cloud — use Save Record';   // v13.31
