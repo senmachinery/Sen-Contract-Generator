@@ -6,7 +6,8 @@
 <script>(function(){try{if(!/(^|[?&])classic=1(&|$)/.test(location.search))location.replace('generator.html'+location.search+location.hash);}catch(e){}})();</script>
 <!-- CX-REDIRECT-END -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sen Labels — Contract Generator v13.38</title>
+<title>Sen Labels — Contract Generator v13.39</title>
+<!-- v13.39: (2026-11-23) — two small save fixes: (1) a renumber-save that fails puts the original record id back AND rewrites the local draft, so a reload + restore does not carry the never-saved id; (2) when a NEW contract / new copy fails to save while another contract is open, the message names it as "the new contract (entered as X)" instead of the typed number, which can belong to another contract. Contract paper, Excel and Word output unchanged. -->
 <!-- v13.38: (2026-11-23) — two save fixes. (1) Opening another contract (Library, New, Duplicate, +B, paste / open JSON, restore draft) while a save is still running no longer writes the first contract's content into the newly opened one: the running save finishes the contract it was started for, under that contract's own confirmed number, and the page says which contract was saved (or that it may not be saved). (2) A save under a retyped number that fails (network), then the original number typed back and saved, updates the original contract again instead of creating an extra copy. Contract paper, Excel and Word output unchanged. -->
 <!-- v13.37: (2026-11-22) — a restored local draft of an already saved contract now follows the same rules as a contract opened from the Library: a contract number typed over it is saved as a NEW record (the original record is not touched) and the signed-PDF link is not carried over (a PDF uploaded under the new number itself is kept). The draft now records which number its record belongs to; an older draft is checked against the backend on its first save. Contract paper, Excel and Word output unchanged. -->
 <!-- v13.36: (2026-11-21) — two more "one contract leaks into the next" fixes. (1) New Contract also resets the hidden cost / margin / customer-type fields (they kept the previous contract's values and a save wrote them into the new record). (2) A contract number typed over a loaded contract is saved as a NEW record (v13.27) — that new record no longer carries the loaded contract's signed-PDF link (a PDF uploaded under the new number itself is kept). Contract paper, Excel and Word output unchanged. -->
@@ -573,7 +574,7 @@ function loadExtLib_(name) {
 
 <div id="topbar">
   <div>
-    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.38</span></h1>
+    <h1><span class="brand-mark"><svg class="ic"><use href="#i-globe"></use></svg></span> <span class="brand-sen">Sen</span>&nbsp;Labels — Contract Generator <span style="font-size:10px;opacity:.6;font-weight:400">v13.39</span></h1>
     <div class="logo-sub">Sen Labels Machinery Sdn. Bhd. (809225H)</div>
   </div>
   <div class="topbar-actions">
@@ -5165,7 +5166,7 @@ async function _saveToSheetsRun_(silent) {
     if (state !== S) { showSaveStamp('⚠ ' + (S.contractNo || 'The previous contract') + ' was not saved — another contract was opened before the save started', true); return; }   // v13.38: nothing sent yet
   }
   // v13.27: number edited after loading → save as a NEW record (keeping recordId made the backend overwrite the original row in place)
-  let _renumberedFrom = '', _renumberedRid = '', _renumberedLink = '', _mintedRid = '', _sentNo = '', _sentRid = '';   // v13.38: what a renumber-save took off, put back if it fails (see catch)
+  let _renumberedFrom = '', _renumberedRid = '', _renumberedLink = '', _mintedRid = '', _sentNo = '', _sentRid = '', _sentNew = false;   // v13.38 (_sentNew: v13.39): what a renumber-save took off, put back if it fails (see catch)
   if (_loadedContractNo !== null && state.recordId && state.contractNo !== _loadedContractNo) { _renumberedFrom = _loadedContractNo; _renumberedRid = state.recordId; state.recordId = ''; }
   // v13.36: this save goes to another record than the loaded one — the loaded contract's signed PDF does not go with it (same as +B / Duplicate).
   // Kept only when the link is the PDF uploaded under this very number.
@@ -5206,7 +5207,7 @@ async function _saveToSheetsRun_(silent) {
     // v13.37: 60 s timeout (the backend waits up to 20 s for its lock, then writes — a healthy save answers in seconds). No answer in time = NOT KNOWN whether
     // the record was written; any other failure is thrown on as before.
     let _noAnswer = false, _netErr = null;
-    _sentNo = record.contractNo; _sentRid = record.recordId;   // v13.38: named in the failure message when another contract is open by then
+    _sentNo = record.contractNo; _sentRid = record.recordId; _sentNew = _ridNew;   // v13.38: named in the failure message when another contract is open by then (v13.39: new record → typed number may be another contract's)
     try {
       await _fetchT(gsUrl, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({ action:'save', record }) }, 60000);
@@ -5310,7 +5311,8 @@ async function _saveToSheetsRun_(silent) {
       else if (_ok && _saveSeq === _saveSeq_) { const _st = document.getElementById('save-stamp'); if (_st && _st.textContent === SILENT_SAVE_WARN_) _st.textContent = ''; }
     }
   } catch(e) {
-    const _away = _sentNo && (state !== S || S.recordId !== _sentRid) ? '❌ Save of ' + _sentNo + ' failed: ' + (e && e.message) + ' — another contract is open now' : '';   // v13.38: name the contract that failed
+    // v13.39: a NEW record (new contract / renumbered copy) is named by what it is, not by the typed number — that number can belong to another contract (same wording as the "unconfirmed" exit)
+    const _away = _sentNo && (state !== S || S.recordId !== _sentRid) ? '❌ Save of ' + (_sentNew ? (_renumberedFrom ? 'the new copy of ' + _renumberedFrom : 'the new contract') + ' (entered as ' + _sentNo + ')' : _sentNo) + ' failed: ' + (e && e.message) + ' — another contract is open now' : '';   // v13.38: name the contract that failed
     // v13.38: a renumber-save that failed before the backend could answer (network error) puts back the record id and the signed-PDF link it took off the
     // loaded contract — they were kept only on the page. Without this, typing the original number back and saving sent the never-saved new id under the
     // original number: the backend saw a collision and filed an extra copy under the next number, and the original was not updated.
@@ -5318,6 +5320,8 @@ async function _saveToSheetsRun_(silent) {
       if (_mintedRid && _newRid && _newRid.rid === _mintedRid) _newRid = null;
       S.recordId = _renumberedRid;
       if (_renumberedLink && !S.signedPdfUrl) { S.signedPdfUrl = _renumberedLink; const l=document.getElementById('signed-pdf-link'); if(l) l.innerHTML = `<a href="${safeHref_(S.signedPdfUrl)}" target="_blank" rel="noopener" style="color:#1a73e8">📄 View Signed PDF</a>`; }
+      // v13.39: the 5 s autosave may have stored the draft with the minted (never-saved) id during the read-back — rewrite it with the original id put back (same rule as after a save)
+      try { const _d = autosaveDirty ? null : hasAutosaveDraft(); if (autosaveDirty || (_d && _d.tab === AUTOSAVE_TAB)) { autosaveDirty = true; performAutosave(); } } catch (e2) {}
     }
     if (!silent) { setBtn('❌ Failed','#c0392b'); showSaveStamp(_away || '❌ Save failed: '+e.message, true); setTimeout(()=>{ setBtn('💾 Save Record',''); },3000); }
     else showSaveStamp(_away || SILENT_SAVE_WARN_, true);   // v13.31
